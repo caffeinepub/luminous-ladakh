@@ -7,8 +7,16 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Toaster } from "@/components/ui/sonner";
+import { Switch } from "@/components/ui/switch";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -44,7 +52,7 @@ function StatCardSkeleton() {
   return (
     <div className="bg-[#191c1d] p-8 rounded-xl relative overflow-hidden">
       <Skeleton className="h-3 w-32 mb-4 bg-[#282a2b]" />
-      <Skeleton className="h-12 w-24 mb-2 bg-[#282a2b]" />
+      <Skeleton className="h-16 w-28 mb-2 bg-[#282a2b]" />
       <Skeleton className="h-3 w-40 bg-[#282a2b]" />
     </div>
   );
@@ -161,52 +169,270 @@ function LinkFormDialog({
 
 // ── Explore View ─────────────────────────────────────────────────────────────
 
-const destinations = [
+interface Destination {
+  name: string;
+  icon: string;
+  color: string;
+  desc: string;
+  tag: string;
+  altitude: string;
+  bestSeason: string;
+  duration: string;
+  gettingThere: string;
+  highlights: string[];
+}
+
+const destinations: Destination[] = [
   {
     name: "Pangong Lake",
     icon: "water",
     color: "#b2c5ff",
-    desc: "A breathtaking high-altitude salt lake stretching across India and China at 4,350m, famous for its vivid color shifts.",
+    desc: "A breathtaking high-altitude salt lake stretching across India and China at 4,350m, famous for its vivid color shifts from deep blue to emerald green throughout the day.",
     tag: "Lakes",
+    altitude: "4,350m",
+    bestSeason: "May – September",
+    duration: "2–3 days",
+    gettingThere: "Drive from Leh via Chang La Pass (~5h)",
+    highlights: [
+      "Dramatic color shifts from azure to emerald",
+      "Two-thirds of the lake lies in Tibet",
+      "Famous 3 Idiots filming location",
+      "Spectacular stargazing at night",
+    ],
   },
   {
     name: "Nubra Valley",
     icon: "terrain",
     color: "#3cdccf",
-    desc: "A tri-armed valley beyond Khardung La, home to Bactrian camels, sand dunes, and ancient monasteries.",
+    desc: "A tri-armed valley beyond Khardung La, home to Bactrian camels, sand dunes, and ancient monasteries amidst dramatic desert terrain.",
     tag: "Valleys",
+    altitude: "3,048m",
+    bestSeason: "June – September",
+    duration: "2–3 days",
+    gettingThere: "Drive via Khardung La Pass from Leh (~4h)",
+    highlights: [
+      "Double-humped Bactrian camel rides on sand dunes",
+      "Diskit Monastery with giant Maitreya Buddha",
+      "Hot springs at Panamik village",
+      "Apple orchards and local culture",
+    ],
   },
   {
     name: "Leh Palace",
     icon: "castle",
     color: "#ffb77a",
-    desc: "A nine-storey palace built in the 17th century overlooking Leh town — a crumbling echo of Ladakh's royal era.",
+    desc: "A nine-storey palace built in the 17th century overlooking Leh town — a crumbling echo of Ladakh's royal era with panoramic Himalayan views.",
     tag: "Heritage",
+    altitude: "3,500m",
+    bestSeason: "April – October",
+    duration: "2–3 hours",
+    gettingThere: "15-min walk uphill from Leh Bazaar",
+    highlights: [
+      "Nine-storey Tibetan-style architecture",
+      "360° views of Leh and Zanskar range",
+      "Ancient royal artifacts and thangka paintings",
+      "Best views at sunrise and sunset",
+    ],
   },
   {
     name: "Khardung La Pass",
     icon: "landscape",
     color: "#b2c5ff",
-    desc: "One of the world's highest motorable passes at 5,359m, gateway to Nubra Valley and Shyok region.",
+    desc: "One of the world's highest motorable passes at 5,359m, gateway to Nubra Valley and Shyok region — a bucket-list milestone for every traveler.",
     tag: "Passes",
+    altitude: "5,359m",
+    bestSeason: "June – September",
+    duration: "Day trip",
+    gettingThere: "40km north of Leh on Nubra road (~2h)",
+    highlights: [
+      "One of the world's highest motorable roads",
+      "Snow-covered peaks year-round nearby",
+      "Military base and chai shops at summit",
+      "Starting point for Nubra Valley descent",
+    ],
   },
   {
     name: "Hemis Monastery",
     icon: "temple_buddhist",
     color: "#ffb77a",
-    desc: "The largest and wealthiest monastery in Ladakh, hosting the famous Hemis Festival every summer.",
+    desc: "The largest and wealthiest monastery in Ladakh, hosting the famous Hemis Festival every summer — a cultural spectacle of masked dances and sacred rituals.",
     tag: "Monasteries",
+    altitude: "3,600m",
+    bestSeason: "April – October",
+    duration: "3–4 hours",
+    gettingThere: "45km southeast of Leh on Manali road (~1.5h)",
+    highlights: [
+      "Annual Hemis Festival (Tse Chu) in June/July",
+      "Rare thangka embroideries on display",
+      "Hemis snow leopard conservation area nearby",
+      "11th-century founding, Drukpa Kagyu order",
+    ],
   },
   {
     name: "Magnetic Hill",
     icon: "explore",
     color: "#3cdccf",
-    desc: "An optical illusion on NH1 where vehicles appear to roll uphill — a gravitational anomaly that mystifies travelers.",
+    desc: "An optical illusion on NH1 where vehicles appear to roll uphill — a gravitational anomaly that mystifies travelers and defies belief.",
     tag: "Wonders",
+    altitude: "3,390m",
+    bestSeason: "Year Round",
+    duration: "1–2 hours",
+    gettingThere: "30km from Leh on NH1 towards Kargil",
+    highlights: [
+      "Vehicles appear to roll uphill on their own",
+      "Confluence of Indus and Zanskar rivers nearby",
+      "Gurudwara Pathar Sahib just 3km away",
+      "Hall of Fame military museum en route",
+    ],
   },
 ];
 
+function DestinationDialog({
+  dest,
+  open,
+  onClose,
+}: {
+  dest: Destination | null;
+  open: boolean;
+  onClose: () => void;
+}) {
+  if (!dest) return null;
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent
+        className="bg-[#1d2021] border-[#43474f]/30 text-[#e1e3e4] max-w-lg p-0 overflow-hidden"
+        data-ocid="explore.dialog"
+      >
+        {/* Header */}
+        <div className="p-6 pb-5" style={{ background: `${dest.color}12` }}>
+          <div className="flex items-start justify-between mb-4">
+            <div
+              className="w-14 h-14 rounded-2xl flex items-center justify-center"
+              style={{ background: `${dest.color}20` }}
+            >
+              <span
+                className="material-symbols-outlined text-3xl"
+                style={{ color: dest.color }}
+              >
+                {dest.icon}
+              </span>
+            </div>
+            <span
+              className="text-[10px] uppercase tracking-widest font-bold px-3 py-1.5 rounded-full"
+              style={{ background: `${dest.color}20`, color: dest.color }}
+            >
+              {dest.tag}
+            </span>
+          </div>
+          <DialogTitle className="font-headline text-2xl font-bold text-[#e1e3e4] mb-2">
+            {dest.name}
+          </DialogTitle>
+          <p className="text-sm text-[#8d919a] leading-relaxed">{dest.desc}</p>
+        </div>
+
+        <ScrollArea className="max-h-[60vh]">
+          <div className="p-6 space-y-6">
+            {/* Quick Facts Grid */}
+            <div>
+              <h4 className="text-[10px] uppercase tracking-widest text-[#8d919a] font-bold mb-3">
+                Quick Facts
+              </h4>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { label: "Altitude", value: dest.altitude, icon: "terrain" },
+                  {
+                    label: "Best Season",
+                    value: dest.bestSeason,
+                    icon: "wb_sunny",
+                  },
+                  { label: "Duration", value: dest.duration, icon: "schedule" },
+                  {
+                    label: "Getting There",
+                    value: dest.gettingThere,
+                    icon: "directions_car",
+                  },
+                ].map((fact) => (
+                  <div
+                    key={fact.label}
+                    className="bg-[#191c1d] rounded-xl p-4 border border-[#43474f]/10"
+                  >
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span
+                        className="material-symbols-outlined text-sm"
+                        style={{ color: dest.color }}
+                      >
+                        {fact.icon}
+                      </span>
+                      <span className="text-[10px] uppercase tracking-widest text-[#8d919a] font-bold">
+                        {fact.label}
+                      </span>
+                    </div>
+                    <p className="text-sm font-semibold text-[#e1e3e4] leading-tight">
+                      {fact.value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Highlights */}
+            <div>
+              <h4 className="text-[10px] uppercase tracking-widest text-[#8d919a] font-bold mb-3">
+                Key Highlights
+              </h4>
+              <ul className="space-y-2.5">
+                {dest.highlights.map((h) => (
+                  <li key={h} className="flex items-start gap-3">
+                    <div
+                      className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0"
+                      style={{ background: dest.color }}
+                    />
+                    <span className="text-sm text-[#c3c6d1] leading-snug">
+                      {h}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </ScrollArea>
+
+        <DialogFooter className="px-6 py-4 border-t border-[#43474f]/20">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-5 py-2 rounded-full text-sm font-semibold text-[#c3c6d1] bg-[#282a2b] hover:bg-[#323536] transition-colors"
+            data-ocid="explore.close_button"
+          >
+            Close
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              toast.success(`Added ${dest.name} to your travel list`);
+              onClose();
+            }}
+            className="px-5 py-2 rounded-full text-sm font-bold transition-all hover:scale-95"
+            style={{ background: dest.color, color: "#111415" }}
+            data-ocid="explore.primary_button"
+          >
+            Save to Vault
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function ExploreView() {
+  const [selectedDest, setSelectedDest] = useState<Destination | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  const openDest = (dest: Destination) => {
+    setSelectedDest(dest);
+    setDialogOpen(true);
+  };
+
   return (
     <motion.div
       key="explore"
@@ -236,6 +462,7 @@ function ExploreView() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: idx * 0.07 }}
             className="bg-[#191c1d] p-7 rounded-xl border border-[#43474f]/10 group hover:border-[#43474f]/40 transition-all cursor-pointer"
+            onClick={() => openDest(dest)}
             data-ocid={`explore.item.${idx + 1}`}
           >
             <div className="flex items-start justify-between mb-5">
@@ -265,32 +492,68 @@ function ExploreView() {
             <h3 className="font-headline text-xl font-bold text-[#e1e3e4] mb-2 group-hover:text-[#b2c5ff] transition-colors">
               {dest.name}
             </h3>
-            <p className="text-sm text-[#8d919a] leading-relaxed">
+            <p className="text-sm text-[#8d919a] leading-relaxed line-clamp-2">
               {dest.desc}
             </p>
-            <div
-              className="mt-5 flex items-center gap-1.5 text-xs font-semibold"
+            <div className="mt-4 flex items-center gap-3 text-xs text-[#8d919a]">
+              <span className="flex items-center gap-1">
+                <span
+                  className="material-symbols-outlined text-xs"
+                  style={{ color: dest.color }}
+                >
+                  terrain
+                </span>
+                {dest.altitude}
+              </span>
+              <span className="w-1 h-1 rounded-full bg-[#43474f]" />
+              <span>{dest.duration}</span>
+            </div>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                openDest(dest);
+              }}
+              className="mt-5 flex items-center gap-1.5 text-xs font-semibold bg-transparent border-0 p-0 cursor-pointer"
               style={{ color: dest.color } as React.CSSProperties}
+              data-ocid={`explore.button.${idx + 1}`}
             >
               <span>View Guide</span>
               <MatIcon name="arrow_forward" className="text-sm" />
-            </div>
+            </button>
           </motion.div>
         ))}
       </div>
+
+      <DestinationDialog
+        dest={selectedDest}
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+      />
     </motion.div>
   );
 }
 
 // ── Vault View ────────────────────────────────────────────────────────────────
 
-const vaultItems = [
+interface VaultItem {
+  icon: string;
+  title: string;
+  desc: string;
+  count: number;
+  color: string;
+  detail: string;
+}
+
+const vaultItems: VaultItem[] = [
   {
     icon: "folder_special",
     title: "Private Guides",
     desc: "Unpublished travel guides and insider routes",
     count: 4,
     color: "#b2c5ff",
+    detail:
+      "4 unpublished guides stored securely. These drafts are only visible to you and can be published to the platform when ready.",
   },
   {
     icon: "edit_document",
@@ -298,6 +561,8 @@ const vaultItems = [
     desc: "Work-in-progress content pending review",
     count: 7,
     color: "#ffb77a",
+    detail:
+      "7 articles pending creator review before publishing. Each article goes through quality checks before appearing on the Explore page.",
   },
   {
     icon: "photo_library",
@@ -305,6 +570,8 @@ const vaultItems = [
     desc: "Saved photos, videos and raw assets",
     count: 23,
     color: "#3cdccf",
+    detail:
+      "23 media assets including photos, videos, and raw files. All media is stored on-chain and backed up to the Internet Computer.",
   },
   {
     icon: "bookmark",
@@ -312,10 +579,104 @@ const vaultItems = [
     desc: "Bookmarked links and external references",
     count: 11,
     color: "#b2c5ff",
+    detail:
+      "11 bookmarked external links and references. Saved from the web for future content ideas, research, and community links.",
   },
 ];
 
+function VaultItemDialog({
+  item,
+  open,
+  onClose,
+}: {
+  item: VaultItem | null;
+  open: boolean;
+  onClose: () => void;
+}) {
+  if (!item) return null;
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent
+        className="bg-[#1d2021] border-[#43474f]/30 text-[#e1e3e4] max-w-md"
+        data-ocid="vault.dialog"
+      >
+        <DialogHeader>
+          <div className="flex items-center gap-4 mb-1">
+            <div
+              className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: `${item.color}18` }}
+            >
+              <span
+                className="material-symbols-outlined text-2xl"
+                style={{ color: item.color }}
+              >
+                {item.icon}
+              </span>
+            </div>
+            <div>
+              <DialogTitle className="font-headline text-xl text-[#e1e3e4]">
+                {item.title}
+              </DialogTitle>
+              <p className="text-xs text-[#8d919a] mt-0.5">{item.desc}</p>
+            </div>
+          </div>
+        </DialogHeader>
+
+        <div className="space-y-4 my-2">
+          <div
+            className="flex items-center justify-between p-4 rounded-xl border"
+            style={{
+              background: `${item.color}0a`,
+              borderColor: `${item.color}30`,
+            }}
+          >
+            <span className="text-sm text-[#c3c6d1]">Total Items</span>
+            <span
+              className="text-2xl font-headline font-bold"
+              style={{ color: item.color }}
+            >
+              {item.count}
+            </span>
+          </div>
+          <p className="text-sm text-[#8d919a] leading-relaxed">
+            {item.detail}
+          </p>
+        </div>
+
+        <DialogFooter className="gap-2 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-5 py-2 rounded-full text-sm font-semibold text-[#c3c6d1] bg-[#282a2b] hover:bg-[#323536] transition-colors"
+            data-ocid="vault.close_button"
+          >
+            Close
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              toast.info("Feature coming soon");
+            }}
+            className="px-5 py-2 rounded-full text-sm font-bold bg-[#b2c5ff] text-[#002b73] hover:scale-95 transition-all"
+            data-ocid="vault.primary_button"
+          >
+            Browse Items
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function VaultView() {
+  const [selectedItem, setSelectedItem] = useState<VaultItem | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  const openItem = (item: VaultItem) => {
+    setSelectedItem(item);
+    setDialogOpen(true);
+  };
+
   return (
     <motion.div
       key="vault"
@@ -368,6 +729,7 @@ function VaultView() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, delay: idx * 0.08 }}
             className="bg-[#191c1d] p-7 rounded-xl border border-[#43474f]/10 flex items-start gap-5 hover:border-[#43474f]/40 transition-all cursor-pointer group"
+            onClick={() => openItem(item)}
             data-ocid={`vault.item.${idx + 1}`}
           >
             <div
@@ -403,13 +765,257 @@ function VaultView() {
           </motion.div>
         ))}
       </div>
+
+      <VaultItemDialog
+        item={selectedItem}
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+      />
     </motion.div>
   );
 }
 
 // ── Profile View ──────────────────────────────────────────────────────────────
 
+type SettingKey = "notifications" | "privacy" | "region" | "appearance" | null;
+
+interface SettingsDef {
+  key: SettingKey;
+  icon: string;
+  label: string;
+  desc: string;
+}
+
+const settingsDefs: SettingsDef[] = [
+  {
+    key: "notifications",
+    icon: "notifications",
+    label: "Notification Preferences",
+    desc: "Manage alerts and updates",
+  },
+  {
+    key: "privacy",
+    icon: "lock",
+    label: "Privacy & Security",
+    desc: "Identity and access controls",
+  },
+  {
+    key: "region",
+    icon: "language",
+    label: "Region & Language",
+    desc: "Ladakh, India • English",
+  },
+  {
+    key: "appearance",
+    icon: "palette",
+    label: "Appearance",
+    desc: "Dark mode • Enabled",
+  },
+];
+
+function NotificationsPanel() {
+  const [alerts, setAlerts] = useState({
+    community: true,
+    applications: true,
+    payments: true,
+    digest: false,
+  });
+  return (
+    <div className="space-y-4 mt-2">
+      {[
+        {
+          key: "community" as const,
+          label: "Community Alerts",
+          desc: "New posts and community activity",
+        },
+        {
+          key: "applications" as const,
+          label: "New Applications",
+          desc: "Member and business sign-ups",
+        },
+        {
+          key: "payments" as const,
+          label: "Payment Updates",
+          desc: "Subscription renewals and revenue",
+        },
+        {
+          key: "digest" as const,
+          label: "Weekly Digest",
+          desc: "Summary every Monday morning",
+        },
+      ].map((item) => (
+        <div
+          key={item.key}
+          className="flex items-center justify-between p-4 bg-[#191c1d] rounded-xl"
+        >
+          <div>
+            <p className="text-sm font-semibold text-[#e1e3e4]">{item.label}</p>
+            <p className="text-xs text-[#8d919a] mt-0.5">{item.desc}</p>
+          </div>
+          <Switch
+            checked={alerts[item.key]}
+            onCheckedChange={(v) =>
+              setAlerts((prev) => ({ ...prev, [item.key]: v }))
+            }
+            data-ocid={`profile.${item.key}.switch`}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PrivacyPanel() {
+  const [eid, setEid] = useState<string | null>(null);
+  const generateId = () => {
+    setEid(Math.floor(10000000 + Math.random() * 90000000).toString());
+  };
+  return (
+    <div className="space-y-4 mt-2">
+      <div className="p-4 bg-[#191c1d] rounded-xl">
+        <p className="text-xs text-[#8d919a] uppercase tracking-widest mb-1">
+          Identity
+        </p>
+        <p className="text-sm font-semibold text-[#e1e3e4]">
+          Linked to Internet Computer
+        </p>
+      </div>
+      <div className="p-4 bg-[#191c1d] rounded-xl">
+        <p className="text-xs text-[#8d919a] uppercase tracking-widest mb-1">
+          Access Level
+        </p>
+        <p className="text-sm font-semibold text-[#3cdccf]">
+          Creator — Full Access
+        </p>
+      </div>
+      <div className="p-4 bg-[#191c1d] rounded-xl">
+        <p className="text-xs text-[#8d919a] uppercase tracking-widest mb-2">
+          Electronic ID
+        </p>
+        {eid ? (
+          <div className="flex items-center gap-3">
+            <span className="font-headline text-xl font-bold text-[#b2c5ff] tracking-widest">
+              {eid}
+            </span>
+            <button
+              type="button"
+              onClick={() => setEid(null)}
+              className="text-xs text-[#8d919a] hover:text-[#e1e3e4] transition-colors"
+            >
+              Hide
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={generateId}
+            className="text-sm font-semibold text-[#b2c5ff] hover:text-[#8ab4ff] transition-colors flex items-center gap-1.5"
+            data-ocid="profile.button"
+          >
+            <MatIcon name="visibility" className="text-sm" />
+            View Electronic ID
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RegionPanel() {
+  return (
+    <div className="space-y-3 mt-2">
+      {[
+        { label: "Region", value: "Ladakh, India" },
+        { label: "Language", value: "English" },
+        { label: "Currency", value: "INR (₹)" },
+        { label: "Timezone", value: "IST (UTC+5:30)" },
+      ].map((row) => (
+        <div
+          key={row.label}
+          className="flex justify-between items-center p-4 bg-[#191c1d] rounded-xl"
+        >
+          <span className="text-xs text-[#8d919a] uppercase tracking-wider">
+            {row.label}
+          </span>
+          <span className="text-sm font-semibold text-[#e1e3e4]">
+            {row.value}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AppearancePanel() {
+  const [dark, setDark] = useState(true);
+  return (
+    <div className="space-y-4 mt-2">
+      <div className="flex items-center justify-between p-4 bg-[#191c1d] rounded-xl">
+        <div>
+          <p className="text-sm font-semibold text-[#e1e3e4]">Dark Mode</p>
+          <p className="text-xs text-[#8d919a] mt-0.5">
+            Currently {dark ? "enabled" : "disabled"}
+          </p>
+        </div>
+        <Switch
+          checked={dark}
+          onCheckedChange={setDark}
+          data-ocid="profile.dark_mode.switch"
+        />
+      </div>
+      <div className="p-4 bg-[#191c1d] rounded-xl border border-[#43474f]/20">
+        <p className="text-xs text-[#8d919a] italic">
+          Light mode coming soon — the platform currently runs in dark mode
+          only.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function SettingsSheet({
+  setting,
+  onClose,
+}: {
+  setting: SettingKey;
+  onClose: () => void;
+}) {
+  const def = settingsDefs.find((s) => s.key === setting);
+  return (
+    <Sheet open={!!setting} onOpenChange={(v) => !v && onClose()}>
+      <SheetContent
+        side="right"
+        className="bg-[#1d2021] border-[#43474f]/30 text-[#e1e3e4] w-full sm:max-w-sm p-0"
+        data-ocid="profile.sheet"
+      >
+        <SheetHeader className="p-6 border-b border-[#43474f]/20">
+          <div className="flex items-center gap-3">
+            {def && (
+              <div className="w-9 h-9 rounded-lg bg-[#b2c5ff]/10 flex items-center justify-center shrink-0">
+                <MatIcon name={def.icon} className="text-lg text-[#b2c5ff]" />
+              </div>
+            )}
+            <SheetTitle className="font-headline text-lg text-[#e1e3e4]">
+              {def?.label}
+            </SheetTitle>
+          </div>
+        </SheetHeader>
+        <ScrollArea className="h-[calc(100vh-5rem)]">
+          <div className="p-6">
+            {setting === "notifications" && <NotificationsPanel />}
+            {setting === "privacy" && <PrivacyPanel />}
+            {setting === "region" && <RegionPanel />}
+            {setting === "appearance" && <AppearancePanel />}
+          </div>
+        </ScrollArea>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 function ProfileView({ userName }: { userName: string }) {
+  const [activeSetting, setActiveSetting] = useState<SettingKey>(null);
+
   return (
     <motion.div
       key="profile"
@@ -515,32 +1121,11 @@ function ProfileView({ userName }: { userName: string }) {
               Account Settings
             </h3>
             <div className="space-y-3">
-              {[
-                {
-                  icon: "notifications",
-                  label: "Notification Preferences",
-                  desc: "Manage alerts and updates",
-                },
-                {
-                  icon: "lock",
-                  label: "Privacy & Security",
-                  desc: "Identity and access controls",
-                },
-                {
-                  icon: "language",
-                  label: "Region & Language",
-                  desc: "Ladakh, India • English",
-                },
-                {
-                  icon: "palette",
-                  label: "Appearance",
-                  desc: "Dark mode • Enabled",
-                },
-              ].map((setting, idx) => (
+              {settingsDefs.map((setting, idx) => (
                 <button
                   key={setting.label}
                   type="button"
-                  onClick={() => toast.info(`Opening ${setting.label}`)}
+                  onClick={() => setActiveSetting(setting.key)}
                   className="w-full flex items-center gap-4 p-4 bg-[#1d2021] hover:bg-[#282a2b] rounded-xl text-left transition-colors group"
                   data-ocid={`profile.button.${idx + 1}`}
                 >
@@ -568,6 +1153,11 @@ function ProfileView({ userName }: { userName: string }) {
           </div>
         </div>
       </div>
+
+      <SettingsSheet
+        setting={activeSetting}
+        onClose={() => setActiveSetting(null)}
+      />
     </motion.div>
   );
 }
@@ -796,7 +1386,7 @@ export default function App() {
                   <>
                     {/* New Applications */}
                     <motion.div
-                      className="bg-[#191c1d] p-8 rounded-xl relative overflow-hidden group"
+                      className="bg-[#191c1d] p-8 rounded-xl relative overflow-hidden group hover:shadow-[0_0_30px_rgba(178,197,255,0.08)] transition-shadow"
                       initial={{ opacity: 0, y: 24 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.4, delay: 0.1 }}
@@ -811,7 +1401,7 @@ export default function App() {
                       <h3 className="text-[#c3c6d1] font-label text-xs uppercase tracking-widest mb-4">
                         New Applications
                       </h3>
-                      <p className="text-5xl font-headline font-bold text-[#b2c5ff] mb-2">
+                      <p className="text-6xl font-headline font-bold text-[#b2c5ff] mb-3">
                         {stats ? String(stats.newApplications) : "—"}
                       </p>
                       <div className="flex items-center gap-2 text-[#3cdccf] text-sm">
@@ -822,7 +1412,7 @@ export default function App() {
 
                     {/* Total Revenue */}
                     <motion.div
-                      className="bg-[#191c1d] p-8 rounded-xl relative overflow-hidden group"
+                      className="bg-[#191c1d] p-8 rounded-xl relative overflow-hidden group hover:shadow-[0_0_30px_rgba(255,183,122,0.08)] transition-shadow"
                       initial={{ opacity: 0, y: 24 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.4, delay: 0.2 }}
@@ -837,7 +1427,7 @@ export default function App() {
                       <h3 className="text-[#c3c6d1] font-label text-xs uppercase tracking-widest mb-4">
                         Total Revenue
                       </h3>
-                      <p className="text-5xl font-headline font-bold text-[#ffb77a] mb-2">
+                      <p className="text-6xl font-headline font-bold text-[#ffb77a] mb-3">
                         {stats?.totalRevenue ?? "—"}
                       </p>
                       <div className="flex items-center gap-2 text-[#b2c5ff] text-sm">
@@ -848,7 +1438,7 @@ export default function App() {
 
                     {/* Reports */}
                     <motion.div
-                      className="bg-[#191c1d] p-8 rounded-xl relative overflow-hidden group"
+                      className="bg-[#191c1d] p-8 rounded-xl relative overflow-hidden group hover:shadow-[0_0_30px_rgba(255,180,171,0.08)] transition-shadow"
                       initial={{ opacity: 0, y: 24 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.4, delay: 0.3 }}
@@ -863,7 +1453,7 @@ export default function App() {
                       <h3 className="text-[#c3c6d1] font-label text-xs uppercase tracking-widest mb-4">
                         Reports
                       </h3>
-                      <p className="text-5xl font-headline font-bold text-[#e1e3e4] mb-2">
+                      <p className="text-6xl font-headline font-bold text-[#e1e3e4] mb-3">
                         {stats
                           ? String(stats.reportsCount).padStart(2, "0")
                           : "—"}
@@ -946,18 +1536,16 @@ export default function App() {
                                 <button
                                   type="button"
                                   onClick={() => setEditTarget(link)}
-                                  className="p-2 text-[#c3c6d1] hover:text-[#b2c5ff] transition-colors"
+                                  className="p-2 text-[#8d919a] hover:text-[#b2c5ff] transition-colors rounded-lg hover:bg-[#282a2b]"
                                   data-ocid={`link.edit_button.${idx + 1}`}
-                                  title="Edit link"
                                 >
                                   <MatIcon name="edit" className="text-xl" />
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => setDeleteTarget(link)}
-                                  className="p-2 text-[#c3c6d1] hover:text-[#ffb4ab] transition-colors"
+                                  className="p-2 text-[#8d919a] hover:text-[#ffb4ab] transition-colors rounded-lg hover:bg-[#282a2b]"
                                   data-ocid={`link.delete_button.${idx + 1}`}
-                                  title="Delete link"
                                 >
                                   <MatIcon name="delete" className="text-xl" />
                                 </button>
@@ -1044,48 +1632,46 @@ export default function App() {
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        <div className="flex items-center justify-between gap-4 p-3 hover:bg-[#1d2021] rounded-lg transition-colors">
-                          <span className="text-sm font-medium text-[#e1e3e4]">
-                            Flagged Comments
-                          </span>
-                          <span className="bg-[#93000a] text-[#ffdad6] px-2.5 py-0.5 rounded-full text-[10px] font-bold">
-                            {modCounts
-                              ? String(modCounts.flaggedComments).padStart(
-                                  2,
-                                  "0",
-                                )
-                              : "—"}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between gap-4 p-3 hover:bg-[#1d2021] rounded-lg transition-colors">
-                          <span className="text-sm font-medium text-[#e1e3e4]">
+                        <div className="flex items-center justify-between p-4 bg-[#1d2021] rounded-xl">
+                          <span className="text-sm font-bold text-[#e1e3e4]">
                             Pending Reviews
                           </span>
-                          <span className="bg-[#003a36] text-[#00aea3] px-2.5 py-0.5 rounded-full text-[10px] font-bold">
-                            {modCounts
-                              ? String(modCounts.pendingReviews).padStart(
-                                  2,
-                                  "0",
-                                )
-                              : "—"}
+                          <span className="text-lg font-headline font-bold text-[#ffb77a]">
+                            {modCounts?.pendingReviews ?? "—"}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between p-4 bg-[#1d2021] rounded-xl">
+                          <span className="text-sm font-bold text-[#e1e3e4]">
+                            Flagged Content
+                          </span>
+                          <span className="text-lg font-headline font-bold text-[#ffb4ab]">
+                            {modCounts?.flaggedComments ?? "—"}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between p-4 bg-[#1d2021] rounded-xl">
+                          <span className="text-sm font-bold text-[#e1e3e4]">
+                            Active Users
+                          </span>
+                          <span className="text-lg font-headline font-bold text-[#3cdccf]">
+                            {"—"}
                           </span>
                         </div>
                       </div>
                     )}
 
-                    <div className="mt-8 grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-3 mt-6">
                       <button
                         type="button"
-                        onClick={() => toast.warning("Delete Content clicked")}
-                        className="flex flex-col items-center justify-center p-4 bg-[#323536] rounded-xl hover:text-[#ffb4ab] transition-colors group"
-                        data-ocid="moderation.delete_button"
+                        onClick={() => toast.info("Review Queue opened")}
+                        className="flex flex-col items-center justify-center p-4 bg-[#323536] rounded-xl hover:text-[#b2c5ff] transition-colors group"
+                        data-ocid="moderation.primary_button"
                       >
                         <MatIcon
-                          name="delete_sweep"
+                          name="rate_review"
                           className="mb-2 group-hover:scale-110 transition-transform"
                         />
                         <span className="text-[10px] uppercase tracking-tighter font-bold">
-                          Delete Content
+                          Review Queue
                         </span>
                       </button>
                       <button
@@ -1132,7 +1718,11 @@ export default function App() {
           <button
             type="button"
             onClick={() => setActiveNav("dashboard")}
-            className="flex flex-col items-center justify-center bg-gradient-to-br from-blue-300 to-blue-700 text-slate-950 rounded-full w-14 h-14 -translate-y-2.5 shadow-lg shadow-blue-500/20 animate-pulse-slow"
+            className={`flex flex-col items-center justify-center transition-all ${
+              activeNav === "dashboard"
+                ? "bg-gradient-to-br from-blue-300 to-blue-700 text-slate-950 rounded-full w-14 h-14 -translate-y-2.5 shadow-lg shadow-blue-500/20"
+                : "text-[#8d919a] hover:text-[#b2c5ff] p-2"
+            }`}
             data-ocid="mobile.nav.link"
           >
             <MatIcon name="dashboard_customize" />
@@ -1173,6 +1763,64 @@ export default function App() {
         </div>
       </nav>
 
+      {/* Dialogs */}
+      <LinkFormDialog
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onSubmit={handleAddLink}
+        isPending={addLink.isPending}
+        mode="add"
+      />
+      <LinkFormDialog
+        open={!!editTarget}
+        onClose={() => setEditTarget(null)}
+        onSubmit={handleEditLink}
+        isPending={editLink.isPending}
+        initial={editTarget ?? undefined}
+        mode="edit"
+      />
+      <Dialog
+        open={!!deleteTarget}
+        onOpenChange={(v) => !v && setDeleteTarget(null)}
+      >
+        <DialogContent
+          className="bg-[#1d2021] border-[#43474f]/30 text-[#e1e3e4] max-w-sm"
+          data-ocid="link.delete.dialog"
+        >
+          <DialogHeader>
+            <DialogTitle className="font-headline text-xl text-[#e1e3e4]">
+              Delete Link
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-[#8d919a] mt-1">
+            Are you sure you want to delete{" "}
+            <span className="text-[#e1e3e4] font-semibold">
+              {deleteTarget?.title}
+            </span>
+            ? This action cannot be undone.
+          </p>
+          <DialogFooter className="mt-4 gap-2">
+            <button
+              type="button"
+              onClick={() => setDeleteTarget(null)}
+              className="px-5 py-2 rounded-full text-sm font-semibold text-[#c3c6d1] bg-[#282a2b] hover:bg-[#323536] transition-colors"
+              data-ocid="link.cancel_button"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleDeleteConfirm}
+              disabled={deleteLink.isPending}
+              className="px-5 py-2 rounded-full text-sm font-bold bg-[#ffb4ab] text-[#690005] hover:scale-95 transition-all disabled:opacity-50"
+              data-ocid="link.delete_button"
+            >
+              {deleteLink.isPending ? "Deleting..." : "Delete"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Footer */}
       <footer className="hidden md:block text-center py-6 text-[#8d919a] text-xs border-t border-[#43474f]/20">
         © {new Date().getFullYear()}.{" "}
@@ -1187,72 +1835,6 @@ export default function App() {
           Built with ❤️ using caffeine.ai
         </a>
       </footer>
-
-      {/* Add Link Dialog */}
-      <LinkFormDialog
-        open={addOpen}
-        onClose={() => setAddOpen(false)}
-        onSubmit={handleAddLink}
-        isPending={addLink.isPending}
-        mode="add"
-      />
-
-      {/* Edit Link Dialog */}
-      <LinkFormDialog
-        open={!!editTarget}
-        onClose={() => setEditTarget(null)}
-        onSubmit={handleEditLink}
-        isPending={editLink.isPending}
-        initial={
-          editTarget
-            ? { title: editTarget.title, url: editTarget.url }
-            : undefined
-        }
-        mode="edit"
-      />
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog
-        open={!!deleteTarget}
-        onOpenChange={(v) => !v && setDeleteTarget(null)}
-      >
-        <DialogContent
-          className="bg-[#1d2021] border-[#43474f]/30 text-[#e1e3e4] max-w-sm"
-          data-ocid="link.delete.dialog"
-        >
-          <DialogHeader>
-            <DialogTitle className="font-headline text-xl text-[#e1e3e4]">
-              Delete Link
-            </DialogTitle>
-          </DialogHeader>
-          <p className="text-[#c3c6d1] text-sm mt-2">
-            Are you sure you want to delete{" "}
-            <span className="font-bold text-[#e1e3e4]">
-              {deleteTarget?.title}
-            </span>
-            ? This action cannot be undone.
-          </p>
-          <DialogFooter className="pt-4 gap-2">
-            <button
-              type="button"
-              onClick={() => setDeleteTarget(null)}
-              className="px-5 py-2 rounded-full text-sm font-semibold text-[#c3c6d1] bg-[#282a2b] hover:bg-[#323536] transition-colors"
-              data-ocid="link.cancel_button"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleDeleteConfirm}
-              disabled={deleteLink.isPending}
-              className="px-5 py-2 rounded-full text-sm font-bold bg-[#93000a] text-[#ffdad6] hover:scale-95 transition-all disabled:opacity-50"
-              data-ocid="link.confirm_button"
-            >
-              {deleteLink.isPending ? "Deleting..." : "Delete"}
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
