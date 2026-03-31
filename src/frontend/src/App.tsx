@@ -18,7 +18,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Toaster } from "@/components/ui/sonner";
 import { Switch } from "@/components/ui/switch";
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useState } from "react";
+import type React from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { CommunityLink } from "./backend.d";
 import {
@@ -35,9 +36,12 @@ import {
 function MatIcon({
   name,
   className = "",
-}: { name: string; className?: string }) {
+  style,
+}: { name: string; className?: string; style?: React.CSSProperties }) {
   return (
-    <span className={`material-symbols-outlined ${className}`}>{name}</span>
+    <span className={`material-symbols-outlined ${className}`} style={style}>
+      {name}
+    </span>
   );
 }
 
@@ -167,6 +171,387 @@ function LinkFormDialog({
   );
 }
 
+// ── Landing Page ─────────────────────────────────────────────────────────────
+
+type UserRole = "public" | "member" | "community" | "creator";
+
+const ROLES: { value: UserRole; label: string; desc: string }[] = [
+  {
+    value: "public",
+    label: "Public Visitor",
+    desc: "Browse destinations and locations for free",
+  },
+  {
+    value: "member",
+    label: "Business Member",
+    desc: "Promote your Ladakh business (₹1,000–1,500/mo)",
+  },
+  {
+    value: "community",
+    label: "Community Member",
+    desc: "Create and contribute content",
+  },
+  {
+    value: "creator",
+    label: "Creator / Admin",
+    desc: "Full access — manage, moderate, and approve",
+  },
+];
+
+function LoginDialog({
+  open,
+  onClose,
+  onLogin,
+}: { open: boolean; onClose: () => void; onLogin: (role: UserRole) => void }) {
+  const [role, setRole] = useState<UserRole>("public");
+  const [agreed, setAgreed] = useState(false);
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="bg-[#1d2021] border-[#43474f]/30 text-[#e1e3e4] max-w-md">
+        <DialogHeader>
+          <DialogTitle className="font-headline text-2xl text-[#e1e3e4]">
+            Sign In to Ladakh Connect
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 my-2">
+          <Label className="text-[#8d919a] text-xs uppercase tracking-wider">
+            Select your role
+          </Label>
+          {ROLES.map((r) => (
+            <button
+              key={r.value}
+              type="button"
+              onClick={() => setRole(r.value)}
+              className={`w-full flex items-start gap-3 p-4 rounded-xl border text-left transition-all ${
+                role === r.value
+                  ? "border-[#b2c5ff]/60 bg-[#b2c5ff]/10"
+                  : "border-[#43474f]/20 bg-[#191c1d] hover:border-[#43474f]/50"
+              }`}
+            >
+              <div
+                className={`w-4 h-4 rounded-full border-2 mt-0.5 shrink-0 flex items-center justify-center ${
+                  role === r.value
+                    ? "border-[#b2c5ff] bg-[#b2c5ff]"
+                    : "border-[#43474f]"
+                }`}
+              >
+                {role === r.value && (
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#002b73]" />
+                )}
+              </div>
+              <div>
+                <p className="font-bold text-sm text-[#e1e3e4]">{r.label}</p>
+                <p className="text-xs text-[#8d919a] mt-0.5">{r.desc}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+        <div className="flex items-start gap-3 p-3 bg-[#191c1d] rounded-xl">
+          <button
+            type="button"
+            onClick={() => setAgreed(!agreed)}
+            className={`w-5 h-5 rounded border-2 shrink-0 mt-0.5 flex items-center justify-center transition-colors ${
+              agreed ? "border-[#b2c5ff] bg-[#b2c5ff]" : "border-[#43474f]"
+            }`}
+          >
+            {agreed && (
+              <MatIcon name="check" className="text-xs text-[#002b73]" />
+            )}
+          </button>
+          <p className="text-xs text-[#8d919a] leading-relaxed">
+            I accept the{" "}
+            <span className="text-[#b2c5ff] cursor-pointer">
+              Terms & Conditions
+            </span>{" "}
+            and{" "}
+            <span className="text-[#b2c5ff] cursor-pointer">
+              Privacy Policy
+            </span>
+            .
+            <span className="block text-[#ffb4ab] mt-1 font-semibold">
+              All membership payments are non-refundable.
+            </span>
+          </p>
+        </div>
+        <DialogFooter className="gap-2 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-5 py-2 rounded-full text-sm font-semibold text-[#c3c6d1] bg-[#282a2b] hover:bg-[#323536] transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={!agreed}
+            onClick={() => onLogin(role)}
+            className="px-6 py-2 rounded-full text-sm font-bold bg-[#b2c5ff] text-[#002b73] hover:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Enter App
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function SignupDialog({
+  open,
+  onClose,
+  onSignup,
+}: { open: boolean; onClose: () => void; onSignup: (role: UserRole) => void }) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState<UserRole>("member");
+  const [agreed, setAgreed] = useState(false);
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="bg-[#1d2021] border-[#43474f]/30 text-[#e1e3e4] max-w-md">
+        <DialogHeader>
+          <DialogTitle className="font-headline text-2xl text-[#e1e3e4]">
+            Create Account
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 my-2">
+          <div>
+            <Label className="text-[#8d919a] text-xs uppercase tracking-wider">
+              Full Name
+            </Label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Your name"
+              className="mt-1.5 bg-[#282a2b] border-[#43474f]/40 text-[#e1e3e4] placeholder:text-[#8d919a]"
+            />
+          </div>
+          <div>
+            <Label className="text-[#8d919a] text-xs uppercase tracking-wider">
+              Email
+            </Label>
+            <Input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="email@example.com"
+              className="mt-1.5 bg-[#282a2b] border-[#43474f]/40 text-[#e1e3e4] placeholder:text-[#8d919a]"
+            />
+          </div>
+          <div>
+            <Label className="text-[#8d919a] text-xs uppercase tracking-wider">
+              Password
+            </Label>
+            <Input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Choose a password"
+              className="mt-1.5 bg-[#282a2b] border-[#43474f]/40 text-[#e1e3e4] placeholder:text-[#8d919a]"
+            />
+          </div>
+          <div>
+            <Label className="text-[#8d919a] text-xs uppercase tracking-wider">
+              Account Type
+            </Label>
+            <div className="grid grid-cols-2 gap-2 mt-1.5">
+              {ROLES.slice(0, 3).map((r) => (
+                <button
+                  key={r.value}
+                  type="button"
+                  onClick={() => setRole(r.value)}
+                  className={`p-3 rounded-xl border text-left transition-all ${
+                    role === r.value
+                      ? "border-[#b2c5ff]/60 bg-[#b2c5ff]/10"
+                      : "border-[#43474f]/20 bg-[#191c1d] hover:border-[#43474f]/50"
+                  }`}
+                >
+                  <p className="font-bold text-xs text-[#e1e3e4]">{r.label}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-start gap-3 p-3 bg-[#191c1d] rounded-xl">
+          <button
+            type="button"
+            onClick={() => setAgreed(!agreed)}
+            className={`w-5 h-5 rounded border-2 shrink-0 mt-0.5 flex items-center justify-center transition-colors ${
+              agreed ? "border-[#b2c5ff] bg-[#b2c5ff]" : "border-[#43474f]"
+            }`}
+          >
+            {agreed && (
+              <MatIcon name="check" className="text-xs text-[#002b73]" />
+            )}
+          </button>
+          <p className="text-xs text-[#8d919a] leading-relaxed">
+            I accept the{" "}
+            <span className="text-[#b2c5ff] cursor-pointer">
+              Terms & Conditions
+            </span>{" "}
+            and{" "}
+            <span className="text-[#b2c5ff] cursor-pointer">
+              Privacy Policy
+            </span>
+            .
+            <span className="block text-[#ffb4ab] mt-1 font-semibold">
+              All membership payments are non-refundable. Members receive a
+              1-day free trial.
+            </span>
+          </p>
+        </div>
+        <DialogFooter className="gap-2 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-5 py-2 rounded-full text-sm font-semibold text-[#c3c6d1] bg-[#282a2b] hover:bg-[#323536] transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={!agreed || !name.trim() || !email.trim()}
+            onClick={() => onSignup(role)}
+            className="px-6 py-2 rounded-full text-sm font-bold bg-[#b2c5ff] text-[#002b73] hover:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Create Account
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function LandingPage({ onEnter }: { onEnter: (role: UserRole) => void }) {
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [signupOpen, setSignupOpen] = useState(false);
+
+  return (
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden">
+      {/* Hero Background */}
+      <div className="absolute inset-0">
+        <img
+          src="https://images.unsplash.com/photo-1589392953296-5ebf0dbef491?auto=format&fit=crop&w=1600&q=80"
+          alt="Pangong Lake Ladakh"
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            (e.target as HTMLImageElement).style.display = "none";
+          }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-[#111415]" />
+        <div className="absolute inset-0 bg-[#111415]/30" />
+      </div>
+
+      {/* Content */}
+      <div className="relative z-10 text-center px-6 max-w-2xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="mb-4"
+        >
+          <div className="flex items-center justify-center gap-3 mb-6">
+            <MatIcon name="shield_person" className="text-[#b2c5ff] text-4xl" />
+          </div>
+          <span className="text-[#3cdccf] font-label text-sm uppercase tracking-[0.3em]">
+            Official Community Platform
+          </span>
+        </motion.div>
+
+        <motion.h1
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.1 }}
+          className="font-headline text-6xl md:text-8xl font-bold tracking-tighter text-white mb-4"
+        >
+          Ladakh <span className="text-[#b2c5ff]">Connect</span>
+        </motion.h1>
+
+        <motion.p
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.25 }}
+          className="text-lg text-white/70 mb-10 leading-relaxed"
+        >
+          Discover monasteries, emergency services, local businesses and
+          breathtaking destinations — all of Ladakh in one place.
+        </motion.p>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="flex flex-col sm:flex-row items-center justify-center gap-4"
+        >
+          <button
+            type="button"
+            onClick={() => onEnter("public")}
+            className="px-8 py-3.5 rounded-full text-base font-bold bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20 transition-all w-full sm:w-auto"
+          >
+            Enter as Guest
+          </button>
+          <button
+            type="button"
+            onClick={() => setLoginOpen(true)}
+            className="px-8 py-3.5 rounded-full text-base font-bold bg-[#b2c5ff] text-[#002b73] hover:scale-95 transition-all shadow-lg shadow-[#b2c5ff]/20 w-full sm:w-auto"
+          >
+            Login
+          </button>
+          <button
+            type="button"
+            onClick={() => setSignupOpen(true)}
+            className="px-8 py-3.5 rounded-full text-base font-bold border border-[#b2c5ff]/50 text-[#b2c5ff] hover:bg-[#b2c5ff]/10 transition-all w-full sm:w-auto"
+          >
+            Sign Up
+          </button>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.7 }}
+          className="mt-16 flex items-center justify-center gap-8 text-white/40 text-sm"
+        >
+          <span className="flex items-center gap-2">
+            <MatIcon name="temple_buddhist" className="text-base" />
+            150+ Monasteries
+          </span>
+          <span className="flex items-center gap-2">
+            <MatIcon name="explore" className="text-base" />
+            50+ Destinations
+          </span>
+          <span className="flex items-center gap-2">
+            <MatIcon name="store" className="text-base" />
+            Local Businesses
+          </span>
+        </motion.div>
+      </div>
+
+      {/* Version badge */}
+      <div className="absolute bottom-6 right-6 text-[11px] text-white/30 font-label tracking-wider">
+        v6 — Semifinals Finalized
+      </div>
+
+      <LoginDialog
+        open={loginOpen}
+        onClose={() => setLoginOpen(false)}
+        onLogin={(r) => {
+          setLoginOpen(false);
+          onEnter(r);
+        }}
+      />
+      <SignupDialog
+        open={signupOpen}
+        onClose={() => setSignupOpen(false)}
+        onSignup={(r) => {
+          setSignupOpen(false);
+          onEnter(r);
+        }}
+      />
+    </div>
+  );
+}
+
 // ── Explore View ─────────────────────────────────────────────────────────────
 
 interface Destination {
@@ -180,7 +565,12 @@ interface Destination {
   duration: string;
   gettingThere: string;
   highlights: string[];
+  image: string;
+  mapQuery: string;
 }
+
+const IMG = (id: string) =>
+  `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=800&q=80`;
 
 const destinations: Destination[] = [
   {
@@ -199,6 +589,8 @@ const destinations: Destination[] = [
       "Famous 3 Idiots filming location",
       "Spectacular stargazing at night",
     ],
+    image: IMG("1589392953296-5ebf0dbef491"),
+    mapQuery: "Pangong Lake, Ladakh, India",
   },
   {
     name: "Nubra Valley",
@@ -216,6 +608,8 @@ const destinations: Destination[] = [
       "Hot springs at Panamik village",
       "Apple orchards and local culture",
     ],
+    image: IMG("1506905925346-21bda4d32df4"),
+    mapQuery: "Nubra Valley, Ladakh, India",
   },
   {
     name: "Leh Palace",
@@ -233,6 +627,8 @@ const destinations: Destination[] = [
       "Ancient royal artifacts and thangka paintings",
       "Best views at sunrise and sunset",
     ],
+    image: IMG("1554629947-334ff61d85dc"),
+    mapQuery: "Leh Palace, Leh, Ladakh, India",
   },
   {
     name: "Khardung La Pass",
@@ -250,6 +646,8 @@ const destinations: Destination[] = [
       "Military base and chai shops at summit",
       "Starting point for Nubra Valley descent",
     ],
+    image: IMG("1518709268805-4e9042af9f23"),
+    mapQuery: "Khardung La Pass, Ladakh, India",
   },
   {
     name: "Hemis Monastery",
@@ -267,6 +665,8 @@ const destinations: Destination[] = [
       "Hemis snow leopard conservation area nearby",
       "11th-century founding, Drukpa Kagyu order",
     ],
+    image: IMG("1588170613789-8e1893abd4e7"),
+    mapQuery: "Hemis Monastery, Ladakh, India",
   },
   {
     name: "Magnetic Hill",
@@ -284,18 +684,155 @@ const destinations: Destination[] = [
       "Gurudwara Pathar Sahib just 3km away",
       "Hall of Fame military museum en route",
     ],
+    image: IMG("1553279591-066b56ab0b31"),
+    mapQuery: "Magnetic Hill, Leh, Ladakh, India",
   },
 ];
+
+interface EssentialLocation {
+  name: string;
+  category: "monastery" | "emergency" | "school";
+  icon: string;
+  color: string;
+  desc: string;
+  image: string;
+  mapQuery: string;
+}
+
+const monasteries: EssentialLocation[] = [
+  {
+    name: "Thiksey Monastery",
+    category: "monastery",
+    icon: "temple_buddhist",
+    color: "#ffb77a",
+    desc: "12-storey complex resembling Potala Palace, with a giant Maitreya Buddha statue. One of Ladakh's most photographed monasteries.",
+    image: IMG("1491555103944-7c647fd857e6"),
+    mapQuery: "Thiksey Monastery, Ladakh, India",
+  },
+  {
+    name: "Diskit Monastery",
+    category: "monastery",
+    icon: "temple_buddhist",
+    color: "#ffb77a",
+    desc: "Oldest and largest monastery in Nubra Valley, featuring a famous 32-metre Maitreya Buddha statue overlooking the valley.",
+    image: IMG("1580504539231-95bac4b4c1bc"),
+    mapQuery: "Diskit Monastery, Nubra Valley, India",
+  },
+  {
+    name: "Lamayuru Monastery",
+    category: "monastery",
+    icon: "temple_buddhist",
+    color: "#ffb77a",
+    desc: "One of the oldest monasteries in Ladakh, perched dramatically above a 'moonland' landscape on the Leh-Kargil highway.",
+    image: IMG("1548438294-822ad82b11ac"),
+    mapQuery: "Lamayuru Monastery, Ladakh, India",
+  },
+  {
+    name: "Spituk Monastery",
+    category: "monastery",
+    icon: "temple_buddhist",
+    color: "#ffb77a",
+    desc: "Hilltop monastery 8km from Leh airport, housing a famous masked idol of Mahakala revealed only during the annual festival.",
+    image: IMG("1591710668263-f62da4f3f7e1"),
+    mapQuery: "Spituk Gompa, Leh, India",
+  },
+  {
+    name: "Shey Palace",
+    category: "monastery",
+    icon: "temple_buddhist",
+    color: "#ffb77a",
+    desc: "Former summer capital of Ladakh's kings, housing a 7.5-metre gilded copper Buddha statue — the largest in Ladakh.",
+    image: IMG("1558618666-fcd25c85cd64"),
+    mapQuery: "Shey Palace, Leh, India",
+  },
+  {
+    name: "Alchi Monastery",
+    category: "monastery",
+    icon: "temple_buddhist",
+    color: "#ffb77a",
+    desc: "A 1,000-year-old monastery on the banks of the Indus River, renowned for its rare 11th-century wall paintings and wooden carvings.",
+    image: IMG("1566552881560-0be862a7c445"),
+    mapQuery: "Alchi Monastery, Ladakh, India",
+  },
+];
+
+const emergencyLocations: EssentialLocation[] = [
+  {
+    name: "SNM District Hospital",
+    category: "emergency",
+    icon: "local_hospital",
+    color: "#ffb4ab",
+    desc: "Primary government hospital in Leh providing emergency, surgical and specialist care for Ladakh residents and tourists.",
+    image: IMG("1519494026892-80bbd2d6fd0d"),
+    mapQuery: "SNM District Hospital, Leh, India",
+  },
+  {
+    name: "Sonam Norboo Memorial Hospital",
+    category: "emergency",
+    icon: "local_hospital",
+    color: "#ffb4ab",
+    desc: "Major referral hospital in Leh with ICCU, labour room and specialist departments. Open 24/7 for emergencies.",
+    image: IMG("1551884170-aaed0e5e5d60"),
+    mapQuery: "Sonam Norboo Memorial Hospital, Leh",
+  },
+  {
+    name: "PHC Diskit, Nubra",
+    category: "emergency",
+    icon: "medical_services",
+    color: "#ffb4ab",
+    desc: "Primary Health Centre serving the Nubra Valley region. Provides basic medical care and first aid for travelers and locals.",
+    image: IMG("1559757148-28b3ea7f42ed"),
+    mapQuery: "Primary Health Centre Diskit, Nubra Valley, Ladakh",
+  },
+];
+
+const schoolLocations: EssentialLocation[] = [
+  {
+    name: "Jawahar Navodaya Vidyalaya",
+    category: "school",
+    icon: "school",
+    color: "#3cdccf",
+    desc: "Residential school for talented rural students, offering quality education from Class VI to XII with free boarding.",
+    image: IMG("1523050854058-8df90110c9f1"),
+    mapQuery: "Jawahar Navodaya Vidyalaya, Leh",
+  },
+  {
+    name: "Govt. Degree College, Leh",
+    category: "school",
+    icon: "school",
+    color: "#3cdccf",
+    desc: "The premier higher education institution in Ladakh, offering undergraduate programs in arts, science, and commerce.",
+    image: IMG("1541339907198-e08756dedf3f"),
+    mapQuery: "Government Degree College, Leh, India",
+  },
+];
+
+function ImageCard({
+  src,
+  alt,
+  color,
+}: { src: string; alt: string; color: string }) {
+  const [errored, setErrored] = useState(false);
+  return errored ? (
+    <div
+      className="w-full h-full"
+      style={{ background: `linear-gradient(135deg, ${color}20, ${color}08)` }}
+    />
+  ) : (
+    <img
+      src={src}
+      alt={alt}
+      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+      onError={() => setErrored(true)}
+    />
+  );
+}
 
 function DestinationDialog({
   dest,
   open,
   onClose,
-}: {
-  dest: Destination | null;
-  open: boolean;
-  onClose: () => void;
-}) {
+}: { dest: Destination | null; open: boolean; onClose: () => void }) {
   if (!dest) return null;
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -303,36 +840,39 @@ function DestinationDialog({
         className="bg-[#1d2021] border-[#43474f]/30 text-[#e1e3e4] max-w-lg p-0 overflow-hidden"
         data-ocid="explore.dialog"
       >
-        {/* Header */}
-        <div className="p-6 pb-5" style={{ background: `${dest.color}12` }}>
-          <div className="flex items-start justify-between mb-4">
+        {/* Hero Image */}
+        <div className="h-52 overflow-hidden relative">
+          <ImageCard src={dest.image} alt={dest.name} color={dest.color} />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#1d2021] via-transparent" />
+          <div className="absolute bottom-4 left-4 flex items-center gap-2">
             <div
-              className="w-14 h-14 rounded-2xl flex items-center justify-center"
-              style={{ background: `${dest.color}20` }}
+              className="w-10 h-10 rounded-xl flex items-center justify-center"
+              style={{ background: `${dest.color}30` }}
             >
-              <span
-                className="material-symbols-outlined text-3xl"
+              <MatIcon
+                name={dest.icon}
+                className="text-xl"
                 style={{ color: dest.color }}
-              >
-                {dest.icon}
-              </span>
+              />
             </div>
             <span
-              className="text-[10px] uppercase tracking-widest font-bold px-3 py-1.5 rounded-full"
-              style={{ background: `${dest.color}20`, color: dest.color }}
+              className="text-[10px] uppercase tracking-widest font-bold px-2.5 py-1 rounded-full"
+              style={{ background: `${dest.color}25`, color: dest.color }}
             >
               {dest.tag}
             </span>
           </div>
+        </div>
+
+        <div className="p-6 pb-4">
           <DialogTitle className="font-headline text-2xl font-bold text-[#e1e3e4] mb-2">
             {dest.name}
           </DialogTitle>
           <p className="text-sm text-[#8d919a] leading-relaxed">{dest.desc}</p>
         </div>
 
-        <ScrollArea className="max-h-[60vh]">
-          <div className="p-6 space-y-6">
-            {/* Quick Facts Grid */}
+        <ScrollArea className="max-h-[40vh]">
+          <div className="px-6 space-y-5 pb-4">
             <div>
               <h4 className="text-[10px] uppercase tracking-widest text-[#8d919a] font-bold mb-3">
                 Quick Facts
@@ -357,12 +897,11 @@ function DestinationDialog({
                     className="bg-[#191c1d] rounded-xl p-4 border border-[#43474f]/10"
                   >
                     <div className="flex items-center gap-2 mb-1.5">
-                      <span
-                        className="material-symbols-outlined text-sm"
+                      <MatIcon
+                        name={fact.icon}
+                        className="text-sm"
                         style={{ color: dest.color }}
-                      >
-                        {fact.icon}
-                      </span>
+                      />
                       <span className="text-[10px] uppercase tracking-widest text-[#8d919a] font-bold">
                         {fact.label}
                       </span>
@@ -374,8 +913,6 @@ function DestinationDialog({
                 ))}
               </div>
             </div>
-
-            {/* Highlights */}
             <div>
               <h4 className="text-[10px] uppercase tracking-widest text-[#8d919a] font-bold mb-3">
                 Key Highlights
@@ -406,32 +943,145 @@ function DestinationDialog({
           >
             Close
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              toast.success(`Added ${dest.name} to your travel list`);
-              onClose();
-            }}
-            className="px-5 py-2 rounded-full text-sm font-bold transition-all hover:scale-95"
+          <a
+            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(dest.mapQuery)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-5 py-2 rounded-full text-sm font-bold flex items-center gap-2 transition-all hover:scale-95"
             style={{ background: dest.color, color: "#111415" }}
-            data-ocid="explore.primary_button"
+            data-ocid="explore.directions_button"
           >
-            Save to Vault
-          </button>
+            <MatIcon name="directions" className="text-sm" />
+            Get Directions
+          </a>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
 
+function EssentialLocationDialog({
+  loc,
+  open,
+  onClose,
+}: { loc: EssentialLocation | null; open: boolean; onClose: () => void }) {
+  if (!loc) return null;
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="bg-[#1d2021] border-[#43474f]/30 text-[#e1e3e4] max-w-md p-0 overflow-hidden">
+        <div className="h-40 overflow-hidden relative">
+          <ImageCard src={loc.image} alt={loc.name} color={loc.color} />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#1d2021] via-transparent" />
+        </div>
+        <div className="p-6">
+          <div className="flex items-center gap-3 mb-3">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: `${loc.color}20` }}
+            >
+              <MatIcon
+                name={loc.icon}
+                className="text-xl"
+                style={{ color: loc.color }}
+              />
+            </div>
+            <div>
+              <DialogTitle className="font-headline text-xl text-[#e1e3e4]">
+                {loc.name}
+              </DialogTitle>
+              <span
+                className="text-[10px] uppercase tracking-wider font-bold"
+                style={{ color: loc.color }}
+              >
+                {loc.category === "monastery"
+                  ? "Monastery"
+                  : loc.category === "emergency"
+                    ? "Emergency & Health"
+                    : "School & Education"}
+              </span>
+            </div>
+          </div>
+          <p className="text-sm text-[#8d919a] leading-relaxed mb-2">
+            {loc.desc}
+          </p>
+          <div className="p-3 bg-[#191c1d] rounded-lg mt-4">
+            <p className="text-[10px] text-[#3cdccf] uppercase tracking-wider font-bold">
+              Free — Provided by Ladakh Connect
+            </p>
+            <p className="text-xs text-[#8d919a] mt-1">
+              This location is curated and maintained by the app at no charge.
+            </p>
+          </div>
+        </div>
+        <DialogFooter className="px-6 py-4 border-t border-[#43474f]/20">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-5 py-2 rounded-full text-sm font-semibold text-[#c3c6d1] bg-[#282a2b] hover:bg-[#323536] transition-colors"
+          >
+            Close
+          </button>
+          <a
+            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc.mapQuery)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-5 py-2 rounded-full text-sm font-bold flex items-center gap-2 transition-all hover:scale-95"
+            style={{ background: loc.color, color: "#111415" }}
+          >
+            <MatIcon name="directions" className="text-sm" />
+            Get Directions
+          </a>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+type CategoryFilter =
+  | "all"
+  | "Monasteries"
+  | "Nature"
+  | "Heritage"
+  | "Passes"
+  | "Wonders"
+  | "Lakes"
+  | "Valleys"
+  | "Emergency"
+  | "Schools";
+
+const categoryFilters: {
+  value: CategoryFilter;
+  label: string;
+  icon: string;
+}[] = [
+  { value: "all", label: "All", icon: "apps" },
+  { value: "Monasteries", label: "Monasteries", icon: "temple_buddhist" },
+  { value: "Lakes", label: "Lakes", icon: "water" },
+  { value: "Valleys", label: "Valleys", icon: "terrain" },
+  { value: "Heritage", label: "Heritage", icon: "castle" },
+  { value: "Passes", label: "Passes", icon: "landscape" },
+  { value: "Wonders", label: "Wonders", icon: "explore" },
+  { value: "Emergency", label: "Emergency", icon: "local_hospital" },
+  { value: "Schools", label: "Schools", icon: "school" },
+];
+
 function ExploreView() {
   const [selectedDest, setSelectedDest] = useState<Destination | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [destDialogOpen, setDestDialogOpen] = useState(false);
+  const [selectedEssential, setSelectedEssential] =
+    useState<EssentialLocation | null>(null);
+  const [essentialDialogOpen, setEssentialDialogOpen] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<CategoryFilter>("all");
 
-  const openDest = (dest: Destination) => {
-    setSelectedDest(dest);
-    setDialogOpen(true);
-  };
+  const filteredDestinations =
+    activeFilter === "all"
+      ? destinations
+      : destinations.filter((d) => d.tag === activeFilter);
+
+  const showMonasteries =
+    activeFilter === "all" || activeFilter === "Monasteries";
+  const showEmergency = activeFilter === "all" || activeFilter === "Emergency";
+  const showSchools = activeFilter === "all" || activeFilter === "Schools";
 
   return (
     <motion.div
@@ -441,7 +1091,7 @@ function ExploreView() {
       exit={{ opacity: 0, y: -16 }}
       transition={{ duration: 0.4 }}
     >
-      <div className="mb-10">
+      <div className="mb-8">
         <span className="text-[#ffb77a] font-label text-sm uppercase tracking-[0.2em] mb-2 block">
           Discover the Region
         </span>
@@ -449,86 +1099,365 @@ function ExploreView() {
           Explore <span className="text-[#b2c5ff]">Ladakh</span>
         </h2>
         <p className="text-[#8d919a] mt-3 max-w-xl">
-          Curated destinations, hidden gems, and essential travel knowledge for
-          the world's highest plateau.
+          Curated destinations, monasteries, essential services and hidden gems
+          for the world's highest plateau.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {destinations.map((dest, idx) => (
-          <motion.div
-            key={dest.name}
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: idx * 0.07 }}
-            className="bg-[#191c1d] p-7 rounded-xl border border-[#43474f]/10 group hover:border-[#43474f]/40 transition-all cursor-pointer"
-            onClick={() => openDest(dest)}
-            data-ocid={`explore.item.${idx + 1}`}
+      {/* Category Filter */}
+      <div className="flex gap-2 overflow-x-auto pb-3 mb-8 scrollbar-none">
+        {categoryFilters.map((cat, i) => (
+          <motion.button
+            key={cat.value}
+            type="button"
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3, delay: i * 0.04 }}
+            onClick={() => setActiveFilter(cat.value)}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap border transition-all ${
+              activeFilter === cat.value
+                ? "bg-[#b2c5ff] text-[#002b73] border-[#b2c5ff]"
+                : "bg-[#191c1d] text-[#8d919a] border-[#43474f]/20 hover:border-[#b2c5ff]/40 hover:text-[#b2c5ff]"
+            }`}
           >
-            <div className="flex items-start justify-between mb-5">
-              <div
-                className="w-12 h-12 rounded-xl flex items-center justify-center"
-                style={{ background: `${dest.color}18` }}
-              >
-                <span
-                  className="material-symbols-outlined text-2xl"
-                  style={{ color: dest.color }}
-                >
-                  {dest.icon}
-                </span>
-              </div>
-              <span
-                className="text-[10px] uppercase tracking-widest font-bold px-2.5 py-1 rounded-full"
-                style={
-                  {
-                    background: `${dest.color}18`,
-                    color: dest.color,
-                  } as React.CSSProperties
-                }
-              >
-                {dest.tag}
-              </span>
-            </div>
-            <h3 className="font-headline text-xl font-bold text-[#e1e3e4] mb-2 group-hover:text-[#b2c5ff] transition-colors">
-              {dest.name}
-            </h3>
-            <p className="text-sm text-[#8d919a] leading-relaxed line-clamp-2">
-              {dest.desc}
-            </p>
-            <div className="mt-4 flex items-center gap-3 text-xs text-[#8d919a]">
-              <span className="flex items-center gap-1">
-                <span
-                  className="material-symbols-outlined text-xs"
-                  style={{ color: dest.color }}
-                >
-                  terrain
-                </span>
-                {dest.altitude}
-              </span>
-              <span className="w-1 h-1 rounded-full bg-[#43474f]" />
-              <span>{dest.duration}</span>
-            </div>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                openDest(dest);
-              }}
-              className="mt-5 flex items-center gap-1.5 text-xs font-semibold bg-transparent border-0 p-0 cursor-pointer"
-              style={{ color: dest.color } as React.CSSProperties}
-              data-ocid={`explore.button.${idx + 1}`}
-            >
-              <span>View Guide</span>
-              <MatIcon name="arrow_forward" className="text-sm" />
-            </button>
-          </motion.div>
+            <MatIcon name={cat.icon} className="text-sm" />
+            {cat.label}
+          </motion.button>
         ))}
       </div>
 
+      {/* Destinations Grid */}
+      {filteredDestinations.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-14">
+          {filteredDestinations.map((dest, idx) => (
+            <motion.div
+              key={dest.name}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-60px" }}
+              transition={{ duration: 0.45, delay: idx * 0.08 }}
+              whileHover={{ scale: 1.02 }}
+              className="bg-[#191c1d] rounded-xl border border-[#43474f]/10 group hover:border-[#43474f]/40 hover:shadow-lg transition-all cursor-pointer overflow-hidden"
+              onClick={() => {
+                setSelectedDest(dest);
+                setDestDialogOpen(true);
+              }}
+              data-ocid={`explore.item.${idx + 1}`}
+            >
+              {/* Image Header */}
+              <div className="h-44 overflow-hidden relative">
+                <ImageCard
+                  src={dest.image}
+                  alt={dest.name}
+                  color={dest.color}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#191c1d]/80 via-transparent" />
+                <div
+                  className="absolute bottom-3 left-3 w-10 h-10 rounded-xl flex items-center justify-center"
+                  style={{
+                    background: `${dest.color}30`,
+                    backdropFilter: "blur(8px)",
+                  }}
+                >
+                  <MatIcon
+                    name={dest.icon}
+                    className="text-xl"
+                    style={{ color: dest.color }}
+                  />
+                </div>
+                <span
+                  className="absolute top-3 right-3 text-[10px] uppercase tracking-widest font-bold px-2.5 py-1 rounded-full"
+                  style={{
+                    background: `${dest.color}25`,
+                    color: dest.color,
+                    backdropFilter: "blur(8px)",
+                  }}
+                >
+                  {dest.tag}
+                </span>
+              </div>
+
+              {/* Card Content */}
+              <div className="p-5">
+                <h3 className="font-headline text-xl font-bold text-[#e1e3e4] mb-1.5 group-hover:text-[#b2c5ff] transition-colors">
+                  {dest.name}
+                </h3>
+                <p className="text-sm text-[#8d919a] leading-relaxed line-clamp-2">
+                  {dest.desc}
+                </p>
+                <div className="mt-3 flex items-center gap-3 text-xs text-[#8d919a]">
+                  <span className="flex items-center gap-1">
+                    <MatIcon
+                      name="terrain"
+                      className="text-xs"
+                      style={{ color: dest.color }}
+                    />
+                    {dest.altitude}
+                  </span>
+                  <span className="w-1 h-1 rounded-full bg-[#43474f]" />
+                  <span>{dest.duration}</span>
+                </div>
+                <div className="mt-4 flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedDest(dest);
+                      setDestDialogOpen(true);
+                    }}
+                    className="flex items-center gap-1.5 text-xs font-semibold bg-transparent border-0 p-0 cursor-pointer"
+                    style={{ color: dest.color }}
+                    data-ocid={`explore.button.${idx + 1}`}
+                  >
+                    <span>View Guide</span>
+                    <MatIcon name="arrow_forward" className="text-sm" />
+                  </button>
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(dest.mapQuery)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-[#3cdccf] hover:text-[#3cdccf]/80 transition-colors"
+                  >
+                    <MatIcon name="directions" className="text-sm" />
+                    Directions
+                  </a>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
+
+      {/* Essential Locations */}
+      {(showMonasteries || showEmergency || showSchools) && (
+        <div>
+          <div className="flex items-center gap-3 mb-6">
+            <div>
+              <h3 className="font-headline text-3xl font-bold text-[#e1e3e4]">
+                Essential Locations
+              </h3>
+              <p className="text-sm text-[#8d919a] mt-1">
+                Curated resources provided by Ladakh Connect — free, no
+                subscription required.
+              </p>
+            </div>
+            <span className="shrink-0 text-[10px] uppercase tracking-widest font-bold px-3 py-1.5 rounded-full bg-[#3cdccf]/15 text-[#3cdccf] border border-[#3cdccf]/20">
+              App Provided — Free
+            </span>
+          </div>
+
+          {showMonasteries && (
+            <div className="mb-10">
+              <div className="flex items-center gap-2 mb-4">
+                <MatIcon
+                  name="temple_buddhist"
+                  className="text-[#ffb77a] text-xl"
+                />
+                <h4 className="font-headline text-xl font-bold text-[#e1e3e4]">
+                  Monasteries
+                </h4>
+                <span className="text-xs text-[#8d919a] ml-1">
+                  ({monasteries.length})
+                </span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {monasteries.map((loc, idx) => (
+                  <motion.div
+                    key={loc.name}
+                    initial={{ opacity: 0, y: 24 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-50px" }}
+                    transition={{ duration: 0.4, delay: idx * 0.07 }}
+                    whileHover={{ scale: 1.02 }}
+                    className="bg-[#191c1d] rounded-xl border border-[#43474f]/10 group hover:border-[#ffb77a]/30 hover:shadow-lg transition-all cursor-pointer overflow-hidden"
+                    onClick={() => {
+                      setSelectedEssential(loc);
+                      setEssentialDialogOpen(true);
+                    }}
+                  >
+                    <div className="h-36 overflow-hidden relative">
+                      <ImageCard
+                        src={loc.image}
+                        alt={loc.name}
+                        color={loc.color}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#191c1d]/70 via-transparent" />
+                      <MatIcon
+                        name={loc.icon}
+                        className="absolute bottom-2 left-2 text-xl"
+                        style={{ color: loc.color }}
+                      />
+                    </div>
+                    <div className="p-4">
+                      <h5 className="font-headline text-base font-bold text-[#e1e3e4] group-hover:text-[#ffb77a] transition-colors mb-1">
+                        {loc.name}
+                      </h5>
+                      <p className="text-xs text-[#8d919a] line-clamp-2 leading-relaxed">
+                        {loc.desc}
+                      </p>
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc.mapQuery)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-[#ffb77a] hover:text-[#ffb77a]/80 transition-colors"
+                      >
+                        <MatIcon name="directions" className="text-sm" />
+                        Get Directions
+                      </a>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {showEmergency && (
+            <div className="mb-10">
+              <div className="flex items-center gap-2 mb-4">
+                <MatIcon
+                  name="local_hospital"
+                  className="text-[#ffb4ab] text-xl"
+                />
+                <h4 className="font-headline text-xl font-bold text-[#e1e3e4]">
+                  Emergency & Healthcare
+                </h4>
+                <span className="text-xs text-[#8d919a] ml-1">
+                  ({emergencyLocations.length})
+                </span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {emergencyLocations.map((loc, idx) => (
+                  <motion.div
+                    key={loc.name}
+                    initial={{ opacity: 0, y: 24 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-50px" }}
+                    transition={{ duration: 0.4, delay: idx * 0.07 }}
+                    whileHover={{ scale: 1.02 }}
+                    className="bg-[#191c1d] rounded-xl border border-[#43474f]/10 group hover:border-[#ffb4ab]/30 hover:shadow-lg transition-all cursor-pointer overflow-hidden"
+                    onClick={() => {
+                      setSelectedEssential(loc);
+                      setEssentialDialogOpen(true);
+                    }}
+                  >
+                    <div className="h-36 overflow-hidden relative">
+                      <ImageCard
+                        src={loc.image}
+                        alt={loc.name}
+                        color={loc.color}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#191c1d]/70 via-transparent" />
+                      <div className="absolute top-2 right-2 bg-[#ffb4ab]/20 backdrop-blur-sm px-2 py-0.5 rounded-full">
+                        <span className="text-[9px] uppercase tracking-wider font-bold text-[#ffb4ab]">
+                          Emergency
+                        </span>
+                      </div>
+                      <MatIcon
+                        name={loc.icon}
+                        className="absolute bottom-2 left-2 text-xl"
+                        style={{ color: loc.color }}
+                      />
+                    </div>
+                    <div className="p-4">
+                      <h5 className="font-headline text-base font-bold text-[#e1e3e4] group-hover:text-[#ffb4ab] transition-colors mb-1">
+                        {loc.name}
+                      </h5>
+                      <p className="text-xs text-[#8d919a] line-clamp-2 leading-relaxed">
+                        {loc.desc}
+                      </p>
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc.mapQuery)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-[#ffb4ab] hover:text-[#ffb4ab]/80 transition-colors"
+                      >
+                        <MatIcon name="directions" className="text-sm" />
+                        Get Directions
+                      </a>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {showSchools && (
+            <div className="mb-10">
+              <div className="flex items-center gap-2 mb-4">
+                <MatIcon name="school" className="text-[#3cdccf] text-xl" />
+                <h4 className="font-headline text-xl font-bold text-[#e1e3e4]">
+                  Schools & Education
+                </h4>
+                <span className="text-xs text-[#8d919a] ml-1">
+                  ({schoolLocations.length})
+                </span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {schoolLocations.map((loc, idx) => (
+                  <motion.div
+                    key={loc.name}
+                    initial={{ opacity: 0, y: 24 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-50px" }}
+                    transition={{ duration: 0.4, delay: idx * 0.07 }}
+                    whileHover={{ scale: 1.02 }}
+                    className="bg-[#191c1d] rounded-xl border border-[#43474f]/10 group hover:border-[#3cdccf]/30 hover:shadow-lg transition-all cursor-pointer overflow-hidden"
+                    onClick={() => {
+                      setSelectedEssential(loc);
+                      setEssentialDialogOpen(true);
+                    }}
+                  >
+                    <div className="h-36 overflow-hidden relative">
+                      <ImageCard
+                        src={loc.image}
+                        alt={loc.name}
+                        color={loc.color}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#191c1d]/70 via-transparent" />
+                      <MatIcon
+                        name={loc.icon}
+                        className="absolute bottom-2 left-2 text-xl"
+                        style={{ color: loc.color }}
+                      />
+                    </div>
+                    <div className="p-4">
+                      <h5 className="font-headline text-base font-bold text-[#e1e3e4] group-hover:text-[#3cdccf] transition-colors mb-1">
+                        {loc.name}
+                      </h5>
+                      <p className="text-xs text-[#8d919a] line-clamp-2 leading-relaxed">
+                        {loc.desc}
+                      </p>
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc.mapQuery)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-[#3cdccf] hover:text-[#3cdccf]/80 transition-colors"
+                      >
+                        <MatIcon name="directions" className="text-sm" />
+                        Get Directions
+                      </a>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       <DestinationDialog
         dest={selectedDest}
-        open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
+        open={destDialogOpen}
+        onClose={() => setDestDialogOpen(false)}
+      />
+      <EssentialLocationDialog
+        loc={selectedEssential}
+        open={essentialDialogOpen}
+        onClose={() => setEssentialDialogOpen(false)}
       />
     </motion.div>
   );
@@ -588,11 +1517,7 @@ function VaultItemDialog({
   item,
   open,
   onClose,
-}: {
-  item: VaultItem | null;
-  open: boolean;
-  onClose: () => void;
-}) {
+}: { item: VaultItem | null; open: boolean; onClose: () => void }) {
   if (!item) return null;
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -606,12 +1531,11 @@ function VaultItemDialog({
               className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
               style={{ background: `${item.color}18` }}
             >
-              <span
-                className="material-symbols-outlined text-2xl"
+              <MatIcon
+                name={item.icon}
+                className="text-2xl"
                 style={{ color: item.color }}
-              >
-                {item.icon}
-              </span>
+              />
             </div>
             <div>
               <DialogTitle className="font-headline text-xl text-[#e1e3e4]">
@@ -621,7 +1545,6 @@ function VaultItemDialog({
             </div>
           </div>
         </DialogHeader>
-
         <div className="space-y-4 my-2">
           <div
             className="flex items-center justify-between p-4 rounded-xl border"
@@ -642,7 +1565,6 @@ function VaultItemDialog({
             {item.detail}
           </p>
         </div>
-
         <DialogFooter className="gap-2 pt-2">
           <button
             type="button"
@@ -654,9 +1576,7 @@ function VaultItemDialog({
           </button>
           <button
             type="button"
-            onClick={() => {
-              toast.info("Feature coming soon");
-            }}
+            onClick={() => toast.info("Feature coming soon")}
             className="px-5 py-2 rounded-full text-sm font-bold bg-[#b2c5ff] text-[#002b73] hover:scale-95 transition-all"
             data-ocid="vault.primary_button"
           >
@@ -671,11 +1591,6 @@ function VaultItemDialog({
 function VaultView() {
   const [selectedItem, setSelectedItem] = useState<VaultItem | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-
-  const openItem = (item: VaultItem) => {
-    setSelectedItem(item);
-    setDialogOpen(true);
-  };
 
   return (
     <motion.div
@@ -698,7 +1613,6 @@ function VaultView() {
         </p>
       </div>
 
-      {/* Vault status banner */}
       <div className="flex items-center gap-4 p-5 bg-[#191c1d] rounded-xl border border-[#43474f]/20 mb-8">
         <div className="w-12 h-12 rounded-xl bg-[#b2c5ff]/10 flex items-center justify-center shrink-0">
           <MatIcon
@@ -726,22 +1640,26 @@ function VaultView() {
           <motion.div
             key={item.title}
             initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
             transition={{ duration: 0.35, delay: idx * 0.08 }}
+            whileHover={{ scale: 1.01 }}
             className="bg-[#191c1d] p-7 rounded-xl border border-[#43474f]/10 flex items-start gap-5 hover:border-[#43474f]/40 transition-all cursor-pointer group"
-            onClick={() => openItem(item)}
+            onClick={() => {
+              setSelectedItem(item);
+              setDialogOpen(true);
+            }}
             data-ocid={`vault.item.${idx + 1}`}
           >
             <div
               className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
               style={{ background: `${item.color}18` }}
             >
-              <span
-                className="material-symbols-outlined text-2xl"
+              <MatIcon
+                name={item.icon}
+                className="text-2xl"
                 style={{ color: item.color }}
-              >
-                {item.icon}
-              </span>
+              />
             </div>
             <div className="flex-1">
               <div className="flex items-center justify-between">
@@ -750,12 +1668,7 @@ function VaultView() {
                 </h3>
                 <span
                   className="text-xs font-bold px-2.5 py-0.5 rounded-full"
-                  style={
-                    {
-                      background: `${item.color}18`,
-                      color: item.color,
-                    } as React.CSSProperties
-                  }
+                  style={{ background: `${item.color}18`, color: item.color }}
                 >
                   {item.count}
                 </span>
@@ -779,34 +1692,27 @@ function VaultView() {
 
 type SettingKey = "notifications" | "privacy" | "region" | "appearance" | null;
 
-interface SettingsDef {
-  key: SettingKey;
-  icon: string;
-  label: string;
-  desc: string;
-}
-
-const settingsDefs: SettingsDef[] = [
+const settingsDefs = [
   {
-    key: "notifications",
+    key: "notifications" as SettingKey,
     icon: "notifications",
     label: "Notification Preferences",
     desc: "Manage alerts and updates",
   },
   {
-    key: "privacy",
+    key: "privacy" as SettingKey,
     icon: "lock",
     label: "Privacy & Security",
     desc: "Identity and access controls",
   },
   {
-    key: "region",
+    key: "region" as SettingKey,
     icon: "language",
     label: "Region & Language",
     desc: "Ladakh, India • English",
   },
   {
-    key: "appearance",
+    key: "appearance" as SettingKey,
     icon: "palette",
     label: "Appearance",
     desc: "Dark mode • Enabled",
@@ -867,9 +1773,6 @@ function NotificationsPanel() {
 
 function PrivacyPanel() {
   const [eid, setEid] = useState<string | null>(null);
-  const generateId = () => {
-    setEid(Math.floor(10000000 + Math.random() * 90000000).toString());
-  };
   return (
     <div className="space-y-4 mt-2">
       <div className="p-4 bg-[#191c1d] rounded-xl">
@@ -908,7 +1811,9 @@ function PrivacyPanel() {
         ) : (
           <button
             type="button"
-            onClick={generateId}
+            onClick={() =>
+              setEid(Math.floor(10000000 + Math.random() * 90000000).toString())
+            }
             className="text-sm font-semibold text-[#b2c5ff] hover:text-[#8ab4ff] transition-colors flex items-center gap-1.5"
             data-ocid="profile.button"
           >
@@ -976,10 +1881,7 @@ function AppearancePanel() {
 function SettingsSheet({
   setting,
   onClose,
-}: {
-  setting: SettingKey;
-  onClose: () => void;
-}) {
+}: { setting: SettingKey; onClose: () => void }) {
   const def = settingsDefs.find((s) => s.key === setting);
   return (
     <Sheet open={!!setting} onOpenChange={(v) => !v && onClose()}>
@@ -1034,7 +1936,6 @@ function ProfileView({ userName }: { userName: string }) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Profile Card */}
         <div className="lg:col-span-4">
           <div className="bg-[#191c1d] p-8 rounded-xl border border-[#43474f]/10">
             <div className="flex flex-col items-center text-center mb-8">
@@ -1047,46 +1948,38 @@ function ProfileView({ userName }: { userName: string }) {
                 {userName}
               </h3>
               <p className="text-sm text-[#8d919a] mt-1">
-                creator@luminous.ladakh
+                creator@ladakhconnect.in
               </p>
               <span className="mt-3 px-3 py-1 bg-[#b2c5ff]/10 text-[#b2c5ff] text-xs font-bold rounded-full uppercase tracking-widest">
                 Creator
               </span>
             </div>
-
             <div className="space-y-3">
-              <div className="flex justify-between items-center p-3 bg-[#1d2021] rounded-lg">
-                <span className="text-xs text-[#8d919a] uppercase tracking-wider">
-                  Member Since
-                </span>
-                <span className="text-sm font-bold text-[#e1e3e4]">
-                  Jan 2024
-                </span>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-[#1d2021] rounded-lg">
-                <span className="text-xs text-[#8d919a] uppercase tracking-wider">
-                  Status
-                </span>
-                <span className="flex items-center gap-1.5 text-sm font-bold text-[#3cdccf]">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#3cdccf]" />
-                  Active
-                </span>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-[#1d2021] rounded-lg">
-                <span className="text-xs text-[#8d919a] uppercase tracking-wider">
-                  Tier
-                </span>
-                <span className="text-sm font-bold text-[#ffb77a]">
-                  Premium
-                </span>
-              </div>
+              {[
+                { label: "Member Since", value: "Jan 2024" },
+                { label: "Status", value: "Active", color: "#3cdccf" },
+                { label: "Tier", value: "Premium", color: "#ffb77a" },
+              ].map((row) => (
+                <div
+                  key={row.label}
+                  className="flex justify-between items-center p-3 bg-[#1d2021] rounded-lg"
+                >
+                  <span className="text-xs text-[#8d919a] uppercase tracking-wider">
+                    {row.label}
+                  </span>
+                  <span
+                    className="text-sm font-bold"
+                    style={{ color: row.color ?? "#e1e3e4" }}
+                  >
+                    {row.value}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Stats & Settings */}
         <div className="lg:col-span-8 space-y-6">
-          {/* Summary Stats */}
           <div className="bg-[#191c1d] p-8 rounded-xl border border-[#43474f]/10">
             <h3 className="font-headline text-xl font-bold text-[#e1e3e4] mb-6">
               Activity Summary
@@ -1114,8 +2007,6 @@ function ProfileView({ userName }: { userName: string }) {
               ))}
             </div>
           </div>
-
-          {/* Account Settings */}
           <div className="bg-[#191c1d] p-8 rounded-xl border border-[#43474f]/10">
             <h3 className="font-headline text-xl font-bold text-[#e1e3e4] mb-6">
               Account Settings
@@ -1123,7 +2014,7 @@ function ProfileView({ userName }: { userName: string }) {
             <div className="space-y-3">
               {settingsDefs.map((setting, idx) => (
                 <button
-                  key={setting.label}
+                  key={setting.label as string}
                   type="button"
                   onClick={() => setActiveSetting(setting.key)}
                   className="w-full flex items-center gap-4 p-4 bg-[#1d2021] hover:bg-[#282a2b] rounded-xl text-left transition-colors group"
@@ -1153,7 +2044,6 @@ function ProfileView({ userName }: { userName: string }) {
           </div>
         </div>
       </div>
-
       <SettingsSheet
         setting={activeSetting}
         onClose={() => setActiveSetting(null)}
@@ -1165,11 +2055,13 @@ function ProfileView({ userName }: { userName: string }) {
 // ── Main App ──────────────────────────────────────────────────────────────────
 
 export default function App() {
+  const [appState, setAppState] = useState<"landing" | "app">("landing");
+  const [userRole, setUserRole] = useState<UserRole>("public");
   const [currentTime, setCurrentTime] = useState(() => formatTime(new Date()));
   const [addOpen, setAddOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<CommunityLink | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CommunityLink | null>(null);
-  const [activeNav, setActiveNav] = useState("dashboard");
+  const [activeNav, setActiveNav] = useState("explore");
 
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
   const { data: links, isLoading: linksLoading } = useCommunityLinks();
@@ -1184,11 +2076,18 @@ export default function App() {
   const userName = userProfile?.name ?? "hunter";
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTime(formatTime(new Date()));
-    }, 60_000);
+    const interval = setInterval(
+      () => setCurrentTime(formatTime(new Date())),
+      60_000,
+    );
     return () => clearInterval(interval);
   }, []);
+
+  const handleEnterApp = (role: UserRole) => {
+    setUserRole(role);
+    setAppState("app");
+    setActiveNav("explore");
+  };
 
   const handleAddLink = useCallback(
     (title: string, url: string) => {
@@ -1265,6 +2164,15 @@ export default function App() {
         : "text-[#8d919a] hover:text-[#ffb77a]"
     }`;
 
+  if (appState === "landing") {
+    return (
+      <>
+        <Toaster position="top-right" theme="dark" />
+        <LandingPage onEnter={handleEnterApp} />
+      </>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#111415] text-[#e1e3e4] font-body">
       <Toaster position="top-right" theme="dark" />
@@ -1275,52 +2183,34 @@ export default function App() {
           <div className="flex items-center gap-3">
             <MatIcon name="shield_person" className="text-[#b2c5ff] text-2xl" />
             <h1 className="font-headline font-bold tracking-tighter text-xl text-[#b2c5ff] uppercase">
-              Luminous Ladakh
+              Ladakh Connect
             </h1>
+            <span className="text-[10px] text-[#43474f] border border-[#43474f]/30 px-2 py-0.5 rounded-full hidden sm:inline">
+              v6 Finals
+            </span>
           </div>
 
           <div className="hidden md:flex items-center gap-8">
             <nav className="flex gap-6 text-sm" data-ocid="nav.panel">
-              <button
-                type="button"
-                onClick={() => setActiveNav("explore")}
-                className={navBtnClass("explore")}
-                data-ocid="nav.link"
-              >
-                Explore
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveNav("dashboard")}
-                className={navBtnClass("dashboard")}
-                data-ocid="nav.link"
-              >
-                Dashboard
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveNav("vault")}
-                className={navBtnClass("vault")}
-                data-ocid="nav.link"
-              >
-                Vault
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveNav("profile")}
-                className={navBtnClass("profile")}
-                data-ocid="nav.link"
-              >
-                Profile
-              </button>
+              {["explore", "dashboard", "vault", "profile"].map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setActiveNav(tab)}
+                  className={navBtnClass(tab)}
+                  data-ocid="nav.link"
+                >
+                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </button>
+              ))}
             </nav>
           </div>
 
           <div className="flex items-center gap-3">
             <div className="text-right hidden sm:block">
               <p className="text-xs font-bold text-[#b2c5ff]">{userName}</p>
-              <p className="text-[10px] text-[#8d919a]">
-                creator@luminous.ladakh
+              <p className="text-[10px] text-[#8d919a] capitalize">
+                {userRole}
               </p>
             </div>
             <button
@@ -1332,6 +2222,14 @@ export default function App() {
               <span className="text-sm font-bold text-[#b2c5ff] font-headline">
                 {userName.charAt(0).toUpperCase()}
               </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setAppState("landing")}
+              className="w-10 h-10 rounded-full bg-[#323536] border border-[#43474f] flex items-center justify-center hover:border-[#ffb4ab]/50 transition-colors"
+              title="Sign Out"
+            >
+              <MatIcon name="logout" className="text-sm text-[#8d919a]" />
             </button>
           </div>
         </div>
@@ -1384,9 +2282,9 @@ export default function App() {
                   </>
                 ) : (
                   <>
-                    {/* New Applications */}
                     <motion.div
                       className="bg-[#191c1d] p-8 rounded-xl relative overflow-hidden group hover:shadow-[0_0_30px_rgba(178,197,255,0.08)] transition-shadow"
+                      whileHover={{ scale: 1.02 }}
                       initial={{ opacity: 0, y: 24 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.4, delay: 0.1 }}
@@ -1410,9 +2308,9 @@ export default function App() {
                       </div>
                     </motion.div>
 
-                    {/* Total Revenue */}
                     <motion.div
                       className="bg-[#191c1d] p-8 rounded-xl relative overflow-hidden group hover:shadow-[0_0_30px_rgba(255,183,122,0.08)] transition-shadow"
+                      whileHover={{ scale: 1.02 }}
                       initial={{ opacity: 0, y: 24 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.4, delay: 0.2 }}
@@ -1436,9 +2334,9 @@ export default function App() {
                       </div>
                     </motion.div>
 
-                    {/* Reports */}
                     <motion.div
                       className="bg-[#191c1d] p-8 rounded-xl relative overflow-hidden group hover:shadow-[0_0_30px_rgba(255,180,171,0.08)] transition-shadow"
+                      whileHover={{ scale: 1.02 }}
                       initial={{ opacity: 0, y: 24 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.4, delay: 0.3 }}
@@ -1469,7 +2367,6 @@ export default function App() {
 
               {/* Content Grid */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                {/* Community Management */}
                 <motion.section
                   className="lg:col-span-8"
                   initial={{ opacity: 0, x: -20 }}
@@ -1496,7 +2393,6 @@ export default function App() {
                         Add New Link
                       </button>
                     </div>
-
                     <div className="space-y-4">
                       {linksLoading ? (
                         <>
@@ -1571,7 +2467,6 @@ export default function App() {
                   </div>
                 </motion.section>
 
-                {/* Sidebar */}
                 <motion.aside
                   className="lg:col-span-4 space-y-8"
                   initial={{ opacity: 0, x: 20 }}
@@ -1653,12 +2548,11 @@ export default function App() {
                             Active Users
                           </span>
                           <span className="text-lg font-headline font-bold text-[#3cdccf]">
-                            {"—"}
+                            —
                           </span>
                         </div>
                       </div>
                     )}
-
                     <div className="grid grid-cols-2 gap-3 mt-6">
                       <button
                         type="button"
@@ -1700,66 +2594,36 @@ export default function App() {
       {/* Mobile Bottom Nav */}
       <nav className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-md rounded-full border border-white/10 bg-slate-900/40 backdrop-blur-2xl z-50">
         <div className="flex justify-around items-center px-4 h-20">
-          <button
-            type="button"
-            onClick={() => setActiveNav("explore")}
-            className={`flex flex-col items-center justify-center p-2 transition-all ${
-              activeNav === "explore"
-                ? "text-[#b2c5ff]"
-                : "text-[#8d919a] hover:text-[#b2c5ff]"
-            }`}
-            data-ocid="mobile.nav.link"
-          >
-            <MatIcon name="explore" />
-            <span className="font-label text-[10px] uppercase tracking-widest mt-1">
-              Explore
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveNav("dashboard")}
-            className={`flex flex-col items-center justify-center transition-all ${
-              activeNav === "dashboard"
-                ? "bg-gradient-to-br from-blue-300 to-blue-700 text-slate-950 rounded-full w-14 h-14 -translate-y-2.5 shadow-lg shadow-blue-500/20"
-                : "text-[#8d919a] hover:text-[#b2c5ff] p-2"
-            }`}
-            data-ocid="mobile.nav.link"
-          >
-            <MatIcon name="dashboard_customize" />
-            <span className="font-label text-[8px] uppercase font-bold">
-              Dash
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveNav("vault")}
-            className={`flex flex-col items-center justify-center p-2 transition-all ${
-              activeNav === "vault"
-                ? "text-[#b2c5ff]"
-                : "text-[#8d919a] hover:text-[#b2c5ff]"
-            }`}
-            data-ocid="mobile.nav.link"
-          >
-            <MatIcon name="enhanced_encryption" />
-            <span className="font-label text-[10px] uppercase tracking-widest mt-1">
-              Vault
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveNav("profile")}
-            className={`flex flex-col items-center justify-center p-2 transition-all ${
-              activeNav === "profile"
-                ? "text-[#b2c5ff]"
-                : "text-[#8d919a] hover:text-[#b2c5ff]"
-            }`}
-            data-ocid="mobile.nav.link"
-          >
-            <MatIcon name="account_circle" />
-            <span className="font-label text-[10px] uppercase tracking-widest mt-1">
-              Profile
-            </span>
-          </button>
+          {[
+            { key: "explore", icon: "explore", label: "Explore" },
+            {
+              key: "dashboard",
+              icon: "dashboard_customize",
+              label: "Dash",
+              featured: true,
+            },
+            { key: "vault", icon: "enhanced_encryption", label: "Vault" },
+            { key: "profile", icon: "account_circle", label: "Profile" },
+          ].map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => setActiveNav(item.key)}
+              className={`flex flex-col items-center justify-center transition-all ${
+                item.featured
+                  ? activeNav === item.key
+                    ? "bg-gradient-to-br from-blue-300 to-blue-700 text-slate-950 rounded-full w-14 h-14 -translate-y-2.5 shadow-lg shadow-blue-500/20"
+                    : "text-[#8d919a] hover:text-[#b2c5ff] p-2"
+                  : `p-2 ${activeNav === item.key ? "text-[#b2c5ff]" : "text-[#8d919a] hover:text-[#b2c5ff]"}`
+              }`}
+              data-ocid="mobile.nav.link"
+            >
+              <MatIcon name={item.icon} />
+              <span className="font-label text-[10px] uppercase tracking-widest mt-1">
+                {item.label}
+              </span>
+            </button>
+          ))}
         </div>
       </nav>
 
@@ -1779,6 +2643,7 @@ export default function App() {
         initial={editTarget ?? undefined}
         mode="edit"
       />
+
       <Dialog
         open={!!deleteTarget}
         onOpenChange={(v) => !v && setDeleteTarget(null)}
@@ -1823,16 +2688,14 @@ export default function App() {
 
       {/* Footer */}
       <footer className="hidden md:block text-center py-6 text-[#8d919a] text-xs border-t border-[#43474f]/20">
-        © {new Date().getFullYear()}.{" "}
+        © {new Date().getFullYear()} Ladakh Connect — v6 Semifinals Finalized •{" "}
         <a
-          href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(
-            typeof window !== "undefined" ? window.location.hostname : "",
-          )}`}
+          href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(typeof window !== "undefined" ? window.location.hostname : "")}`}
           target="_blank"
           rel="noopener noreferrer"
           className="hover:text-[#b2c5ff] transition-colors"
         >
-          Built with ❤️ using caffeine.ai
+          Built with caffeine.ai
         </a>
       </footer>
     </div>
