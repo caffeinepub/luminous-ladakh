@@ -1,10 +1,147 @@
+import { useState } from "react";
 import type { Account, Post, Violation } from "../../types";
+import type { PendingPhoto } from "../ExploreTab";
+
+const PENDING_PHOTOS_KEY = "lc_pending_photos";
+const LOCATION_PHOTOS_KEY = "lc_location_photos";
+
+function loadPendingPhotos(): PendingPhoto[] {
+  try {
+    const saved = localStorage.getItem(PENDING_PHOTOS_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+}
+
+function savePendingPhotos(photos: PendingPhoto[]) {
+  try {
+    localStorage.setItem(PENDING_PHOTOS_KEY, JSON.stringify(photos));
+  } catch {}
+}
+
+function loadLocationPhotos(): Record<string, string[]> {
+  try {
+    const saved = localStorage.getItem(LOCATION_PHOTOS_KEY);
+    return saved ? JSON.parse(saved) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveLocationPhotos(photos: Record<string, string[]>) {
+  try {
+    localStorage.setItem(LOCATION_PHOTOS_KEY, JSON.stringify(photos));
+  } catch {}
+}
 
 interface Props {
   accounts: Account[];
   posts: Post[];
   violations: Violation[];
   walletBalance: number;
+}
+
+function PhotoApprovalsPanel() {
+  const [pending, setPending] = useState<PendingPhoto[]>(loadPendingPhotos);
+
+  function approvePhoto(photo: PendingPhoto) {
+    // Add to location photos
+    const locationPhotos = loadLocationPhotos();
+    const existing = locationPhotos[photo.locationId] || [];
+    locationPhotos[photo.locationId] = [...existing, photo.dataUrl];
+    saveLocationPhotos(locationPhotos);
+
+    // Remove from pending
+    const next = pending.filter((p) => p.id !== photo.id);
+    setPending(next);
+    savePendingPhotos(next);
+  }
+
+  function rejectPhoto(photoId: string) {
+    const next = pending.filter((p) => p.id !== photoId);
+    setPending(next);
+    savePendingPhotos(next);
+  }
+
+  function formatDate(iso: string) {
+    try {
+      return new Date(iso).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+    } catch {
+      return iso;
+    }
+  }
+
+  return (
+    <div className="bg-card border border-border rounded-xl p-4">
+      <h2 className="font-heading font-semibold mb-3 flex items-center gap-2">
+        <span className="material-symbols-outlined text-amber-400 text-lg">
+          photo_camera
+        </span>
+        Photo Approvals
+        {pending.length > 0 && (
+          <span className="ml-auto bg-amber-500 text-black text-xs font-bold px-2 py-0.5 rounded-full">
+            {pending.length}
+          </span>
+        )}
+      </h2>
+
+      {pending.length === 0 ? (
+        <div className="text-center py-6">
+          <span className="material-symbols-outlined text-3xl text-zinc-600 block mb-2">
+            check_circle
+          </span>
+          <p className="text-sm text-muted-foreground">No pending photos</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {pending.map((photo) => (
+            <div
+              key={photo.id}
+              className="bg-zinc-800/60 rounded-xl overflow-hidden border border-zinc-700"
+            >
+              <div className="h-40 relative">
+                <img
+                  src={photo.dataUrl}
+                  alt={`Contribution for ${photo.locationName}`}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                <div className="absolute bottom-2 left-3">
+                  <p className="text-white font-semibold text-sm">
+                    {photo.locationName}
+                  </p>
+                  <p className="text-zinc-300 text-xs">
+                    by @{photo.submittedBy} · {formatDate(photo.submittedAt)}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2 p-3">
+                <button
+                  type="button"
+                  onClick={() => approvePhoto(photo)}
+                  className="flex-1 py-2 rounded-lg bg-green-600 hover:bg-green-500 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-1"
+                >
+                  ✅ Approve
+                </button>
+                <button
+                  type="button"
+                  onClick={() => rejectPhoto(photo.id)}
+                  className="flex-1 py-2 rounded-lg bg-red-700 hover:bg-red-600 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-1"
+                >
+                  ❌ Reject
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function CreatorDashboard({
@@ -93,6 +230,9 @@ export function CreatorDashboard({
           </div>
         ))}
       </div>
+
+      {/* Photo Approvals */}
+      <PhotoApprovalsPanel />
 
       {/* Recent Activity */}
       <div className="bg-card border border-border rounded-xl p-4">

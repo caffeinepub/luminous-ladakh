@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { Account, LocationReview, Post, Review } from "../types";
 
@@ -400,6 +400,63 @@ const BUSINESS_CATEGORIES = ["Hotels", "Food", "Shopping", "Services"];
 const ALL_CATEGORIES = [...LOCATION_CATEGORIES, ...BUSINESS_CATEGORIES];
 
 const STORAGE_KEY = "lc_customLocations";
+const LOCATION_PHOTOS_KEY = "lc_location_photos";
+const PENDING_PHOTOS_KEY = "lc_pending_photos";
+const DELETED_REVIEWS_KEY = "lc_deleted_location_reviews";
+
+export interface PendingPhoto {
+  id: string;
+  locationId: string;
+  locationName: string;
+  submittedBy: string;
+  submittedAt: string;
+  dataUrl: string;
+}
+
+function loadLocationPhotos(): Record<string, string[]> {
+  try {
+    const saved = localStorage.getItem(LOCATION_PHOTOS_KEY);
+    return saved ? JSON.parse(saved) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveLocationPhotos(photos: Record<string, string[]>) {
+  try {
+    localStorage.setItem(LOCATION_PHOTOS_KEY, JSON.stringify(photos));
+  } catch {}
+}
+
+function loadPendingPhotos(): PendingPhoto[] {
+  try {
+    const saved = localStorage.getItem(PENDING_PHOTOS_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+}
+
+function savePendingPhotos(photos: PendingPhoto[]) {
+  try {
+    localStorage.setItem(PENDING_PHOTOS_KEY, JSON.stringify(photos));
+  } catch {}
+}
+
+function loadDeletedReviews(): string[] {
+  try {
+    const saved = localStorage.getItem(DELETED_REVIEWS_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveDeletedReviews(ids: string[]) {
+  try {
+    localStorage.setItem(DELETED_REVIEWS_KEY, JSON.stringify(ids));
+  } catch {}
+}
 
 function loadLocations(): Location[] {
   try {
@@ -423,6 +480,10 @@ function saveLocationOverride(id: string, changes: Partial<Location>) {
     overrides[id] = { ...(overrides[id] || {}), ...changes };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(overrides));
   } catch {}
+}
+
+function generateId() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
 interface Props {
@@ -464,7 +525,8 @@ function StarRating({
 function Overlay({
   onClose,
   children,
-}: { onClose: () => void; children: React.ReactNode }) {
+  title,
+}: { onClose: () => void; children: React.ReactNode; title?: string }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-end"
@@ -481,8 +543,189 @@ function Overlay({
         onKeyDown={(e) => e.stopPropagation()}
       >
         <div className="w-10 h-1 bg-zinc-600 rounded-full mx-auto mt-4 mb-2" />
+        {/* Back button row */}
+        <div className="flex items-center justify-between px-4 pb-1">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex items-center gap-1.5 text-white/70 hover:text-white py-2 px-1 text-sm transition-colors"
+            aria-label="Go back"
+          >
+            <svg
+              aria-hidden="true"
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              className="shrink-0"
+            >
+              <path
+                d="M10 12L6 8l4-4"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            Back
+          </button>
+          {title && (
+            <span className="text-xs text-zinc-500 font-medium">{title}</span>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 rounded-full hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-white"
+            aria-label="Close"
+          >
+            <svg
+              aria-hidden="true"
+              width="14"
+              height="14"
+              viewBox="0 0 14 14"
+              fill="none"
+            >
+              <path
+                d="M1 1l12 12M13 1L1 13"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+        </div>
         {children}
       </div>
+    </div>
+  );
+}
+
+function useOverlayHistory(isOpen: boolean, onClose: () => void) {
+  useEffect(() => {
+    if (isOpen) {
+      window.history.pushState({ overlay: true }, "");
+      const handlePop = () => onClose();
+      window.addEventListener("popstate", handlePop);
+      return () => window.removeEventListener("popstate", handlePop);
+    }
+  }, [isOpen, onClose]);
+}
+
+function CreatorPhotoGallery({
+  photos,
+  name,
+  onPhotosChange,
+}: {
+  photos: string[];
+  name: string;
+  onPhotosChange: (photos: string[]) => void;
+}) {
+  const [active, setActive] = useState(0);
+  const addInputRef = useRef<HTMLInputElement>(null);
+
+  function deletePhoto(idx: number) {
+    const next = photos.filter((_, i) => i !== idx);
+    onPhotosChange(next);
+    if (active >= next.length) setActive(Math.max(0, next.length - 1));
+  }
+
+  function handleAddPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      const next = [...photos, dataUrl];
+      onPhotosChange(next);
+      setActive(next.length - 1);
+      toast.success("Photo added!");
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }
+
+  return (
+    <div className="mb-4">
+      <div className="relative h-48 rounded-xl overflow-hidden">
+        {photos.length > 0 ? (
+          <>
+            <img
+              src={photos[active]}
+              alt={`${name} view ${active + 1}`}
+              className="w-full h-full object-cover transition-opacity duration-300"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src =
+                  "/assets/generated/thiksey-monastery.dim_800x500.jpg";
+              }}
+            />
+            {/* Delete button on active photo */}
+            <button
+              type="button"
+              onClick={() => deletePhoto(active)}
+              className="absolute top-2 right-2 bg-red-600/90 hover:bg-red-500 text-white text-xs px-2 py-1 rounded-lg font-semibold flex items-center gap-1 transition-colors"
+            >
+              🗑️ Delete
+            </button>
+            <div className="absolute bottom-2 right-2 flex gap-1">
+              {photos.map((_, i) => (
+                <button
+                  key={`dot-${String(i)}`}
+                  type="button"
+                  onClick={() => setActive(i)}
+                  className={`w-2 h-2 rounded-full transition-all ${
+                    i === active ? "bg-amber-400 w-4" : "bg-white/50"
+                  }`}
+                />
+              ))}
+            </div>
+          </>
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-zinc-800 text-zinc-500">
+            No photos yet
+          </div>
+        )}
+      </div>
+      {photos.length > 1 && (
+        <div className="flex gap-2 mt-2">
+          {photos.map((p, i) => (
+            <button
+              key={`thumb-${String(i)}`}
+              type="button"
+              onClick={() => setActive(i)}
+              className={`relative flex-1 h-16 rounded-lg overflow-hidden border-2 transition-all ${
+                i === active
+                  ? "border-amber-400"
+                  : "border-transparent opacity-60 hover:opacity-90"
+              }`}
+            >
+              <img
+                src={p}
+                alt=""
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src =
+                    "/assets/generated/thiksey-monastery.dim_800x500.jpg";
+                }}
+              />
+            </button>
+          ))}
+        </div>
+      )}
+      {/* Add photo button */}
+      <button
+        type="button"
+        onClick={() => addInputRef.current?.click()}
+        className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-amber-500/50 hover:border-amber-500 text-amber-400 hover:text-amber-300 text-sm font-semibold transition-colors"
+      >
+        ➕ Add Photo
+      </button>
+      <input
+        ref={addInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleAddPhoto}
+      />
     </div>
   );
 }
@@ -552,6 +795,8 @@ function LocationCard({
   onAddLocationReview,
   isCreator,
   onEditLocation,
+  locationPhotosMap,
+  onLocationPhotosChange,
 }: {
   location: Location;
   locationReviews: LocationReview[];
@@ -560,6 +805,8 @@ function LocationCard({
   onAddLocationReview?: (r: Omit<LocationReview, "id" | "timestamp">) => void;
   isCreator?: boolean;
   onEditLocation?: (id: string, changes: Partial<Location>) => void;
+  locationPhotosMap: Record<string, string[]>;
+  onLocationPhotosChange: (locationId: string, photos: string[]) => void;
 }) {
   const [sheet, setSheet] = useState<"" | "details" | "reviews" | "edit">("");
   const [newRating, setNewRating] = useState(5);
@@ -569,8 +816,21 @@ function LocationCard({
   const [editDetails, setEditDetails] = useState(location.details);
   const [editAddress, setEditAddress] = useState(location.address);
   const [editMaps, setEditMaps] = useState(location.mapsUrl);
+  const [deletedReviewIds, setDeletedReviewIds] = useState<string[]>(() =>
+    loadDeletedReviews(),
+  );
+  const contributeInputRef = useRef<HTMLInputElement>(null);
 
-  const myReviews = locationReviews.filter((r) => r.locationId === location.id);
+  // Resolve photos: localStorage override first, then location default
+  const resolvedPhotos = locationPhotosMap[location.id] ?? location.photos;
+
+  const closeSheet = () => setSheet("");
+  useOverlayHistory(sheet !== "", closeSheet);
+
+  const rawReviews = locationReviews.filter(
+    (r) => r.locationId === location.id,
+  );
+  const myReviews = rawReviews.filter((r) => !deletedReviewIds.includes(r.id));
   const avgRating = myReviews.length
     ? myReviews.reduce((s, r) => s + r.rating, 0) / myReviews.length
     : 0;
@@ -589,6 +849,14 @@ function LocationCard({
     toast.success("Review submitted!");
   }
 
+  function deleteReview(reviewId: string) {
+    if (!window.confirm("Delete this review? This cannot be undone.")) return;
+    const next = [...deletedReviewIds, reviewId];
+    setDeletedReviewIds(next);
+    saveDeletedReviews(next);
+    toast.success("Review deleted.");
+  }
+
   function saveEdit() {
     const changes: Partial<Location> = {
       name: editName,
@@ -602,12 +870,36 @@ function LocationCard({
     toast.success("Location updated!");
   }
 
+  function handleContributePhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      const pending = loadPendingPhotos();
+      const newEntry: PendingPhoto = {
+        id: generateId(),
+        locationId: location.id,
+        locationName: location.name,
+        submittedBy: currentUsername,
+        submittedAt: new Date().toISOString(),
+        dataUrl,
+      };
+      savePendingPhotos([...pending, newEntry]);
+      toast.success("Photo submitted for approval!");
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }
+
+  const canContribute = !!currentUserId && !isCreator;
+
   return (
     <>
       <div className="rounded-2xl overflow-hidden bg-zinc-900/80 border border-zinc-800 hover:border-zinc-600 transition-all duration-300 hover:scale-[1.01]">
         <div className="relative h-44 overflow-hidden">
           <img
-            src={location.photos[0]}
+            src={resolvedPhotos[0] || location.photos[0]}
             alt={location.name}
             className="w-full h-full object-cover"
             onError={(e) => {
@@ -636,9 +928,9 @@ function LocationCard({
               Edit
             </button>
           )}
-          {location.photos.length > 1 && (
+          {resolvedPhotos.length > 1 && (
             <div className="absolute bottom-2 right-2 bg-black/60 px-1.5 py-0.5 rounded-full text-xs text-white">
-              📷 {location.photos.length}
+              📷 {resolvedPhotos.length}
             </div>
           )}
         </div>
@@ -682,9 +974,19 @@ function LocationCard({
       </div>
 
       {sheet === "details" && (
-        <Overlay onClose={() => setSheet("")}>
+        <Overlay onClose={closeSheet} title={location.name}>
           <div className="p-6">
-            <PhotoGallery photos={location.photos} name={location.name} />
+            {isCreator ? (
+              <CreatorPhotoGallery
+                photos={resolvedPhotos}
+                name={location.name}
+                onPhotosChange={(photos) =>
+                  onLocationPhotosChange(location.id, photos)
+                }
+              />
+            ) : (
+              <PhotoGallery photos={resolvedPhotos} name={location.name} />
+            )}
             <h2 className="text-xl font-bold text-white mb-1">
               {location.name}
             </h2>
@@ -716,6 +1018,29 @@ function LocationCard({
               </div>
             </div>
 
+            {/* User photo contribution */}
+            {canContribute && (
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={() => contributeInputRef.current?.click()}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-zinc-700 hover:border-zinc-500 text-zinc-400 hover:text-zinc-200 text-sm transition-colors"
+                >
+                  📷 Contribute a Photo
+                </button>
+                <p className="text-xs text-zinc-600 text-center mt-1">
+                  Photos are reviewed by the creator before appearing
+                </p>
+                <input
+                  ref={contributeInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleContributePhoto}
+                />
+              </div>
+            )}
+
             <a
               href={location.mapsUrl}
               target="_blank"
@@ -732,7 +1057,7 @@ function LocationCard({
       )}
 
       {sheet === "reviews" && (
-        <Overlay onClose={() => setSheet("")}>
+        <Overlay onClose={closeSheet} title="Reviews">
           <div className="p-6">
             <h2 className="text-lg font-bold text-white mb-1">
               {location.name} Reviews
@@ -748,7 +1073,7 @@ function LocationCard({
                 </span>
               </div>
             )}
-            {onAddLocationReview && (
+            {onAddLocationReview && !isCreator && (
               <div className="bg-zinc-800 rounded-xl p-4 mb-4">
                 <p className="text-sm font-semibold text-zinc-300 mb-2">
                   Leave a Review
@@ -776,12 +1101,26 @@ function LocationCard({
               </p>
             )}
             {myReviews.map((r) => (
-              <div key={r.id} className="border-b border-zinc-800 pb-3 mb-3">
+              <div
+                key={r.id}
+                className="relative border-b border-zinc-800 pb-3 mb-3"
+              >
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-sm font-semibold text-white">
                     @{r.reviewerUsername}
                   </span>
-                  <StarRating rating={r.rating} />
+                  <div className="flex items-center gap-2">
+                    <StarRating rating={r.rating} />
+                    {isCreator && (
+                      <button
+                        type="button"
+                        onClick={() => deleteReview(r.id)}
+                        className="text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 px-2 py-0.5 rounded transition-colors font-semibold"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <p className="text-sm text-zinc-300">{r.comment}</p>
               </div>
@@ -791,7 +1130,7 @@ function LocationCard({
       )}
 
       {sheet === "edit" && isCreator && (
-        <Overlay onClose={() => setSheet("")}>
+        <Overlay onClose={closeSheet} title="Edit Location">
           <div className="p-6">
             <div className="flex items-center gap-2 mb-4">
               <span className="material-symbols-outlined text-amber-400">
@@ -877,7 +1216,7 @@ function LocationCard({
             <div className="flex gap-2 mt-4">
               <button
                 type="button"
-                onClick={() => setSheet("")}
+                onClick={closeSheet}
                 className="flex-1 py-2.5 rounded-xl bg-zinc-800 text-zinc-300 font-semibold text-sm hover:bg-zinc-700"
               >
                 Cancel
@@ -913,6 +1252,9 @@ function BusinessCard({
   const [sheet, setSheet] = useState<"" | "details" | "reviews">("");
   const [newRating, setNewRating] = useState(5);
   const [newComment, setNewComment] = useState("");
+
+  const closeSheet = () => setSheet("");
+  useOverlayHistory(sheet !== "", closeSheet);
 
   const businesses = account.businesses || [];
   const firstBiz = businesses[0];
@@ -1028,7 +1370,7 @@ function BusinessCard({
       </div>
 
       {sheet === "details" && (
-        <Overlay onClose={() => setSheet("")}>
+        <Overlay onClose={closeSheet} title={bizName}>
           <div className="p-6">
             {bizPhotos.length > 0 && (
               <PhotoGallery photos={bizPhotos} name={bizName} />
@@ -1058,7 +1400,7 @@ function BusinessCard({
       )}
 
       {sheet === "reviews" && (
-        <Overlay onClose={() => setSheet("")}>
+        <Overlay onClose={closeSheet} title="Reviews">
           <div className="p-6">
             <h2 className="text-lg font-bold text-white mb-2">
               {bizName} Reviews
@@ -1134,11 +1476,15 @@ export function ExploreTab({
 }: Props) {
   const [activeCategory, setActiveCategory] = useState("All");
   const [locations, setLocations] = useState<Location[]>(loadLocations);
+  const [locationPhotosMap, setLocationPhotosMap] =
+    useState<Record<string, string[]>>(loadLocationPhotos);
+
   const currentAccount = accounts.find((a) => a.id === currentUserId);
   const currentUsername = currentAccount?.username || "user";
 
   useEffect(() => {
     setLocations(loadLocations());
+    setLocationPhotosMap(loadLocationPhotos());
   }, []);
 
   function handleEditLocation(id: string, changes: Partial<Location>) {
@@ -1146,6 +1492,12 @@ export function ExploreTab({
     setLocations((prev) =>
       prev.map((loc) => (loc.id === id ? { ...loc, ...changes } : loc)),
     );
+  }
+
+  function handleLocationPhotosChange(locationId: string, photos: string[]) {
+    const next = { ...locationPhotosMap, [locationId]: photos };
+    setLocationPhotosMap(next);
+    saveLocationPhotos(next);
   }
 
   const memberBusinesses = accounts.filter(
@@ -1255,6 +1607,8 @@ export function ExploreTab({
                 onAddLocationReview={onAddLocationReview}
                 isCreator={isCreator}
                 onEditLocation={handleEditLocation}
+                locationPhotosMap={locationPhotosMap}
+                onLocationPhotosChange={handleLocationPhotosChange}
               />
             ))}
           </div>
@@ -1265,7 +1619,7 @@ export function ExploreTab({
         <div className="mb-6">
           {activeCategory === "All" && (
             <h3 className="text-sm font-bold text-zinc-400 mb-3">
-              🏪 Local Businesses
+              🏪 Member Businesses
             </h3>
           )}
           <div className="grid grid-cols-1 gap-4">
@@ -1284,64 +1638,15 @@ export function ExploreTab({
       )}
 
       {filteredLocations.length === 0 && filteredBusinesses.length === 0 && (
-        <div className="text-center py-12 text-zinc-500">
-          <span className="material-symbols-outlined text-4xl block mb-2">
-            search_off
+        <div className="text-center py-12">
+          <span className="material-symbols-outlined text-4xl text-zinc-700 block mb-2">
+            explore_off
           </span>
-          <p className="text-sm">
-            No results for &ldquo;{activeCategory}&rdquo;
+          <p className="text-zinc-500 text-sm">
+            No places found in this category yet.
           </p>
-          {isBusinessCategory && (
-            <p className="text-xs mt-1">
-              Members can list businesses in this category
-            </p>
-          )}
         </div>
       )}
-
-      {posts.filter((p) => p.status === "approved").length > 0 &&
-        activeCategory === "All" && (
-          <div className="mb-6">
-            <h3 className="text-sm font-bold text-zinc-400 mb-3">
-              🌿 Community Discovered
-            </h3>
-            {posts
-              .filter((p) => p.status === "approved")
-              .map((post) => (
-                <div
-                  key={post.id}
-                  className="rounded-xl bg-zinc-900/80 border border-zinc-800 p-4 mb-3"
-                >
-                  {post.imageUrl && (
-                    <img
-                      src={post.imageUrl}
-                      alt={post.title}
-                      className="w-full h-32 object-cover rounded-lg mb-3"
-                    />
-                  )}
-                  <h4 className="font-bold text-white text-sm">{post.title}</h4>
-                  <p className="text-xs text-zinc-400 mt-1">
-                    {post.description}
-                  </p>
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="text-xs text-zinc-600">
-                      @{post.submitterUsername}
-                    </span>
-                    {post.googleMapsLink && (
-                      <a
-                        href={post.googleMapsLink}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-xs text-amber-400 hover:underline"
-                      >
-                        View on Maps
-                      </a>
-                    )}
-                  </div>
-                </div>
-              ))}
-          </div>
-        )}
     </div>
   );
 }
