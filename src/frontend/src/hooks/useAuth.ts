@@ -31,9 +31,23 @@ function saveAccounts(accounts: Account[]) {
   localStorage.setItem("lc_accounts", JSON.stringify(accounts));
 }
 
+const FONT_COLOR_MAP: Record<string, string> = {
+  default: "#f0e8d8",
+  gold: "#e8c55a",
+  sky: "#7dd3fc",
+  mint: "#6ee7b7",
+  rose: "#fda4af",
+  lavender: "#c4b5fd",
+};
+
 export function applyTheme(theme?: string) {
   const t = theme || "dark";
   document.documentElement.setAttribute("data-theme", t);
+}
+
+export function applyFontColorById(colorId?: string) {
+  const hex = FONT_COLOR_MAP[colorId || "default"] || FONT_COLOR_MAP.default;
+  document.body.style.color = hex;
 }
 
 export function useAuth() {
@@ -44,7 +58,10 @@ export function useAuth() {
         const { userId } = JSON.parse(stored);
         const accounts = getAccounts();
         const user = accounts.find((a) => a.id === userId) || null;
-        if (user) applyTheme(user.theme);
+        if (user) {
+          applyTheme(user.theme);
+          applyFontColorById(user.fontColor);
+        }
         return { currentUser: user, isLoading: false };
       } catch {
         return { currentUser: null, isLoading: false };
@@ -76,6 +93,7 @@ export function useAuth() {
         JSON.stringify({ userId: account.id }),
       );
       applyTheme(account.theme);
+      applyFontColorById(account.fontColor);
       setState({ currentUser: account, isLoading: false });
       return { success: true };
     },
@@ -127,6 +145,7 @@ export function useAuth() {
         JSON.stringify({ userId: newAccount.id }),
       );
       applyTheme(newAccount.theme);
+      applyFontColorById(newAccount.fontColor);
       setState({ currentUser: newAccount, isLoading: false });
       return { success: true, electronicId };
     },
@@ -136,6 +155,7 @@ export function useAuth() {
   const logout = useCallback(() => {
     localStorage.removeItem("lc_session");
     applyTheme("dark");
+    applyFontColorById("default");
     setState({ currentUser: null, isLoading: false });
   }, []);
 
@@ -154,6 +174,7 @@ export function useAuth() {
         JSON.stringify({ userId: updated.id }),
       );
       if (updates.theme) applyTheme(updates.theme);
+      if (updates.fontColor) applyFontColorById(updates.fontColor);
       return { ...prev, currentUser: updated };
     });
   }, []);

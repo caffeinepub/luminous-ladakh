@@ -426,6 +426,7 @@ export default function App() {
                 violations={violations}
                 walletBalance={walletBalance}
                 onLogout={logout}
+                onUpdateUser={updateCurrentUser}
               />
             )}
           </>

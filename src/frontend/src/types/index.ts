@@ -13,6 +13,7 @@ export interface Account {
   status?: "active" | "suspended" | "banned";
   theme?: "dark" | "slate" | "warm";
   themePhoto?: string; // base64 dataURL, Premier members only
+  fontColor?: "default" | "gold" | "sky" | "mint" | "rose" | "lavender";
   // member-only
   businessName?: string;
   businessCategory?: string;

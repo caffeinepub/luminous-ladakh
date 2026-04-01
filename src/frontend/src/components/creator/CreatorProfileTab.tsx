@@ -1,4 +1,6 @@
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { applyTheme } from "../../hooks/useAuth";
 import type { Account, Post, Review, Violation } from "../../types";
 
 interface Props {
@@ -9,6 +11,29 @@ interface Props {
   violations: Violation[];
   walletBalance: number;
   onLogout: () => void;
+  onUpdateUser?: (updates: Partial<Account>) => void;
+}
+
+const THEMES = [
+  { id: "dark", label: "Dark", desc: "Deep black" },
+  { id: "slate", label: "Slate", desc: "Cool blue-grey" },
+  { id: "warm", label: "Warm", desc: "Amber tones" },
+] as const;
+
+const FONT_COLORS = [
+  { id: "default", label: "White", hex: "#f0e8d8" },
+  { id: "gold", label: "Gold", hex: "#e8c55a" },
+  { id: "sky", label: "Sky", hex: "#7dd3fc" },
+  { id: "mint", label: "Mint", hex: "#6ee7b7" },
+  { id: "rose", label: "Rose", hex: "#fda4af" },
+  { id: "lavender", label: "Lavender", hex: "#c4b5fd" },
+] as const;
+
+function applyFontColor(colorId: string) {
+  const color = FONT_COLORS.find((c) => c.id === colorId);
+  if (!color) return;
+  document.documentElement.style.setProperty("--foreground-custom", color.hex);
+  document.body.style.color = color.hex;
 }
 
 export function CreatorProfileTab({
@@ -19,6 +44,7 @@ export function CreatorProfileTab({
   violations,
   walletBalance,
   onLogout,
+  onUpdateUser,
 }: Props) {
   const users = accounts.filter((a) => a.role === "user");
   const members = accounts.filter((a) => a.role === "member");
@@ -28,6 +54,19 @@ export function CreatorProfileTab({
     (s, m) => s + (m.membershipTier === "Premier" ? 1500 : 1000),
     0,
   );
+
+  const handleThemeChange = (theme: string) => {
+    if (onUpdateUser) onUpdateUser({ theme: theme as Account["theme"] });
+    applyTheme(theme);
+    toast.success(`Theme changed to ${theme}`);
+  };
+
+  const handleFontColor = (colorId: string) => {
+    if (onUpdateUser)
+      onUpdateUser({ fontColor: colorId as Account["fontColor"] });
+    applyFontColor(colorId);
+    toast.success("Font color updated!");
+  };
 
   return (
     <div className="fade-in space-y-4">
@@ -57,6 +96,66 @@ export function CreatorProfileTab({
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Theme Switcher */}
+      <div className="bg-card border border-border rounded-xl p-4">
+        <h3 className="font-heading font-semibold mb-3 flex items-center gap-2">
+          <span className="material-symbols-outlined text-primary text-lg">
+            palette
+          </span>
+          App Theme
+        </h3>
+        <div className="grid grid-cols-3 gap-2">
+          {THEMES.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => handleThemeChange(t.id)}
+              className={`rounded-xl p-3 text-center border transition-all ${
+                (currentUser.theme || "dark") === t.id
+                  ? "border-primary bg-primary/15"
+                  : "border-border bg-secondary hover:border-primary/40"
+              }`}
+              data-ocid={`profile.theme.${t.id}`}
+            >
+              <p className="text-xs font-semibold">{t.label}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {t.desc}
+              </p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Font Color */}
+      <div className="bg-card border border-border rounded-xl p-4">
+        <h3 className="font-heading font-semibold mb-3 flex items-center gap-2">
+          <span className="material-symbols-outlined text-primary text-lg">
+            format_color_text
+          </span>
+          Font Color
+        </h3>
+        <div className="grid grid-cols-6 gap-2">
+          {FONT_COLORS.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => handleFontColor(c.id)}
+              title={c.label}
+              className={`h-9 rounded-lg border-2 transition-all ${
+                (currentUser.fontColor || "default") === c.id
+                  ? "border-white scale-110"
+                  : "border-transparent hover:border-white/40"
+              }`}
+              style={{ backgroundColor: c.hex }}
+              data-ocid={`profile.fontcolor.${c.id}`}
+            />
+          ))}
+        </div>
+        <p className="text-[10px] text-muted-foreground mt-2">
+          Tap a color to change all text in the app.
+        </p>
       </div>
 
       <div className="bg-card border border-border rounded-xl p-4">
