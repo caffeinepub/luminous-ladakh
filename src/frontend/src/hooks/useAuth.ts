@@ -12,6 +12,7 @@ interface SignupData {
   email: string;
   password: string;
   role: Exclude<Role, "creator">;
+  communityCode?: string;
 }
 
 interface AuthState {
@@ -100,10 +101,100 @@ export function useAuth() {
     [],
   );
 
+  const socialLogin = useCallback(
+    (
+      provider: "google" | "facebook",
+      email: string,
+      name: string,
+      role: Exclude<Role, "creator">,
+    ): {
+      success: boolean;
+      error?: string;
+      isNew?: boolean;
+      electronicId?: string;
+    } => {
+      const accounts = getAccounts();
+      const existing = accounts.find(
+        (a) => a.email.toLowerCase() === email.toLowerCase(),
+      );
+      if (existing) {
+        if (existing.status === "banned") {
+          return {
+            success: false,
+            error: "This account has been permanently banned.",
+          };
+        }
+        // Log them in regardless of authProvider
+        localStorage.setItem(
+          "lc_session",
+          JSON.stringify({ userId: existing.id }),
+        );
+        applyTheme(existing.theme);
+        applyFontColorById(existing.fontColor);
+        setState({ currentUser: existing, isLoading: false });
+        return { success: true, isNew: false };
+      }
+      // Create new account
+      const baseUsername = email
+        .split("@")[0]
+        .replace(/[^a-zA-Z0-9_]/g, "")
+        .toLowerCase();
+      let username = baseUsername;
+      let suffix = 1;
+      while (
+        accounts.find(
+          (a) => a.username.toLowerCase() === username.toLowerCase(),
+        )
+      ) {
+        username = `${baseUsername}${suffix++}`;
+      }
+      const electronicId = generateElectronicId();
+      const newAccount: Account = {
+        id: generateId(),
+        username,
+        email,
+        passwordHash: hashPw(`${provider}_${email}`),
+        role,
+        electronicId,
+        status: "active",
+        authProvider: provider,
+        bio: name,
+        createdAt: new Date().toISOString(),
+        ...(role === "member"
+          ? {
+              membershipTier: "Common",
+              membershipStatus: "trial",
+              trialStartDate: new Date().toISOString(),
+              businesses: [],
+            }
+          : {}),
+        ...(role === "community" ? { editPermissionStatus: "none" } : {}),
+      };
+      saveAccounts([...accounts, newAccount]);
+      localStorage.setItem(
+        "lc_session",
+        JSON.stringify({ userId: newAccount.id }),
+      );
+      applyTheme(newAccount.theme);
+      applyFontColorById(newAccount.fontColor);
+      setState({ currentUser: newAccount, isLoading: false });
+      return { success: true, isNew: true, electronicId };
+    },
+    [],
+  );
+
   const signup = useCallback(
     (
       data: SignupData,
     ): { success: boolean; error?: string; electronicId?: string } => {
+      // Community code validation
+      if (data.role === "community") {
+        const correctCode =
+          localStorage.getItem("lc_communityCode") || "blackjack";
+        if (!data.communityCode || data.communityCode !== correctCode) {
+          return { success: false, error: "Invalid community access code" };
+        }
+      }
       const accounts = getAccounts();
       if (
         accounts.find(
@@ -129,12 +220,14 @@ export function useAuth() {
         role: data.role,
         electronicId,
         status: "active",
+        authProvider: "email",
         createdAt: new Date().toISOString(),
         ...(data.role === "member"
           ? {
               membershipTier: "Common",
               membershipStatus: "trial",
               trialStartDate: new Date().toISOString(),
+              businesses: [],
             }
           : {}),
         ...(data.role === "community" ? { editPermissionStatus: "none" } : {}),
@@ -194,5 +287,13 @@ export function useAuth() {
     return () => window.removeEventListener("lc_data_changed", handler);
   }, [refreshUser]);
 
-  return { ...state, login, signup, logout, updateCurrentUser, refreshUser };
+  return {
+    ...state,
+    login,
+    socialLogin,
+    signup,
+    logout,
+    updateCurrentUser,
+    refreshUser,
+  };
 }

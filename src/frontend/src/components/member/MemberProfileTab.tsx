@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { applyTheme } from "../../hooks/useAuth";
 import type { Account, Violation } from "../../types";
@@ -44,6 +44,19 @@ export function MemberProfileTab({
 }: Props) {
   const [editingBio, setEditingBio] = useState(false);
   const [bio, setBio] = useState(currentUser.bio || "");
+  const photoRef = useRef<HTMLInputElement>(null);
+
+  const isPremier = currentUser.membershipTier === "Premier";
+
+  // Storage calculation
+  let usedBytes = 0;
+  for (const biz of currentUser.businesses || []) {
+    for (const p of biz.photos) usedBytes += Math.round((p.length * 3) / 4);
+    if (biz.videoUrl) usedBytes += Math.round((biz.videoUrl.length * 3) / 4);
+  }
+  const usedMB = usedBytes / (1024 * 1024);
+  const limitMB = isPremier ? 1024 : 300;
+  const storagePct = Math.min(100, (usedMB / limitMB) * 100);
 
   const saveBio = () => {
     onUpdateBio(bio);
@@ -64,10 +77,6 @@ export function MemberProfileTab({
     reader.onload = (evt) => {
       const dataUrl = evt.target?.result as string;
       onUpdateUser({ themePhoto: dataUrl });
-      document.documentElement.style.setProperty(
-        "--theme-bg-photo",
-        `url("${dataUrl}")`,
-      );
       toast.success("Custom photo theme applied!");
     };
     reader.readAsDataURL(file);
@@ -79,14 +88,51 @@ export function MemberProfileTab({
     toast.success("Font color updated!");
   };
 
+  const handleProfilePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      onUpdateUser({ profilePhoto: reader.result as string });
+      toast.success("Profile photo updated!");
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
     <div className="fade-in space-y-4">
       <div className="bg-card border border-border rounded-xl p-5">
         <div className="flex items-center gap-4 mb-4">
-          <div className="w-16 h-16 rounded-full bg-primary/20 border-2 border-primary/40 flex items-center justify-center">
-            <span className="font-heading font-bold text-2xl text-primary">
-              {currentUser.username[0].toUpperCase()}
-            </span>
+          <div className="relative">
+            {currentUser.profilePhoto ? (
+              <img
+                src={currentUser.profilePhoto}
+                alt="Profile"
+                className="w-16 h-16 rounded-full object-cover border-2 border-primary/40"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-primary/20 border-2 border-primary/40 flex items-center justify-center">
+                <span className="font-bold text-2xl text-primary">
+                  {currentUser.username[0].toUpperCase()}
+                </span>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => photoRef.current?.click()}
+              className="absolute -bottom-1 -right-1 bg-primary rounded-full w-5 h-5 flex items-center justify-center"
+            >
+              <span className="material-symbols-outlined text-black text-xs">
+                edit
+              </span>
+            </button>
+            <input
+              ref={photoRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleProfilePhoto}
+            />
           </div>
           <div className="flex-1">
             <h2 className="font-heading text-xl font-bold">
@@ -100,7 +146,7 @@ export function MemberProfileTab({
               {currentUser.membershipTier && (
                 <span
                   className={`text-xs px-2 py-0.5 rounded-full ${
-                    currentUser.membershipTier === "Premier"
+                    isPremier
                       ? "bg-primary/15 text-primary"
                       : "bg-secondary text-muted-foreground"
                   }`}
@@ -111,6 +157,29 @@ export function MemberProfileTab({
             </div>
           </div>
         </div>
+
+        {/* Storage bar */}
+        <div className="mb-4">
+          <div className="flex justify-between text-xs text-zinc-400 mb-1">
+            <span>Storage</span>
+            <span>
+              {usedMB.toFixed(1)} MB / {isPremier ? "1 GB" : "300 MB"}
+            </span>
+          </div>
+          <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full ${
+                storagePct > 90
+                  ? "bg-red-500"
+                  : storagePct > 75
+                    ? "bg-amber-500"
+                    : "bg-green-500"
+              }`}
+              style={{ width: `${storagePct}%` }}
+            />
+          </div>
+        </div>
+
         <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 flex items-center gap-3 mb-4">
           <span className="material-symbols-outlined text-primary">badge</span>
           <div>
@@ -126,15 +195,13 @@ export function MemberProfileTab({
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               rows={3}
-              className="bg-input border-border text-sm"
-              data-ocid="profile.textarea"
+              className="bg-zinc-900 border-zinc-700 text-white text-sm"
             />
             <div className="flex gap-2">
               <Button
                 size="sm"
                 className="bg-primary text-primary-foreground"
                 onClick={saveBio}
-                data-ocid="profile.save_button"
               >
                 Save
               </Button>
@@ -143,7 +210,6 @@ export function MemberProfileTab({
                 variant="outline"
                 className="border-border"
                 onClick={() => setEditingBio(false)}
-                data-ocid="profile.cancel_button"
               >
                 Cancel
               </Button>
@@ -158,7 +224,6 @@ export function MemberProfileTab({
               type="button"
               onClick={() => setEditingBio(true)}
               className="text-primary text-xs ml-2"
-              data-ocid="profile.edit_button"
             >
               Edit
             </button>
@@ -166,7 +231,7 @@ export function MemberProfileTab({
         )}
       </div>
 
-      {/* Theme Switcher */}
+      {/* Theme */}
       <div className="bg-card border border-border rounded-xl p-4">
         <h3 className="font-heading font-semibold mb-3 flex items-center gap-2">
           <span className="material-symbols-outlined text-primary text-lg">
@@ -185,7 +250,6 @@ export function MemberProfileTab({
                   ? "border-primary bg-primary/15"
                   : "border-border bg-secondary hover:border-primary/40"
               }`}
-              data-ocid={`profile.theme.${t.id}`}
             >
               <p className="text-xs font-semibold">{t.label}</p>
               <p className="text-[10px] text-muted-foreground mt-0.5">
@@ -194,9 +258,7 @@ export function MemberProfileTab({
             </button>
           ))}
         </div>
-
-        {/* Photo theme — Premier only */}
-        {currentUser.membershipTier === "Premier" && (
+        {isPremier && (
           <div className="border-t border-border pt-3">
             <p className="text-xs font-semibold mb-2 flex items-center gap-1">
               <span className="text-primary">★</span> Premier: Custom Photo
@@ -205,7 +267,7 @@ export function MemberProfileTab({
             {currentUser.themePhoto && (
               <img
                 src={currentUser.themePhoto}
-                alt="Theme preview"
+                alt="Theme"
                 className="w-full h-20 object-cover rounded-lg mb-2 opacity-70"
               />
             )}
@@ -215,7 +277,6 @@ export function MemberProfileTab({
                 accept="image/*"
                 onChange={handlePhotoTheme}
                 className="hidden"
-                data-ocid="profile.photo_input"
               />
               <span className="inline-flex items-center gap-1.5 text-xs bg-primary/15 text-primary border border-primary/30 px-3 py-1.5 rounded-lg cursor-pointer hover:bg-primary/25 transition-colors">
                 <span className="material-symbols-outlined text-sm">
@@ -249,13 +310,9 @@ export function MemberProfileTab({
                   : "border-transparent hover:border-white/40"
               }`}
               style={{ backgroundColor: c.hex }}
-              data-ocid={`profile.fontcolor.${c.id}`}
             />
           ))}
         </div>
-        <p className="text-[10px] text-muted-foreground mt-2">
-          Tap a color to change all text in the app.
-        </p>
       </div>
 
       <ViolationCard violations={violations} userId={currentUser.id} />
@@ -263,7 +320,6 @@ export function MemberProfileTab({
         variant="outline"
         className="w-full border-border text-muted-foreground"
         onClick={onLogout}
-        data-ocid="profile.button"
       >
         <span className="material-symbols-outlined text-lg mr-2">logout</span>
         Sign Out

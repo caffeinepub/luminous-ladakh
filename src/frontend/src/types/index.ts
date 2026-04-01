@@ -1,5 +1,25 @@
 export type Role = "user" | "member" | "community" | "creator";
 
+export interface Business {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  mapsUrl: string;
+  photos: string[];
+  videoUrl?: string;
+}
+
+export interface LocationReview {
+  id: string;
+  locationId: string;
+  reviewerUserId: string;
+  reviewerUsername: string;
+  rating: number;
+  comment: string;
+  timestamp: string;
+}
+
 export interface Account {
   id: string;
   username: string;
@@ -8,13 +28,15 @@ export interface Account {
   role: Role;
   electronicId: string;
   avatar?: string;
+  profilePhoto?: string;
   bio?: string;
   createdAt: string;
   status?: "active" | "suspended" | "banned";
   theme?: "dark" | "slate" | "warm";
-  themePhoto?: string; // base64 dataURL, Premier members only
+  themePhoto?: string;
   fontColor?: "default" | "gold" | "sky" | "mint" | "rose" | "lavender";
-  // member-only
+  authProvider?: "email" | "google" | "facebook";
+  // member-only (legacy single business)
   businessName?: string;
   businessCategory?: string;
   businessLocation?: string;
@@ -22,6 +44,8 @@ export interface Account {
   membershipStatus?: "active" | "trial" | "suspended";
   businessDescription?: string;
   trialStartDate?: string;
+  // multi-business array
+  businesses?: Business[];
   // community-only
   editPermissionStatus?: "none" | "pending" | "approved" | "denied";
 }
@@ -92,4 +116,15 @@ export interface FlagReport {
   reason: string;
   status: "pending" | "reviewed" | "dismissed";
   timestamp: string;
+}
+
+export interface PendingPayment {
+  id: string;
+  memberId: string;
+  memberUsername: string;
+  memberEmail: string;
+  amount: number;
+  tier: string;
+  timestamp: string;
+  status: "pending";
 }

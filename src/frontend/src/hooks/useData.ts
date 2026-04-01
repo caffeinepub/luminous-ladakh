@@ -3,6 +3,8 @@ import { generateId } from "../data/seed";
 import type {
   Account,
   FlagReport,
+  LocationReview,
+  PendingPayment,
   PermissionRequest,
   Post,
   Review,
@@ -53,20 +55,20 @@ export function useData() {
         status: "banned",
         bio: undefined,
         avatar: undefined,
+        profilePhoto: undefined,
         themePhoto: undefined,
         businessName: undefined,
         businessDescription: undefined,
         businessCategory: undefined,
         businessLocation: undefined,
+        businesses: [],
       };
       setLS("lc_accounts", accounts);
     }
-    // Delete all posts by this user
     const posts = getLS<Post>("lc_posts").filter(
       (p) => p.submittedBy !== accountId,
     );
     localStorage.setItem("lc_posts", JSON.stringify(posts));
-    // Delete all reviews by or for this user
     const reviews = getLS<Review>("lc_reviews").filter(
       (r) => r.reviewerUserId !== accountId && r.targetMemberId !== accountId,
     );
@@ -122,6 +124,55 @@ export function useData() {
       timestamp: new Date().toISOString(),
     });
     setLS("lc_reviews", reviews);
+  }, []);
+
+  // Location Reviews
+  const getLocationReviews = useCallback(
+    (): LocationReview[] => getLS<LocationReview>("lc_locationReviews"),
+    [],
+  );
+  const addLocationReview = useCallback(
+    (review: Omit<LocationReview, "id" | "timestamp">) => {
+      const reviews = getLS<LocationReview>("lc_locationReviews");
+      reviews.unshift({
+        ...review,
+        id: generateId(),
+        timestamp: new Date().toISOString(),
+      });
+      setLS("lc_locationReviews", reviews);
+    },
+    [],
+  );
+
+  // Storage tracking
+  const getStorageUsedMB = useCallback((userId: string): number => {
+    const bytes = Number.parseInt(
+      localStorage.getItem(`lc_storageUsed_${userId}`) || "0",
+      10,
+    );
+    return bytes / (1024 * 1024);
+  }, []);
+  const updateStorageUsed = useCallback(
+    (userId: string, addedBytes: number) => {
+      const current = Number.parseInt(
+        localStorage.getItem(`lc_storageUsed_${userId}`) || "0",
+        10,
+      );
+      localStorage.setItem(
+        `lc_storageUsed_${userId}`,
+        String(Math.max(0, current + addedBytes)),
+      );
+    },
+    [],
+  );
+
+  // Community Code
+  const getCommunityCode = useCallback((): string => {
+    return localStorage.getItem("lc_communityCode") || "blackjack";
+  }, []);
+  const setCommunityCode = useCallback((code: string) => {
+    localStorage.setItem("lc_communityCode", code);
+    notify();
   }, []);
 
   // Violations
@@ -208,6 +259,30 @@ export function useData() {
     [],
   );
 
+  // Pending Payments
+  const getPendingPayments = useCallback(
+    (): PendingPayment[] => getLS<PendingPayment>("lc_pendingPayments"),
+    [],
+  );
+  const addPendingPayment = useCallback(
+    (p: Omit<PendingPayment, "id" | "timestamp">) => {
+      const payments = getLS<PendingPayment>("lc_pendingPayments");
+      payments.unshift({
+        ...p,
+        id: generateId(),
+        timestamp: new Date().toISOString(),
+      });
+      setLS("lc_pendingPayments", payments);
+    },
+    [],
+  );
+  const removePendingPayment = useCallback((id: string) => {
+    setLS(
+      "lc_pendingPayments",
+      getLS<PendingPayment>("lc_pendingPayments").filter((p) => p.id !== id),
+    );
+  }, []);
+
   // Flag Reports
   const getFlagReports = useCallback(
     (): FlagReport[] => getLS<FlagReport>("lc_flagReports"),
@@ -249,6 +324,12 @@ export function useData() {
     deletePost,
     getReviews,
     addReview,
+    getLocationReviews,
+    addLocationReview,
+    getStorageUsedMB,
+    updateStorageUsed,
+    getCommunityCode,
+    setCommunityCode,
     getViolations,
     addViolation,
     resolveViolation,
@@ -258,6 +339,9 @@ export function useData() {
     getWalletBalance,
     getWalletTransactions,
     addWalletTransaction,
+    getPendingPayments,
+    addPendingPayment,
+    removePendingPayment,
     getFlagReports,
     addFlagReport,
     updateFlagReport,

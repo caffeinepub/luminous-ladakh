@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/select";
 import { useState } from "react";
 import { toast } from "sonner";
-import type { Account, WalletTransaction } from "../../types";
+import type { Account, PendingPayment, WalletTransaction } from "../../types";
 
 const BANKS = [
   "SBI",
@@ -28,17 +28,21 @@ const BANKS = [
 interface Props {
   balance: number;
   transactions: WalletTransaction[];
+  pendingPayments: PendingPayment[];
   members: Account[];
   onWithdraw: (amount: number, bankName: string) => void;
-  onSimulatePayment: () => void;
+  onConfirmPayment: (id: string) => void;
+  onRejectPayment: (id: string) => void;
 }
 
 export function CreatorWallet({
   balance,
   transactions,
+  pendingPayments,
   members: _members,
   onWithdraw,
-  onSimulatePayment,
+  onConfirmPayment,
+  onRejectPayment,
 }: Props) {
   const [showWithdraw, setShowWithdraw] = useState(false);
   const [withdrawForm, setWithdrawForm] = useState({
@@ -116,29 +120,93 @@ export function CreatorWallet({
             </p>
           </div>
         </div>
-        <div className="flex gap-2 mt-4">
-          <Button
-            className="flex-1 bg-primary text-primary-foreground font-semibold"
-            onClick={() => setShowWithdraw(true)}
-            data-ocid="wallet.primary_button"
+        <Button
+          className="mt-4 w-full bg-primary text-primary-foreground font-semibold"
+          onClick={() => setShowWithdraw(true)}
+          data-ocid="wallet.primary_button"
+        >
+          <span className="material-symbols-outlined text-lg mr-1">
+            account_balance
+          </span>
+          Withdraw to Bank
+        </Button>
+      </div>
+
+      {/* Pending Payments */}
+      <div className="bg-card border border-border rounded-xl p-4">
+        <h2 className="font-heading font-semibold mb-3 flex items-center gap-2">
+          <span className="material-symbols-outlined text-yellow-400 text-lg">
+            pending
+          </span>
+          Pending Payments ({pendingPayments.length})
+        </h2>
+        {pendingPayments.length === 0 ? (
+          <p
+            className="text-sm text-muted-foreground"
+            data-ocid="wallet.pending.empty_state"
           >
-            <span className="material-symbols-outlined text-lg mr-1">
-              account_balance
-            </span>
-            Withdraw
-          </Button>
-          <Button
-            variant="outline"
-            className="flex-1 border-primary/30 text-primary"
-            onClick={onSimulatePayment}
-            data-ocid="wallet.secondary_button"
-          >
-            <span className="material-symbols-outlined text-lg mr-1">
-              add_circle
-            </span>
-            Simulate Payment
-          </Button>
-        </div>
+            No pending payments. Payments from members will appear here for
+            verification.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {pendingPayments.map((p, i) => (
+              <div
+                key={p.id}
+                className="bg-secondary rounded-lg p-3 border border-yellow-500/20"
+                data-ocid={`wallet.pending.item.${i + 1}`}
+              >
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div>
+                    <p className="text-sm font-semibold">@{p.memberUsername}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {p.memberEmail}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {p.tier} Plan · {new Date(p.timestamp).toLocaleString()}
+                    </p>
+                  </div>
+                  <p className="font-bold text-yellow-400">
+                    ₹{p.amount.toLocaleString()}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs"
+                    onClick={() => {
+                      onConfirmPayment(p.id);
+                      toast.success(
+                        `Payment of ₹${p.amount.toLocaleString()} from @${p.memberUsername} confirmed!`,
+                      );
+                    }}
+                    data-ocid={`wallet.pending.confirm_button.${i + 1}`}
+                  >
+                    <span className="material-symbols-outlined text-sm mr-1">
+                      check_circle
+                    </span>
+                    Confirm
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 border-red-500/40 text-red-400 hover:bg-red-500/10 text-xs"
+                    onClick={() => {
+                      onRejectPayment(p.id);
+                      toast.info(`Payment from @${p.memberUsername} rejected.`);
+                    }}
+                    data-ocid={`wallet.pending.cancel_button.${i + 1}`}
+                  >
+                    <span className="material-symbols-outlined text-sm mr-1">
+                      cancel
+                    </span>
+                    Reject
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Transactions */}
@@ -154,7 +222,7 @@ export function CreatorWallet({
             className="text-sm text-muted-foreground"
             data-ocid="wallet.empty_state"
           >
-            No transactions yet.
+            No transactions yet. Confirmed payments will appear here.
           </p>
         ) : (
           <div className="space-y-2">

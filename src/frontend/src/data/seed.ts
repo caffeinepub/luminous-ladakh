@@ -1,57 +1,98 @@
-import type {
-  Account,
-  FlagReport,
-  PermissionRequest,
-  Post,
-  Review,
-  Violation,
-  WalletTransaction,
-} from "../types";
+import type { Account } from "../types";
 
 function hashPassword(p: string): string {
   return btoa(`${p}_lc_salt`);
 }
 
 export function initSeedData() {
-  if (localStorage.getItem("lc_seeded") === "v9") return;
+  // Clear fake wallet balance and transactions from old seeds
+  if (localStorage.getItem("lc_seeded") !== "v12") {
+    localStorage.removeItem("lc_walletBalance");
+    localStorage.removeItem("lc_walletTransactions");
+    localStorage.setItem("lc_walletBalance", "0");
+    localStorage.setItem("lc_walletTransactions", JSON.stringify([]));
+    localStorage.removeItem("lc_pendingPayments");
+  }
+
+  if (localStorage.getItem("lc_seeded") === "v12") return;
 
   const existingRaw = localStorage.getItem("lc_accounts");
   const existingAccounts: Account[] = existingRaw
     ? JSON.parse(existingRaw)
     : [];
 
-  const creatorExists = existingAccounts.some((a) => a.id === "creator_1");
+  // Migrate old single-business to businesses array
+  const migratedAccounts = existingAccounts.map((a) => {
+    if (a.role === "member" && !a.businesses && (a as any).businessName) {
+      return {
+        ...a,
+        businesses: [
+          {
+            id: generateId(),
+            name: (a as any).businessName || "",
+            category: (a as any).businessCategory || "General",
+            description: (a as any).businessDescription || "",
+            mapsUrl: "",
+            photos: [],
+          },
+        ],
+      };
+    }
+    return a;
+  });
+
+  const creatorExists = migratedAccounts.some((a) => a.id === "creator_1");
 
   const accounts: Account[] = creatorExists
-    ? existingAccounts
+    ? migratedAccounts.map((a) =>
+        a.id === "creator_1"
+          ? {
+              ...a,
+              username: "hunter",
+              passwordHash: hashPassword("admin123"),
+              role: "creator" as const,
+            }
+          : a,
+      )
     : [
         {
           id: "creator_1",
           username: "hunter",
           email: "bigbhi52@gmail.com",
           passwordHash: hashPassword("admin123"),
-          role: "creator",
+          role: "creator" as const,
           electronicId: "LC-CRTX1",
-          status: "active",
+          status: "active" as const,
           bio: "Founder & Creator of Ladakh Connect. Building Ladakh in one app.",
           createdAt: new Date().toISOString(),
         },
+        ...migratedAccounts.filter((a) => a.id !== "creator_1"),
       ];
 
+  localStorage.setItem("lc_accounts", JSON.stringify(accounts));
+
   if (!existingRaw) {
-    localStorage.setItem("lc_accounts", JSON.stringify(accounts));
     localStorage.setItem("lc_posts", JSON.stringify([]));
     localStorage.setItem("lc_reviews", JSON.stringify([]));
     localStorage.setItem("lc_violations", JSON.stringify([]));
     localStorage.setItem("lc_permissionRequests", JSON.stringify([]));
     localStorage.setItem("lc_walletBalance", "0");
     localStorage.setItem("lc_walletTransactions", JSON.stringify([]));
+    localStorage.setItem("lc_pendingPayments", JSON.stringify([]));
     localStorage.setItem("lc_flagReports", JSON.stringify([]));
-  } else {
-    localStorage.setItem("lc_accounts", JSON.stringify(accounts));
+    localStorage.setItem("lc_locationReviews", JSON.stringify([]));
   }
 
-  localStorage.setItem("lc_seeded", "v9");
+  if (!localStorage.getItem("lc_communityCode")) {
+    localStorage.setItem("lc_communityCode", "blackjack");
+  }
+
+  // Ensure pending payments list exists
+  if (!localStorage.getItem("lc_pendingPayments")) {
+    localStorage.setItem("lc_pendingPayments", JSON.stringify([]));
+  }
+
+  localStorage.setItem("lc_seeded", "v12");
 }
 
 export function verifyPassword(plain: string, hash: string): boolean {

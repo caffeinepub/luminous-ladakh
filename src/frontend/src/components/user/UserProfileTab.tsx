@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { applyTheme } from "../../hooks/useAuth";
 import type { Account, Post, Violation } from "../../types";
@@ -46,6 +46,7 @@ export function UserProfileTab({
 }: Props) {
   const [editingBio, setEditingBio] = useState(false);
   const [bio, setBio] = useState(currentUser.bio || "");
+  const photoRef = useRef<HTMLInputElement>(null);
   const myPosts = posts.filter((p) => p.submittedBy === currentUser.id);
 
   const saveBio = () => {
@@ -66,15 +67,51 @@ export function UserProfileTab({
     toast.success("Font color updated!");
   };
 
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      onUpdateUser({ profilePhoto: reader.result as string });
+      toast.success("Profile photo updated!");
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
     <div className="fade-in space-y-4">
-      {/* Profile Header */}
       <div className="bg-card border border-border rounded-xl p-5">
         <div className="flex items-center gap-4 mb-4">
-          <div className="w-16 h-16 rounded-full bg-primary/20 border-2 border-primary/40 flex items-center justify-center">
-            <span className="font-heading font-bold text-2xl text-primary">
-              {currentUser.username[0].toUpperCase()}
-            </span>
+          <div className="relative">
+            {currentUser.profilePhoto ? (
+              <img
+                src={currentUser.profilePhoto}
+                alt="Profile"
+                className="w-16 h-16 rounded-full object-cover border-2 border-primary/40"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-primary/20 border-2 border-primary/40 flex items-center justify-center">
+                <span className="font-bold text-2xl text-primary">
+                  {currentUser.username[0].toUpperCase()}
+                </span>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => photoRef.current?.click()}
+              className="absolute -bottom-1 -right-1 bg-primary rounded-full w-5 h-5 flex items-center justify-center"
+            >
+              <span className="material-symbols-outlined text-black text-xs">
+                edit
+              </span>
+            </button>
+            <input
+              ref={photoRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handlePhotoChange}
+            />
           </div>
           <div className="flex-1">
             <h2 className="font-heading text-xl font-bold">
@@ -101,15 +138,13 @@ export function UserProfileTab({
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               rows={3}
-              className="bg-input border-border text-sm"
-              data-ocid="profile.textarea"
+              className="bg-zinc-900 border-zinc-700 text-white text-sm"
             />
             <div className="flex gap-2">
               <Button
                 size="sm"
                 className="bg-primary text-primary-foreground"
                 onClick={saveBio}
-                data-ocid="profile.save_button"
               >
                 Save
               </Button>
@@ -118,7 +153,6 @@ export function UserProfileTab({
                 variant="outline"
                 className="border-border"
                 onClick={() => setEditingBio(false)}
-                data-ocid="profile.cancel_button"
               >
                 Cancel
               </Button>
@@ -133,7 +167,6 @@ export function UserProfileTab({
               onClick={() => setEditingBio(true)}
               className="text-primary text-xs ml-2 shrink-0"
               type="button"
-              data-ocid="profile.edit_button"
             >
               Edit bio
             </button>
@@ -141,7 +174,7 @@ export function UserProfileTab({
         )}
       </div>
 
-      {/* Theme Switcher */}
+      {/* Theme */}
       <div className="bg-card border border-border rounded-xl p-4">
         <h3 className="font-heading font-semibold mb-3 flex items-center gap-2">
           <span className="material-symbols-outlined text-primary text-lg">
@@ -160,7 +193,6 @@ export function UserProfileTab({
                   ? "border-primary bg-primary/15"
                   : "border-border bg-secondary hover:border-primary/40"
               }`}
-              data-ocid={`profile.theme.${t.id}`}
             >
               <p className="text-xs font-semibold">{t.label}</p>
               <p className="text-[10px] text-muted-foreground mt-0.5">
@@ -192,18 +224,13 @@ export function UserProfileTab({
                   : "border-transparent hover:border-white/40"
               }`}
               style={{ backgroundColor: c.hex }}
-              data-ocid={`profile.fontcolor.${c.id}`}
             />
           ))}
         </div>
-        <p className="text-[10px] text-muted-foreground mt-2">
-          Tap a color to change all text in the app.
-        </p>
       </div>
 
       <ViolationCard violations={violations} userId={currentUser.id} />
 
-      {/* My Posts */}
       <div className="bg-card border border-border rounded-xl p-4">
         <h3 className="font-heading font-semibold mb-3 flex items-center gap-2">
           <span className="material-symbols-outlined text-primary text-lg">
@@ -212,19 +239,15 @@ export function UserProfileTab({
           My Submitted Places ({myPosts.length})
         </h3>
         {myPosts.length === 0 ? (
-          <p
-            className="text-sm text-muted-foreground"
-            data-ocid="profile.empty_state"
-          >
+          <p className="text-sm text-muted-foreground">
             You haven&apos;t posted any places yet.
           </p>
         ) : (
           <div className="space-y-2">
-            {myPosts.map((p, i) => (
+            {myPosts.map((p) => (
               <div
                 key={p.id}
                 className="flex items-center justify-between bg-secondary rounded-lg p-3"
-                data-ocid={`profile.post.item.${i + 1}`}
               >
                 <div>
                   <p className="text-sm font-medium">{p.title}</p>
@@ -251,7 +274,6 @@ export function UserProfileTab({
         variant="outline"
         className="w-full border-border text-muted-foreground"
         onClick={onLogout}
-        data-ocid="profile.button"
       >
         <span className="material-symbols-outlined text-lg mr-2">logout</span>
         Sign Out

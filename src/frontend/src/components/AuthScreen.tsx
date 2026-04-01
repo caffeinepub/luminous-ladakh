@@ -1,17 +1,9 @@
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useState } from "react";
-import { toast } from "sonner";
 import type { Role } from "../types";
+
+const inputCls =
+  "w-full bg-zinc-900 text-white border border-zinc-700 rounded-lg px-4 py-3 placeholder:text-zinc-500 focus:outline-none focus:border-amber-500 transition-colors";
+const labelCls = "block text-xs font-medium text-zinc-400 mb-1";
 
 interface Props {
   onLogin: (
@@ -23,630 +15,585 @@ interface Props {
     email: string;
     password: string;
     role: Exclude<Role, "creator">;
+    communityCode?: string;
   }) => { success: boolean; error?: string; electronicId?: string };
+  onSocialLogin?: (
+    provider: "google" | "facebook",
+    email: string,
+    name: string,
+    role: Exclude<Role, "creator">,
+  ) => {
+    success: boolean;
+    error?: string;
+    isNew?: boolean;
+    electronicId?: string;
+  };
 }
 
-export function AuthScreen({ onLogin, onSignup }: Props) {
-  const [mode, setMode] = useState<"login" | "signup">("login");
-  const [loginForm, setLoginForm] = useState({ username: "", password: "" });
-  const [signupForm, setSignupForm] = useState({
-    username: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    role: "user" as Exclude<Role, "creator">,
-  });
-  const [tcAccepted, setTcAccepted] = useState(false);
-  const [showTc, setShowTc] = useState(false);
-  const [loginLoading, setLoginLoading] = useState(false);
-  const [signupLoading, setSignupLoading] = useState(false);
-  const [loginError, setLoginError] = useState("");
-  const [signupError, setSignupError] = useState("");
+type AuthMethod = "email" | "google" | "facebook";
+type RoleChoice = "user" | "member" | "community" | "creator";
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoginError("");
-    if (!loginForm.username || !loginForm.password) {
-      setLoginError("Please fill in all fields");
-      return;
-    }
-    setLoginLoading(true);
-    await new Promise((r) => setTimeout(r, 400));
-    const result = onLogin(loginForm.username, loginForm.password);
-    setLoginLoading(false);
-    if (!result.success) setLoginError(result.error || "Login failed");
-  };
+const ROLES: {
+  value: RoleChoice;
+  label: string;
+  icon: string;
+  desc: string;
+}[] = [
+  {
+    value: "user",
+    label: "User",
+    icon: "🧭",
+    desc: "Explore & discover Ladakh",
+  },
+  {
+    value: "member",
+    label: "Member",
+    icon: "🏪",
+    desc: "Promote your business",
+  },
+  {
+    value: "community",
+    label: "Community",
+    icon: "🤝",
+    desc: "Community access (code required)",
+  },
+  {
+    value: "creator",
+    label: "Creator",
+    icon: "👑",
+    desc: "Admin & platform management",
+  },
+];
 
-  const handleSignup = async (e: React.FormEvent) => {
+export function AuthScreen({ onLogin, onSignup, onSocialLogin }: Props) {
+  const [selectedRole, setSelectedRole] = useState<RoleChoice | null>(null);
+  const [isLogin, setIsLogin] = useState(true);
+  const [method, setMethod] = useState<AuthMethod>("email");
+
+  // Email login
+  const [loginUsername, setLoginUsername] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+
+  // Email signup
+  const [signupUsername, setSignupUsername] = useState("");
+  const [signupEmail, setSignupEmail] = useState("");
+  const [signupPassword, setSignupPassword] = useState("");
+  const [signupConfirm, setSignupConfirm] = useState("");
+  const [communityCode, setCommunityCode] = useState("");
+  const [termsAccepted, setTermsAccepted] = useState(false);
+
+  // Social
+  const [socialEmail, setSocialEmail] = useState("");
+  const [socialName, setSocialName] = useState("");
+  const [socialCommunityCode, setSocialCommunityCode] = useState("");
+
+  const [error, setError] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  function resetForm() {
+    setError("");
+    setSuccessMsg("");
+    setLoginUsername("");
+    setLoginPassword("");
+  }
+
+  function handleEmailLogin(e: React.FormEvent) {
     e.preventDefault();
-    setSignupError("");
-    if (
-      !signupForm.username ||
-      !signupForm.email ||
-      !signupForm.password ||
-      !signupForm.confirmPassword
-    ) {
-      setSignupError("Please fill in all fields");
+    setError("");
+    const result = onLogin(loginUsername, loginPassword);
+    if (!result.success) setError(result.error || "Login failed");
+  }
+
+  function handleEmailSignup(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    if (signupPassword !== signupConfirm) {
+      setError("Passwords do not match");
       return;
     }
-    if (signupForm.username.length < 3) {
-      setSignupError("Username must be at least 3 characters");
+    if (!termsAccepted) {
+      setError("Please accept the Terms & Conditions");
       return;
     }
-    if (signupForm.password.length < 6) {
-      setSignupError("Password must be at least 6 characters");
-      return;
-    }
-    if (signupForm.password !== signupForm.confirmPassword) {
-      setSignupError("Passwords do not match");
-      return;
-    }
-    if (!tcAccepted) {
-      setSignupError("You must accept the Terms & Conditions");
-      return;
-    }
-    setSignupLoading(true);
-    await new Promise((r) => setTimeout(r, 500));
+    const role = selectedRole as Exclude<Role, "creator">;
     const result = onSignup({
-      username: signupForm.username,
-      email: signupForm.email,
-      password: signupForm.password,
-      role: signupForm.role,
+      username: signupUsername,
+      email: signupEmail,
+      password: signupPassword,
+      role,
+      communityCode: role === "community" ? communityCode : undefined,
     });
-    setSignupLoading(false);
     if (!result.success) {
-      setSignupError(result.error || "Signup failed");
-    } else {
-      toast.success(
-        `Welcome to Ladakh Connect! Your Electronic ID: ${result.electronicId}`,
-        { duration: 6000 },
+      setError(result.error || "Signup failed");
+    } else if (result.electronicId) {
+      setSuccessMsg(
+        `Welcome! Your Electronic ID is: ${result.electronicId} — save this for re-login.`,
       );
     }
-  };
+  }
 
-  return (
-    <div
-      className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden"
-      style={{ background: "#050505" }}
-    >
-      {/* Background image */}
-      <div className="absolute inset-0 pointer-events-none">
-        <img
-          src="https://picsum.photos/seed/pangong99/1200/800"
-          alt="Ladakh landscape"
-          className="w-full h-full object-cover"
-          style={{ opacity: 0.08 }}
-        />
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(ellipse at 50% 0%, rgba(180,140,60,0.08) 0%, transparent 60%)",
-          }}
-        />
-      </div>
+  function handleSocialSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    if (!onSocialLogin) return;
+    setLoading(true);
+    const role = (selectedRole as Exclude<Role, "creator">) || "user";
+    const result = onSocialLogin(
+      method as "google" | "facebook",
+      socialEmail,
+      socialName,
+      role,
+    );
+    setLoading(false);
+    if (!result.success) {
+      setError(result.error || "Login failed");
+    } else if (result.isNew && result.electronicId) {
+      setSuccessMsg(
+        `Account created! Your Electronic ID: ${result.electronicId}`,
+      );
+    }
+  }
 
-      <div className="relative z-10 w-full max-w-sm">
-        {/* Logo + App name */}
-        <div className="flex flex-col items-center mb-8 slide-up">
+  const providerName = method === "google" ? "Google" : "Facebook";
+
+  // Step 1: Role selection
+  if (!selectedRole) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center px-4">
+        <div className="mb-8 text-center">
           <img
-            src="/assets/generated/ladakh-logo-transparent.dim_200x200.png"
+            src="/assets/ladakh-connect-logo.png"
             alt="Ladakh Connect"
-            className="w-16 h-16 mb-3"
+            className="w-20 h-20 mx-auto mb-3 rounded-2xl shadow-lg"
           />
           <h1
-            className="text-4xl amber-text"
+            className="text-3xl text-amber-400"
             style={{
-              fontFamily: "PlayfairDisplay, serif",
+              fontFamily: "'Playfair Display', serif",
               fontStyle: "italic",
               fontWeight: 700,
             }}
           >
             Ladakh Connect
           </h1>
-          <p
-            className="text-sm mt-1 text-center"
-            style={{ color: "rgba(200,180,140,0.6)" }}
-          >
-            Discover the real Ladakh
+          <p className="text-zinc-500 text-sm mt-1">
+            Building Ladakh in one app
           </p>
         </div>
 
-        {/* Auth Card */}
-        <div
-          className="rounded-2xl p-6 slide-up stagger-1"
+        <div className="w-full max-w-sm">
+          <p className="text-center text-zinc-300 font-semibold mb-4 text-sm">
+            Who are you?
+          </p>
+          <div className="space-y-3">
+            {ROLES.map((r) => (
+              <button
+                key={r.value}
+                type="button"
+                onClick={() => {
+                  setSelectedRole(r.value);
+                  resetForm();
+                }}
+                className="w-full flex items-center gap-4 p-4 rounded-xl border border-zinc-800 bg-zinc-900/60 hover:border-amber-500/50 hover:bg-zinc-800 transition-all text-left"
+              >
+                <span className="text-2xl">{r.icon}</span>
+                <div>
+                  <p className="text-white font-semibold text-sm">{r.label}</p>
+                  <p className="text-zinc-500 text-xs">{r.desc}</p>
+                </div>
+                <span className="ml-auto text-zinc-600 text-lg">›</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const isCreatorRole = selectedRole === "creator";
+
+  return (
+    <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center px-4">
+      {/* Logo */}
+      <div className="mb-8 text-center">
+        <img
+          src="/assets/ladakh-connect-logo.png"
+          alt="Ladakh Connect"
+          className="w-16 h-16 mx-auto mb-3 rounded-2xl shadow-lg"
+        />
+        <h1
+          className="text-3xl text-amber-400"
           style={{
-            background: "rgba(18,15,12,0.95)",
-            border: "1px solid rgba(180,140,60,0.18)",
-            boxShadow: "0 24px 60px rgba(0,0,0,0.7)",
+            fontFamily: "'Playfair Display', serif",
+            fontStyle: "italic",
+            fontWeight: 700,
           }}
         >
-          {/* Heading */}
-          <h2
-            className="font-heading font-bold text-xl mb-1"
-            style={{ color: "#f5ecd0" }}
-          >
-            {mode === "login" ? "Welcome back" : "Create account"}
-          </h2>
-          <p
-            className="text-xs mb-5"
-            style={{ color: "rgba(200,180,140,0.55)" }}
-          >
-            {mode === "login"
-              ? "Sign in to continue to Ladakh Connect"
-              : "Join the Ladakh community today"}
-          </p>
+          Ladakh Connect
+        </h1>
+        <p className="text-zinc-500 text-sm mt-1">Building Ladakh in one app</p>
+      </div>
 
-          {mode === "login" ? (
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-1">
-                <Label
-                  htmlFor="login-username"
-                  className="text-xs font-medium"
-                  style={{ color: "rgba(220,200,160,0.7)" }}
-                >
+      <div className="w-full max-w-sm">
+        {/* Back + Role badge */}
+        <div className="flex items-center gap-3 mb-5">
+          <button
+            type="button"
+            onClick={() => setSelectedRole(null)}
+            className="text-zinc-400 hover:text-white text-sm flex items-center gap-1 transition-colors"
+          >
+            ← Back
+          </button>
+          <span className="ml-auto px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-xs font-semibold capitalize">
+            {ROLES.find((r) => r.value === selectedRole)?.icon} {selectedRole}
+          </span>
+        </div>
+
+        {/* Creator: login only */}
+        {isCreatorRole ? (
+          <div>
+            <p className="text-zinc-400 text-xs mb-4 text-center">
+              Creator access is restricted. Enter your credentials.
+            </p>
+            {error && (
+              <div className="mb-4 p-3 rounded-lg bg-red-500/15 border border-red-500/30 text-red-400 text-sm">
+                {error}
+              </div>
+            )}
+            <form onSubmit={handleEmailLogin} className="space-y-4">
+              <div>
+                <label htmlFor="auth-username" className={labelCls}>
                   Username
-                </Label>
-                <Input
-                  id="login-username"
-                  placeholder="Enter your username"
-                  value={loginForm.username}
-                  onChange={(e) =>
-                    setLoginForm((p) => ({ ...p, username: e.target.value }))
-                  }
-                  style={{
-                    background: "rgba(255,255,255,0.06)",
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    color: "#f0e8d0",
-                    borderRadius: "10px",
-                  }}
-                  data-ocid="auth.input"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label
-                  htmlFor="login-password"
-                  className="text-xs font-medium"
-                  style={{ color: "rgba(220,200,160,0.7)" }}
-                >
-                  Password
-                </Label>
-                <Input
-                  id="login-password"
-                  type="password"
-                  placeholder="Enter your password"
-                  value={loginForm.password}
-                  onChange={(e) =>
-                    setLoginForm((p) => ({ ...p, password: e.target.value }))
-                  }
-                  style={{
-                    background: "rgba(255,255,255,0.06)",
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    color: "#f0e8d0",
-                    borderRadius: "10px",
-                  }}
-                  data-ocid="auth.input"
-                />
-              </div>
-              {loginError && (
-                <p
-                  className="text-sm text-red-400"
-                  data-ocid="auth.error_state"
-                >
-                  {loginError}
-                </p>
-              )}
-              <Button
-                type="submit"
-                className="w-full font-semibold"
-                style={{
-                  background: "linear-gradient(135deg, #c9a227, #e8c55a)",
-                  color: "#1a1000",
-                  borderRadius: "10px",
-                  height: "44px",
-                }}
-                disabled={loginLoading}
-                data-ocid="auth.submit_button"
-              >
-                {loginLoading ? "Signing in..." : "Sign in"}
-              </Button>
-
-              <div className="relative my-3">
-                <div className="absolute inset-0 flex items-center">
-                  <div
-                    className="w-full"
-                    style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}
-                  />
-                </div>
-                <div className="relative flex justify-center text-[11px]">
-                  <span
-                    style={{
-                      background: "rgba(18,15,12,0.95)",
-                      padding: "0 8px",
-                      color: "rgba(200,180,140,0.45)",
-                    }}
-                  >
-                    or continue with
-                  </span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { label: "Google", icon: "G" },
-                  { label: "Facebook", icon: "f" },
-                  { label: "Email", icon: "@" },
-                ].map((s) => (
-                  <button
-                    key={s.label}
-                    type="button"
-                    onClick={() => toast.info(`${s.label} login coming soon!`)}
-                    className="flex flex-col items-center gap-1 py-2.5 rounded-xl text-xs font-medium transition-all hover:opacity-80"
-                    style={{
-                      background: "rgba(255,255,255,0.05)",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      color: "rgba(220,200,160,0.75)",
-                    }}
-                    data-ocid="auth.secondary_button"
-                  >
-                    <span
-                      className="text-base font-bold"
-                      style={{ color: "#c9a227" }}
-                    >
-                      {s.icon}
-                    </span>
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-            </form>
-          ) : (
-            <form onSubmit={handleSignup} className="space-y-3">
-              {[
-                {
-                  id: "su-username",
-                  label: "Username",
-                  placeholder: "Choose a username",
-                  field: "username",
-                  type: "text",
-                },
-                {
-                  id: "su-email",
-                  label: "Email",
-                  placeholder: "your@email.com",
-                  field: "email",
-                  type: "email",
-                },
-                {
-                  id: "su-pass",
-                  label: "Password",
-                  placeholder: "Min 6 characters",
-                  field: "password",
-                  type: "password",
-                },
-                {
-                  id: "su-confirm",
-                  label: "Confirm Password",
-                  placeholder: "Repeat password",
-                  field: "confirmPassword",
-                  type: "password",
-                },
-              ].map((f) => (
-                <div key={f.id} className="space-y-1">
-                  <Label
-                    htmlFor={f.id}
-                    className="text-xs font-medium"
-                    style={{ color: "rgba(220,200,160,0.7)" }}
-                  >
-                    {f.label}
-                  </Label>
-                  <Input
-                    id={f.id}
-                    type={f.type}
-                    placeholder={f.placeholder}
-                    value={
-                      signupForm[f.field as keyof typeof signupForm] as string
-                    }
-                    onChange={(e) =>
-                      setSignupForm((p) => ({
-                        ...p,
-                        [f.field]: e.target.value,
-                      }))
-                    }
-                    style={{
-                      background: "rgba(255,255,255,0.06)",
-                      border: "1px solid rgba(255,255,255,0.12)",
-                      color: "#f0e8d0",
-                      borderRadius: "10px",
-                    }}
-                    data-ocid="auth.input"
-                  />
-                </div>
-              ))}
-
-              <div className="space-y-1">
-                <Label
-                  className="text-xs font-medium"
-                  style={{ color: "rgba(220,200,160,0.7)" }}
-                >
-                  Account Type
-                </Label>
-                <Select
-                  value={signupForm.role}
-                  onValueChange={(v) =>
-                    setSignupForm((p) => ({
-                      ...p,
-                      role: v as Exclude<Role, "creator">,
-                    }))
-                  }
-                >
-                  <SelectTrigger
-                    style={{
-                      background: "rgba(255,255,255,0.06)",
-                      border: "1px solid rgba(255,255,255,0.12)",
-                      color: "#f0e8d0",
-                      borderRadius: "10px",
-                    }}
-                    data-ocid="auth.select"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent
-                    style={{
-                      background: "#141210",
-                      border: "1px solid rgba(255,255,255,0.12)",
-                    }}
-                  >
-                    <SelectItem value="user">
-                      User — Explore & Discover
-                    </SelectItem>
-                    <SelectItem value="member">
-                      Member — Business Listing (₹1,000/mo)
-                    </SelectItem>
-                    <SelectItem value="community">
-                      Community — Partner with Creator
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div
-                className="rounded-xl p-3 text-xs space-y-1"
-                style={{
-                  background: "rgba(255,200,0,0.05)",
-                  border: "1px solid rgba(255,200,0,0.15)",
-                  color: "rgba(220,200,160,0.65)",
-                }}
-              >
-                <p
-                  className="font-semibold"
-                  style={{ color: "rgba(220,200,160,0.9)" }}
-                >
-                  📋 Rules & Guidelines
-                </p>
-                <p>• Only post real, undiscovered places (not businesses)</p>
-                <p>
-                  • Member payments are{" "}
-                  <span className="text-red-400 font-semibold">
-                    non-refundable
-                  </span>
-                </p>
-                <p>• Violations lead to fines and suspension (L1–L7)</p>
-                <p>
-                  • No army/military content — auto-blocked, Level 2 warning
-                </p>
-              </div>
-
-              <div className="flex items-start gap-2">
-                <Checkbox
-                  id="tc"
-                  checked={tcAccepted}
-                  onCheckedChange={(v) => setTcAccepted(!!v)}
-                  data-ocid="auth.checkbox"
-                />
-                <label
-                  htmlFor="tc"
-                  className="text-xs cursor-pointer"
-                  style={{ color: "rgba(200,180,140,0.6)" }}
-                >
-                  I accept the{" "}
-                  <button
-                    type="button"
-                    onClick={() => setShowTc(true)}
-                    className="underline"
-                    style={{ color: "#c9a227" }}
-                  >
-                    Terms & Conditions
-                  </button>{" "}
-                  and Privacy Policy
                 </label>
+                <input
+                  className={inputCls}
+                  placeholder="Enter your username"
+                  value={loginUsername}
+                  onChange={(e) => setLoginUsername(e.target.value)}
+                  autoComplete="username"
+                  required
+                />
               </div>
-
-              {signupError && (
-                <p
-                  className="text-sm text-red-400"
-                  data-ocid="auth.error_state"
-                >
-                  {signupError}
-                </p>
-              )}
-              <Button
+              <div>
+                <label htmlFor="auth-password" className={labelCls}>
+                  Password
+                </label>
+                <input
+                  type="password"
+                  className={inputCls}
+                  placeholder="Enter your password"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  autoComplete="current-password"
+                  required
+                />
+              </div>
+              <button
                 type="submit"
-                className="w-full font-semibold"
-                style={{
-                  background: "linear-gradient(135deg, #c9a227, #e8c55a)",
-                  color: "#1a1000",
-                  borderRadius: "10px",
-                  height: "44px",
-                }}
-                disabled={signupLoading}
-                data-ocid="auth.submit_button"
+                className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold transition-colors"
               >
-                {signupLoading ? "Creating account..." : "Create Account"}
-              </Button>
+                Sign In as Creator
+              </button>
             </form>
-          )}
+          </div>
+        ) : (
+          <>
+            {/* Login / Signup toggle */}
+            <div className="flex rounded-xl overflow-hidden border border-zinc-800 mb-6">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLogin(true);
+                  setError("");
+                  setSuccessMsg("");
+                }}
+                className={`flex-1 py-3 text-sm font-semibold transition-colors ${
+                  isLogin
+                    ? "bg-amber-500 text-black"
+                    : "bg-zinc-900 text-zinc-400 hover:text-white"
+                }`}
+              >
+                Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLogin(false);
+                  setError("");
+                  setSuccessMsg("");
+                }}
+                className={`flex-1 py-3 text-sm font-semibold transition-colors ${
+                  !isLogin
+                    ? "bg-amber-500 text-black"
+                    : "bg-zinc-900 text-zinc-400 hover:text-white"
+                }`}
+              >
+                Sign Up
+              </button>
+            </div>
 
-          {/* Toggle mode */}
-          <p
-            className="text-center text-xs mt-5"
-            style={{ color: "rgba(200,180,140,0.5)" }}
-          >
-            {mode === "login" ? (
-              <>
-                Don&apos;t have an account?{" "}
+            {/* Method tabs */}
+            <div className="flex gap-2 mb-5">
+              {(["email", "google", "facebook"] as AuthMethod[]).map((m) => (
                 <button
+                  key={m}
                   type="button"
                   onClick={() => {
-                    setMode("signup");
-                    setLoginError("");
+                    setMethod(m);
+                    setError("");
                   }}
-                  className="font-semibold underline"
-                  style={{ color: "#c9a227" }}
-                  data-ocid="auth.toggle_mode"
+                  className={`flex-1 py-2 rounded-lg text-xs font-semibold border transition-colors ${
+                    method === m
+                      ? "border-amber-500 text-amber-400 bg-amber-500/10"
+                      : "border-zinc-800 text-zinc-500 hover:text-zinc-300"
+                  }`}
                 >
-                  Sign Up
+                  {m === "email"
+                    ? "📧 Email"
+                    : m === "google"
+                      ? "🔵 Google"
+                      : "🔷 Facebook"}
                 </button>
-              </>
-            ) : (
-              <>
-                Already have an account?{" "}
+              ))}
+            </div>
+
+            {/* Error / Success */}
+            {error && (
+              <div className="mb-4 p-3 rounded-lg bg-red-500/15 border border-red-500/30 text-red-400 text-sm">
+                {error}
+              </div>
+            )}
+            {successMsg && (
+              <div className="mb-4 p-3 rounded-lg bg-green-500/15 border border-green-500/30 text-green-400 text-sm">
+                {successMsg}
+              </div>
+            )}
+
+            {/* EMAIL LOGIN */}
+            {isLogin && method === "email" && (
+              <form onSubmit={handleEmailLogin} className="space-y-4">
+                <div>
+                  <label htmlFor="auth-username" className={labelCls}>
+                    Username
+                  </label>
+                  <input
+                    className={inputCls}
+                    placeholder="Enter your username"
+                    value={loginUsername}
+                    onChange={(e) => setLoginUsername(e.target.value)}
+                    autoComplete="username"
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="auth-password" className={labelCls}>
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    className={inputCls}
+                    placeholder="Enter your password"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    autoComplete="current-password"
+                    required
+                  />
+                </div>
                 <button
-                  type="button"
-                  onClick={() => {
-                    setMode("login");
-                    setSignupError("");
-                  }}
-                  className="font-semibold underline"
-                  style={{ color: "#c9a227" }}
-                  data-ocid="auth.toggle_mode"
+                  type="submit"
+                  className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold transition-colors"
                 >
                   Sign In
                 </button>
-              </>
+              </form>
             )}
+
+            {/* EMAIL SIGNUP */}
+            {!isLogin && method === "email" && (
+              <form onSubmit={handleEmailSignup} className="space-y-4">
+                <div>
+                  <label htmlFor="auth-username" className={labelCls}>
+                    Username
+                  </label>
+                  <input
+                    className={inputCls}
+                    placeholder="Choose a username"
+                    value={signupUsername}
+                    onChange={(e) => setSignupUsername(e.target.value)}
+                    autoComplete="username"
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="auth-email" className={labelCls}>
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    className={inputCls}
+                    placeholder="your@email.com"
+                    value={signupEmail}
+                    onChange={(e) => setSignupEmail(e.target.value)}
+                    autoComplete="email"
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="auth-password" className={labelCls}>
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    className={inputCls}
+                    placeholder="Create a password"
+                    value={signupPassword}
+                    onChange={(e) => setSignupPassword(e.target.value)}
+                    autoComplete="new-password"
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="auth-confirm" className={labelCls}>
+                    Confirm Password
+                  </label>
+                  <input
+                    type="password"
+                    className={inputCls}
+                    placeholder="Confirm your password"
+                    value={signupConfirm}
+                    onChange={(e) => setSignupConfirm(e.target.value)}
+                    autoComplete="new-password"
+                    required
+                  />
+                </div>
+                {selectedRole === "community" && (
+                  <div>
+                    <label htmlFor="auth-code" className={labelCls}>
+                      Community Access Code
+                    </label>
+                    <input
+                      className={inputCls}
+                      placeholder="Enter the access code from your Creator"
+                      value={communityCode}
+                      onChange={(e) => setCommunityCode(e.target.value)}
+                      required
+                    />
+                  </div>
+                )}
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-1 accent-amber-500"
+                    checked={termsAccepted}
+                    onChange={(e) => setTermsAccepted(e.target.checked)}
+                  />
+                  <span className="text-xs text-zinc-400">
+                    I agree to the{" "}
+                    <span className="text-amber-400 underline cursor-pointer">
+                      Terms & Conditions
+                    </span>{" "}
+                    and{" "}
+                    <span className="text-amber-400 underline cursor-pointer">
+                      Privacy Policy
+                    </span>
+                    . Military/army content is strictly prohibited.
+                  </span>
+                </label>
+                <button
+                  type="submit"
+                  className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold transition-colors"
+                >
+                  Create Account
+                </button>
+              </form>
+            )}
+
+            {/* GOOGLE / FACEBOOK */}
+            {method !== "email" && (
+              <form onSubmit={handleSocialSubmit} className="space-y-4">
+                <div
+                  className={`flex items-center gap-3 p-4 rounded-xl border border-zinc-700 ${
+                    method === "google"
+                      ? "bg-white text-zinc-900"
+                      : "bg-[#1877F2] text-white"
+                  }`}
+                >
+                  <span className="text-2xl">
+                    {method === "google" ? "🔵" : "🔷"}
+                  </span>
+                  <div>
+                    <p className="font-bold text-sm">
+                      Continue with {providerName}
+                    </p>
+                    <p className="text-xs opacity-70">
+                      Enter your {providerName} account details
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="auth-social-email" className={labelCls}>
+                    {providerName} Email
+                  </label>
+                  <input
+                    type="email"
+                    className={inputCls}
+                    placeholder={`your@${method === "google" ? "gmail.com" : "facebook.com"}`}
+                    value={socialEmail}
+                    onChange={(e) => setSocialEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="auth-name" className={labelCls}>
+                    Your Full Name
+                  </label>
+                  <input
+                    className={inputCls}
+                    placeholder="Name as on your account"
+                    value={socialName}
+                    onChange={(e) => setSocialName(e.target.value)}
+                    required
+                  />
+                </div>
+                {!isLogin && selectedRole === "community" && (
+                  <div>
+                    <label htmlFor="auth-code" className={labelCls}>
+                      Community Access Code
+                    </label>
+                    <input
+                      className={inputCls}
+                      placeholder="Enter access code"
+                      value={socialCommunityCode}
+                      onChange={(e) => setSocialCommunityCode(e.target.value)}
+                      required
+                    />
+                  </div>
+                )}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className={`w-full py-3 rounded-xl font-bold transition-colors ${
+                    method === "google"
+                      ? "bg-white text-zinc-900 hover:bg-zinc-100"
+                      : "bg-[#1877F2] text-white hover:bg-blue-600"
+                  }`}
+                >
+                  {loading ? "Connecting..." : `Continue with ${providerName}`}
+                </button>
+              </form>
+            )}
+          </>
+        )}
+
+        {/* Warnings */}
+        <div className="mt-6 p-3 rounded-lg bg-zinc-900 border border-zinc-800">
+          <p className="text-xs text-zinc-500 text-center">
+            ⚠️ Military/army content is strictly prohibited and will result in
+            automatic account warnings.
           </p>
         </div>
-
-        <p
-          className="text-center text-xs mt-5"
-          style={{ color: "rgba(180,160,120,0.35)" }}
-        >
-          © {new Date().getFullYear()}.{" "}
-          <a
-            href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
-            target="_blank"
-            rel="noreferrer"
-            className="hover:opacity-80 transition-opacity"
-          >
-            Built with caffeine.ai
-          </a>
-        </p>
       </div>
-
-      {/* T&C Modal */}
-      {showTc && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.8)" }}
-          onClick={() => setShowTc(false)}
-          role="presentation"
-          onKeyDown={(e) => {
-            if (e.key === "Escape") setShowTc(false);
-          }}
-        >
-          <div
-            className="rounded-2xl p-6 max-w-md w-full max-h-[80vh] overflow-y-auto"
-            style={{
-              background: "#141210",
-              border: "1px solid rgba(180,140,60,0.2)",
-            }}
-            onClick={(e) => e.stopPropagation()}
-            role="presentation"
-            onKeyDown={(e) => e.stopPropagation()}
-            data-ocid="auth.dialog"
-          >
-            <h2
-              className="font-heading text-lg font-bold mb-4"
-              style={{ color: "#f5ecd0" }}
-            >
-              Terms & Conditions
-            </h2>
-            <div
-              className="text-sm space-y-3"
-              style={{ color: "rgba(200,180,140,0.7)" }}
-            >
-              <p>
-                <strong style={{ color: "#f5ecd0" }}>
-                  1. Platform Purpose
-                </strong>
-                <br />
-                Ladakh Connect is a community platform for discovering and
-                promoting authentic Ladakhi destinations and businesses.
-              </p>
-              <p>
-                <strong style={{ color: "#f5ecd0" }}>2. User Conduct</strong>
-                <br />
-                Users must post only genuine undiscovered places. Misleading
-                content or spam will result in violations.
-              </p>
-              <p>
-                <strong style={{ color: "#f5ecd0" }}>
-                  3. Military & Restricted Content
-                </strong>
-                <br />
-                Posting content showing army camps, military vehicles, uniforms,
-                or restricted zones is{" "}
-                <span className="text-red-400 font-semibold">
-                  strictly prohibited
-                </span>{" "}
-                and results in automatic Level 2 warning.
-              </p>
-              <p>
-                <strong style={{ color: "#f5ecd0" }}>4. Member Payments</strong>
-                <br />
-                All membership payments (₹1,000/mo Common, ₹1,500/mo Premier)
-                are{" "}
-                <span className="text-red-400 font-semibold">
-                  strictly non-refundable
-                </span>
-                .
-              </p>
-              <p>
-                <strong style={{ color: "#f5ecd0" }}>
-                  5. Violation System
-                </strong>
-                <br />
-                Level 1: Warning • Level 2: Final Warning • Level 3: ₹500 Fine •
-                Level 4: ₹1,000 Fine • Level 5: ₹1,500 Fine • Level 6:
-                Suspension • Level 7: Permanent Ban. Content and history deleted
-                on ban; ID remains on cloud record.
-              </p>
-              <p>
-                <strong style={{ color: "#f5ecd0" }}>6. Privacy & Data</strong>
-                <br />
-                Your data is stored securely in the cloud. Electronic IDs are
-                unique identifiers for re-login purposes.
-              </p>
-            </div>
-            <button
-              type="button"
-              className="w-full mt-5 py-3 rounded-xl font-semibold text-sm"
-              style={{
-                background: "linear-gradient(135deg, #c9a227, #e8c55a)",
-                color: "#1a1000",
-              }}
-              onClick={() => {
-                setShowTc(false);
-                setTcAccepted(true);
-              }}
-              data-ocid="auth.confirm_button"
-            >
-              Accept & Close
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

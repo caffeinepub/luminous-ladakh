@@ -1,10 +1,17 @@
 import type { Account } from "../../types";
 
-interface Props {
-  currentUser: Account;
+interface PaymentRecord {
+  date: string;
+  amount: number;
+  status: string;
 }
 
-export function MembershipTab({ currentUser }: Props) {
+interface Props {
+  currentUser: Account;
+  paymentHistory?: PaymentRecord[];
+}
+
+export function MembershipTab({ currentUser, paymentHistory = [] }: Props) {
   const trialStart = currentUser.trialStartDate
     ? new Date(currentUser.trialStartDate)
     : null;
@@ -73,6 +80,18 @@ export function MembershipTab({ currentUser }: Props) {
           </div>
         )}
 
+        {!trialActive && currentUser.membershipStatus === "trial" && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-4">
+            <p className="text-sm text-red-400 font-semibold">
+              ⚠️ Trial Expired
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Your 24-hour trial has ended. Please pay to continue accessing
+              business features.
+            </p>
+          </div>
+        )}
+
         <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-4">
           <p className="text-xs text-red-400 font-semibold">
             ⚠️ Non-Refundable Payment Policy
@@ -88,10 +107,12 @@ export function MembershipTab({ currentUser }: Props) {
           {currentUser.membershipTier === "Common" ? (
             <div className="space-y-1">
               {[
-                "Business listing on Explore page",
+                "1 business listing on Explore page",
                 "Customer reviews visible",
                 "Edit business profile",
                 "Google Maps directions link",
+                "Multiple photos per business",
+                "300 MB cloud storage",
                 "Violation monitoring dashboard",
               ].map((f) => (
                 <div
@@ -109,9 +130,11 @@ export function MembershipTab({ currentUser }: Props) {
             <div className="space-y-1">
               {[
                 "All Common features",
+                "Up to 3 business listings",
                 "Premier badge on listing",
                 "Priority placement in Explore",
-                "Video upload support (coming soon)",
+                "Video upload support",
+                "1 GB cloud storage",
                 "Webpage editing (coming soon)",
               ].map((f) => (
                 <div
@@ -134,7 +157,8 @@ export function MembershipTab({ currentUser }: Props) {
               Upgrade to Premier
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              ₹500/mo more for premium benefits. Contact the creator to upgrade.
+              ₹500/mo more for premium benefits — 3 businesses, videos & 1 GB
+              storage. Contact the creator to upgrade.
             </p>
           </div>
         )}
@@ -142,44 +166,38 @@ export function MembershipTab({ currentUser }: Props) {
 
       <div className="bg-card border border-border rounded-xl p-4">
         <h3 className="font-heading font-semibold mb-3">Payment History</h3>
-        <div className="space-y-2" data-ocid="membership.table">
-          {[
-            {
-              date: "Aug 1, 2024",
-              amount: currentUser.membershipTier === "Premier" ? 1500 : 1000,
-              status: "Paid",
-            },
-            {
-              date: "Jul 1, 2024",
-              amount: currentUser.membershipTier === "Premier" ? 1500 : 1000,
-              status: "Paid",
-            },
-            {
-              date: "Jun 1, 2024",
-              amount: currentUser.membershipTier === "Premier" ? 1500 : 1000,
-              status: "Paid",
-            },
-          ].map((p, idx) => (
-            <div
-              key={p.date}
-              className="flex items-center justify-between bg-secondary rounded-lg p-3"
-              data-ocid={`membership.row.${idx + 1}`}
-            >
-              <div>
-                <p className="text-sm font-medium">{p.date}</p>
-                <p className="text-xs text-muted-foreground">
-                  Monthly subscription
-                </p>
+        {paymentHistory.length === 0 ? (
+          <p
+            className="text-sm text-muted-foreground text-center py-4"
+            data-ocid="membership.empty_state"
+          >
+            No payment history yet. Your payments will appear here once
+            processed.
+          </p>
+        ) : (
+          <div className="space-y-2" data-ocid="membership.table">
+            {paymentHistory.map((p, idx) => (
+              <div
+                key={`payment-${p.date}-${idx}`}
+                className="flex items-center justify-between bg-secondary rounded-lg p-3"
+                data-ocid={`membership.row.${idx + 1}`}
+              >
+                <div>
+                  <p className="text-sm font-medium">{p.date}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Monthly subscription
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-semibold">
+                    ₹{p.amount.toLocaleString()}
+                  </p>
+                  <span className="text-xs text-green-400">{p.status}</span>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="text-sm font-semibold">
-                  ₹{p.amount.toLocaleString()}
-                </p>
-                <span className="text-xs text-green-400">{p.status}</span>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

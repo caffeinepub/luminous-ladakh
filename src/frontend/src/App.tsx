@@ -33,6 +33,7 @@ const USER_NAV = [
 
 const MEMBER_NAV = [
   { id: "explore", icon: "explore", label: "Explore" },
+  { id: "search", icon: "search", label: "Search" },
   { id: "business", icon: "store", label: "My Business" },
   { id: "membership", icon: "card_membership", label: "Membership" },
   { id: "profile", icon: "person", label: "Profile" },
@@ -40,6 +41,7 @@ const MEMBER_NAV = [
 
 const COMMUNITY_NAV = [
   { id: "explore", icon: "explore", label: "Explore" },
+  { id: "search", icon: "search", label: "Search" },
   { id: "business", icon: "store", label: "My Business" },
   { id: "permissions", icon: "key", label: "Permissions" },
   { id: "profile", icon: "person", label: "Profile" },
@@ -55,20 +57,19 @@ const CREATOR_NAV = [
 ];
 
 export default function App() {
-  const { currentUser, login, signup, logout, updateCurrentUser } = useAuth();
+  const { currentUser, login, socialLogin, signup, logout, updateCurrentUser } =
+    useAuth();
   const data = useData();
   const [activeTab, setActiveTab] = useState<string>("");
   const [showPostModal, setShowPostModal] = useState(false);
   const [_renderTick, setRenderTick] = useState(0);
 
-  // Force re-render on data changes
   useEffect(() => {
     const handler = () => setRenderTick((t) => t + 1);
     window.addEventListener("lc_data_changed", handler);
     return () => window.removeEventListener("lc_data_changed", handler);
   }, []);
 
-  // Set default tab when user logs in
   useEffect(() => {
     if (currentUser) {
       const defaults: Record<string, string> = {
@@ -92,7 +93,11 @@ export default function App() {
   if (!currentUser) {
     return (
       <>
-        <AuthScreen onLogin={login} onSignup={signup} />
+        <AuthScreen
+          onLogin={login}
+          onSignup={signup}
+          onSocialLogin={socialLogin}
+        />
         <Toaster position="top-center" richColors />
       </>
     );
@@ -101,6 +106,7 @@ export default function App() {
   const accounts = data.getAccounts();
   const posts = data.getPosts();
   const reviews = data.getReviews();
+  const locationReviews = data.getLocationReviews();
   const violations = data.getViolations();
   const permissionRequests = data.getPermissionRequests();
   const walletBalance = data.getWalletBalance();
@@ -120,6 +126,13 @@ export default function App() {
   const isCreator = currentUser.role === "creator";
   const isSuspended = currentUser.status === "suspended";
 
+  const roleColors: Record<string, string> = {
+    creator: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+    member: "bg-blue-500/15 text-blue-400 border-blue-500/30",
+    community: "bg-purple-500/15 text-purple-400 border-purple-500/30",
+    user: "bg-zinc-800 text-zinc-400 border-zinc-700",
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -127,7 +140,7 @@ export default function App() {
         <div className="flex items-center justify-between px-4 py-3 max-w-lg mx-auto">
           <div className="flex items-center gap-2">
             <img
-              src="/assets/generated/ladakh-logo-transparent.dim_200x200.png"
+              src="/assets/ladakh-connect-logo.png"
               alt="Logo"
               className="w-7 h-7"
             />
@@ -144,24 +157,23 @@ export default function App() {
           </div>
           <div className="flex items-center gap-2">
             <span
-              className={`text-xs px-2 py-0.5 rounded-full border ${
-                currentUser.role === "creator"
-                  ? "bg-primary/15 text-primary border-primary/30"
-                  : currentUser.role === "member"
-                    ? "bg-blue-500/15 text-blue-400 border-blue-500/30"
-                    : currentUser.role === "community"
-                      ? "bg-purple-500/15 text-purple-400 border-purple-500/30"
-                      : "bg-secondary text-muted-foreground border-border"
-              } capitalize`}
+              className={`text-xs px-2 py-0.5 rounded-full border capitalize ${roleColors[currentUser.role] || roleColors.user}`}
             >
               {currentUser.role}
             </span>
-            <span className="text-sm text-muted-foreground">
-              @{currentUser.username}
-            </span>
+            {currentUser.profilePhoto ? (
+              <img
+                src={currentUser.profilePhoto}
+                alt="avatar"
+                className="w-7 h-7 rounded-full object-cover border border-zinc-700"
+              />
+            ) : (
+              <div className="w-7 h-7 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-xs font-bold text-zinc-400">
+                {currentUser.username[0].toUpperCase()}
+              </div>
+            )}
           </div>
         </div>
-        {/* Creator: tab overflow */}
         {isCreator && (
           <div className="flex gap-0 overflow-x-auto scrollbar-hide border-t border-border">
             {CREATOR_NAV.map((item) => (
@@ -174,7 +186,6 @@ export default function App() {
                     : "text-muted-foreground border-transparent hover:text-foreground"
                 }`}
                 type="button"
-                data-ocid={`nav.${item.id}.link`}
               >
                 <span className="material-symbols-outlined text-[18px]">
                   {item.icon}
@@ -190,7 +201,6 @@ export default function App() {
       <main
         className={`max-w-lg mx-auto px-4 pb-24 ${isCreator ? "pt-28" : "pt-20"}`}
       >
-        {/* Suspension banner */}
         {isSuspended && (
           <div className="mb-4 bg-yellow-500/15 border border-yellow-500/40 rounded-xl p-3 flex items-center gap-2">
             <span className="material-symbols-outlined text-yellow-400 text-lg">
@@ -211,9 +221,11 @@ export default function App() {
                 accounts={accounts}
                 posts={posts}
                 reviews={reviews}
+                locationReviews={locationReviews}
                 currentUserId={currentUser.id}
                 currentUserRole={currentUser.role}
                 onAddReview={data.addReview}
+                onAddLocationReview={data.addLocationReview}
               />
             )}
             {activeTab === "search" && (
@@ -247,6 +259,18 @@ export default function App() {
                 accounts={accounts}
                 posts={posts}
                 reviews={reviews}
+                locationReviews={locationReviews}
+                currentUserId={currentUser.id}
+                currentUserRole={currentUser.role}
+                onAddReview={data.addReview}
+                onAddLocationReview={data.addLocationReview}
+              />
+            )}
+            {activeTab === "search" && (
+              <SearchTab
+                accounts={accounts}
+                posts={posts}
+                reviews={reviews}
                 currentUserId={currentUser.id}
                 currentUserRole={currentUser.role}
                 onAddReview={data.addReview}
@@ -260,10 +284,17 @@ export default function App() {
                   data.updateAccount(currentUser.id, updates);
                   updateCurrentUser(updates);
                 }}
+                onIssueViolation={data.addViolation}
               />
             )}
             {activeTab === "membership" && (
-              <MembershipTab currentUser={currentUser} />
+              <MembershipTab
+                currentUser={currentUser}
+                paymentHistory={JSON.parse(
+                  localStorage.getItem(`lc_memberPayments_${currentUser.id}`) ||
+                    "[]",
+                )}
+              />
             )}
             {activeTab === "profile" && (
               <MemberProfileTab
@@ -282,6 +313,18 @@ export default function App() {
           <>
             {activeTab === "explore" && (
               <ExploreTab
+                accounts={accounts}
+                posts={posts}
+                reviews={reviews}
+                locationReviews={locationReviews}
+                currentUserId={currentUser.id}
+                currentUserRole={currentUser.role}
+                onAddReview={data.addReview}
+                onAddLocationReview={data.addLocationReview}
+              />
+            )}
+            {activeTab === "search" && (
+              <SearchTab
                 accounts={accounts}
                 posts={posts}
                 reviews={reviews}
@@ -345,10 +388,12 @@ export default function App() {
                 accounts={accounts}
                 posts={posts}
                 reviews={reviews}
+                locationReviews={locationReviews}
                 currentUserId={currentUser.id}
                 currentUserRole={currentUser.role}
                 isCreator
                 onAddReview={data.addReview}
+                onAddLocationReview={data.addLocationReview}
                 onApprovePost={(id) => {
                   data.updatePost(id, { status: "approved" });
                   toast.success("Post approved!");
@@ -366,6 +411,7 @@ export default function App() {
               <CreatorWallet
                 balance={walletBalance}
                 transactions={walletTransactions}
+                pendingPayments={data.getPendingPayments()}
                 members={members}
                 onWithdraw={(amount, bankName) => {
                   data.addWalletTransaction({
@@ -376,22 +422,22 @@ export default function App() {
                   });
                   setRenderTick((t) => t + 1);
                 }}
-                onSimulatePayment={() => {
-                  const m = members[Math.floor(Math.random() * members.length)];
-                  if (!m) {
-                    toast.error("No members to simulate from");
-                    return;
+                onConfirmPayment={(id) => {
+                  const pending = data.getPendingPayments();
+                  const p = pending.find((x) => x.id === id);
+                  if (p) {
+                    data.addWalletTransaction({
+                      type: "payment",
+                      amount: p.amount,
+                      from: p.memberUsername,
+                      note: `${p.tier} Membership from @${p.memberUsername}`,
+                    });
+                    data.removePendingPayment(id);
+                    setRenderTick((t) => t + 1);
                   }
-                  const amount = m.membershipTier === "Premier" ? 1500 : 1000;
-                  data.addWalletTransaction({
-                    type: "payment",
-                    amount,
-                    from: m.username,
-                    note: `${m.membershipTier} Membership - Simulated`,
-                  });
-                  toast.success(
-                    `₹${amount.toLocaleString()} payment received from @${m.username}`,
-                  );
+                }}
+                onRejectPayment={(id) => {
+                  data.removePendingPayment(id);
                   setRenderTick((t) => t + 1);
                 }}
               />
@@ -427,13 +473,13 @@ export default function App() {
                 walletBalance={walletBalance}
                 onLogout={logout}
                 onUpdateUser={updateCurrentUser}
+                onSetCommunityCode={data.setCommunityCode}
               />
             )}
           </>
         )}
       </main>
 
-      {/* Bottom Nav for non-creator */}
       {!isCreator && (
         <BottomNav
           items={navItems}
@@ -442,7 +488,6 @@ export default function App() {
         />
       )}
 
-      {/* Post Place Modal */}
       {showPostModal && currentUser.role === "user" && (
         <PostPlaceModal
           currentUserId={currentUser.id}
