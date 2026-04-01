@@ -24,8 +24,8 @@ const DEFAULT_LOCATIONS: Location[] = [
       "Founded in the 15th century, Thiksey is 19 km east of Leh at 3,600m altitude. The Chamchun (Maitreya) Buddha statue is 15m tall and spans 2 floors. Morning puja begins at 6:00 AM — visitors are welcome. Entry fee: ₹50. Best time: May–September. Photography allowed inside with permit.",
     address: "Thiksey Village, Leh–Manali Highway, 19 km from Leh city center.",
     photos: [
-      "/assets/generated/thiksey-monastery.dim_800x500.jpg",
-      "/assets/generated/monastery-interior.dim_800x500.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Thikse_Monastery_.jpg/1280px-Thikse_Monastery_.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/Thikse_Monastery%2C_Ladakh%2C_India_-_2.jpg/1280px-Thikse_Monastery%2C_Ladakh%2C_India_-_2.jpg",
       "/assets/generated/prayer-flags-ladakh.dim_800x500.jpg",
     ],
     mapsUrl: "https://maps.google.com/?q=Thiksey+Monastery+Ladakh",
@@ -41,9 +41,9 @@ const DEFAULT_LOCATIONS: Location[] = [
     address:
       "Diskit Village, Nubra Valley, 120 km north of Leh via Khardung La pass.",
     photos: [
-      "/assets/generated/diskit-monastery.dim_800x500.jpg",
-      "/assets/generated/monastery-interior.dim_800x500.jpg",
-      "/assets/generated/nubra-bactrian-camels.dim_800x500.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/Diskit_Gompa_2.jpg/1280px-Diskit_Gompa_2.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Maitreya_Buddha_-_Nubra.jpg/800px-Maitreya_Buddha_-_Nubra.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Monk_at_Diskit_Gompa.jpg/800px-Monk_at_Diskit_Gompa.jpg",
     ],
     mapsUrl: "https://maps.google.com/?q=Diskit+Monastery+Nubra",
   },
@@ -58,8 +58,8 @@ const DEFAULT_LOCATIONS: Location[] = [
     address:
       "Lamayuru Village, NH1 (Leh–Srinagar Highway), 125 km west of Leh.",
     photos: [
-      "/assets/generated/lamayuru-monastery.dim_800x500.jpg",
-      "/assets/generated/monastery-interior.dim_800x500.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Lamayuru_Monastery%2C_Ladakh%2C_India.jpg/1280px-Lamayuru_Monastery%2C_Ladakh%2C_India.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Lamayuru_monastery_2009.jpg/1280px-Lamayuru_monastery_2009.jpg",
       "/assets/generated/prayer-flags-ladakh.dim_800x500.jpg",
     ],
     mapsUrl: "https://maps.google.com/?q=Lamayuru+Monastery+Ladakh",
@@ -75,8 +75,8 @@ const DEFAULT_LOCATIONS: Location[] = [
     address:
       "Spituk Village, 8 km south-west of Leh city, near Leh–Manali Highway.",
     photos: [
-      "/assets/generated/spituk-monastery.dim_800x500.jpg",
-      "/assets/generated/monastery-interior.dim_800x500.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Spituk.jpg/1280px-Spituk.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/b/be/Spituk_Monastery-2008.jpg",
       "/assets/generated/prayer-flags-ladakh.dim_800x500.jpg",
     ],
     mapsUrl: "https://maps.google.com/?q=Spituk+Monastery+Ladakh",
@@ -91,9 +91,9 @@ const DEFAULT_LOCATIONS: Location[] = [
       "Shey was the ancient royal capital of Ladakh. The main gompa houses a 7.5-meter copper-gilded Shakyamuni Buddha — the largest indoor statue in Ladakh. Palace ruins date to the 17th century. Located 15 km east of Leh on the Leh–Manali Highway. Entry: ₹30. Open: 8:00 AM – 1:00 PM & 2:00 PM – 6:00 PM.",
     address: "Shey Village, Leh–Manali Highway, 15 km east of Leh city center.",
     photos: [
-      "/assets/generated/shey-monastery.dim_800x500.jpg",
-      "/assets/generated/monastery-interior.dim_800x500.jpg",
-      "/assets/generated/leh-palace.dim_800x500.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ed/Shey_Palace%2C_Ladakh_01.jpg/1280px-Shey_Palace%2C_Ladakh_01.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ef/Shey_Palace%2C_Ladakh_02.jpg/1280px-Shey_Palace%2C_Ladakh_02.jpg",
+      "/assets/generated/prayer-flags-ladakh.dim_800x500.jpg",
     ],
     mapsUrl: "https://maps.google.com/?q=Shey+Monastery+Ladakh",
   },
@@ -108,8 +108,8 @@ const DEFAULT_LOCATIONS: Location[] = [
     address:
       "Alchi Village, 70 km west of Leh via Srinagar Highway, turn at Saspool.",
     photos: [
-      "/assets/generated/hemis-monastery.dim_800x500.jpg",
-      "/assets/generated/monastery-interior.dim_800x500.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Alchi.jpg/1280px-Alchi.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Alchi_Monastery_%26_Village.jpg/1280px-Alchi_Monastery_%26_Village.jpg",
       "/assets/generated/prayer-flags-ladakh.dim_800x500.jpg",
     ],
     mapsUrl: "https://maps.google.com/?q=Alchi+Monastery+Ladakh",
@@ -125,8 +125,8 @@ const DEFAULT_LOCATIONS: Location[] = [
     address:
       "Namgyal Tsemo Hill, above Old Leh town. Trailhead behind Leh Palace.",
     photos: [
-      "/assets/generated/shanti-stupa.dim_800x500.jpg",
-      "/assets/generated/monastery-interior.dim_800x500.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Namgyal_Tsemo_Monastery%2C_Leh_01.jpg/1280px-Namgyal_Tsemo_Monastery%2C_Leh_01.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Tsemo_Gompa_-_2.jpg/1280px-Tsemo_Gompa_-_2.jpg",
       "/assets/generated/prayer-flags-ladakh.dim_800x500.jpg",
     ],
     mapsUrl: "https://maps.google.com/?q=Namgyal+Tsemo+Leh",
@@ -159,8 +159,8 @@ const DEFAULT_LOCATIONS: Location[] = [
     address:
       "Main Bazaar Road (Moti Market), central Leh town. 5 minutes walk from Leh Palace.",
     photos: [
-      "/assets/generated/leh-jama-masjid.dim_800x500.jpg",
-      "/assets/generated/leh-jama-masjid.dim_800x500.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Leh_mosque_and_palace.jpg/1280px-Leh_mosque_and_palace.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/Leh-old-town-jama-masjid_1934.jpg/1280px-Leh-old-town-jama-masjid_1934.jpg",
       "/assets/generated/prayer-flags-ladakh.dim_800x500.jpg",
     ],
     mapsUrl: "https://maps.google.com/?q=Leh+Jama+Masjid",
@@ -176,9 +176,9 @@ const DEFAULT_LOCATIONS: Location[] = [
     address:
       "Pangong Tso, Chang La Highway, 160 km east of Leh. Via Chang La Pass (5,360m altitude).",
     photos: [
-      "/assets/generated/pangong-lake.dim_800x500.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/Pangong_tso.jpg/1280px-Pangong_tso.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Pangong_Tso_lake_in_Ladakh_India.jpg/1280px-Pangong_Tso_lake_in_Ladakh_India.jpg",
       "/assets/generated/pangong-lake-sunset.dim_800x500.jpg",
-      "/assets/generated/nubra-valley.dim_800x500.jpg",
     ],
     mapsUrl: "https://maps.google.com/?q=Pangong+Lake+Ladakh",
   },
@@ -193,9 +193,9 @@ const DEFAULT_LOCATIONS: Location[] = [
     address:
       "Nubra Valley, 120 km north of Leh via Khardung La Pass (5,359m). Main village: Diskit.",
     photos: [
-      "/assets/generated/nubra-valley.dim_800x500.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/Nubra_Valley_2.jpg/1280px-Nubra_Valley_2.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/Sand_dunes_of_Nubra_Valley%2C_Ladakh.jpg/1280px-Sand_dunes_of_Nubra_Valley%2C_Ladakh.jpg",
       "/assets/generated/nubra-bactrian-camels.dim_800x500.jpg",
-      "/assets/generated/diskit-monastery.dim_800x500.jpg",
     ],
     mapsUrl: "https://maps.google.com/?q=Nubra+Valley+Ladakh",
   },
@@ -210,8 +210,8 @@ const DEFAULT_LOCATIONS: Location[] = [
     address:
       "Hemis Village, 45 km south-east of Leh via Karu on Leh–Manali Highway.",
     photos: [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/13-10-08_217_CONFLUENCE_OF_INDUS_RIVER_N.jpg/1280px-13-10-08_217_CONFLUENCE_OF_INDUS_RIVER_N.jpg",
       "/assets/generated/nubra-valley.dim_800x500.jpg",
-      "/assets/generated/pangong-lake-sunset.dim_800x500.jpg",
       "/assets/generated/prayer-flags-ladakh.dim_800x500.jpg",
     ],
     mapsUrl: "https://maps.google.com/?q=Hemis+National+Park+Ladakh",
