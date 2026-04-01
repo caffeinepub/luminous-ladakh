@@ -31,6 +31,11 @@ function saveAccounts(accounts: Account[]) {
   localStorage.setItem("lc_accounts", JSON.stringify(accounts));
 }
 
+export function applyTheme(theme?: string) {
+  const t = theme || "dark";
+  document.documentElement.setAttribute("data-theme", t);
+}
+
 export function useAuth() {
   const [state, setState] = useState<AuthState>(() => {
     const stored = localStorage.getItem("lc_session");
@@ -39,6 +44,7 @@ export function useAuth() {
         const { userId } = JSON.parse(stored);
         const accounts = getAccounts();
         const user = accounts.find((a) => a.id === userId) || null;
+        if (user) applyTheme(user.theme);
         return { currentUser: user, isLoading: false };
       } catch {
         return { currentUser: null, isLoading: false };
@@ -57,12 +63,19 @@ export function useAuth() {
         (a) => a.username.toLowerCase() === username.toLowerCase(),
       );
       if (!account) return { success: false, error: "Username not found" };
+      if (account.status === "banned")
+        return {
+          success: false,
+          error:
+            "This account has been permanently banned. Your electronic ID remains on record.",
+        };
       if (!verifyPassword(password, account.passwordHash))
         return { success: false, error: "Incorrect password" };
       localStorage.setItem(
         "lc_session",
         JSON.stringify({ userId: account.id }),
       );
+      applyTheme(account.theme);
       setState({ currentUser: account, isLoading: false });
       return { success: true };
     },
@@ -97,6 +110,7 @@ export function useAuth() {
         passwordHash: hashPw(data.password),
         role: data.role,
         electronicId,
+        status: "active",
         createdAt: new Date().toISOString(),
         ...(data.role === "member"
           ? {
@@ -112,6 +126,7 @@ export function useAuth() {
         "lc_session",
         JSON.stringify({ userId: newAccount.id }),
       );
+      applyTheme(newAccount.theme);
       setState({ currentUser: newAccount, isLoading: false });
       return { success: true, electronicId };
     },
@@ -120,6 +135,7 @@ export function useAuth() {
 
   const logout = useCallback(() => {
     localStorage.removeItem("lc_session");
+    applyTheme("dark");
     setState({ currentUser: null, isLoading: false });
   }, []);
 
@@ -137,11 +153,11 @@ export function useAuth() {
         "lc_session",
         JSON.stringify({ userId: updated.id }),
       );
+      if (updates.theme) applyTheme(updates.theme);
       return { ...prev, currentUser: updated };
     });
   }, []);
 
-  // Refresh current user from storage (e.g., after data changes)
   const refreshUser = useCallback(() => {
     setState((prev) => {
       if (!prev.currentUser) return prev;

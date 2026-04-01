@@ -17,7 +17,7 @@ import { BottomNav } from "./components/shared/BottomNav";
 import { PostPlaceModal } from "./components/user/PostPlaceModal";
 import { SearchTab } from "./components/user/SearchTab";
 import { UserProfileTab } from "./components/user/UserProfileTab";
-import { generateId, initSeedData } from "./data/seed";
+import { initSeedData } from "./data/seed";
 import { useAuth } from "./hooks/useAuth";
 import { useData } from "./hooks/useData";
 
@@ -118,6 +118,7 @@ export default function App() {
           : CREATOR_NAV;
 
   const isCreator = currentUser.role === "creator";
+  const isSuspended = currentUser.status === "suspended";
 
   return (
     <div className="min-h-screen bg-background">
@@ -130,7 +131,14 @@ export default function App() {
               alt="Logo"
               className="w-7 h-7"
             />
-            <span className="font-heading font-bold text-base">
+            <span
+              className="text-base amber-text"
+              style={{
+                fontFamily: "PlayfairDisplay, serif",
+                fontStyle: "italic",
+                fontWeight: 700,
+              }}
+            >
               Ladakh Connect
             </span>
           </div>
@@ -153,7 +161,7 @@ export default function App() {
             </span>
           </div>
         </div>
-        {/* Creator: tab overflow — make scrollable */}
+        {/* Creator: tab overflow */}
         {isCreator && (
           <div className="flex gap-0 overflow-x-auto scrollbar-hide border-t border-border">
             {CREATOR_NAV.map((item) => (
@@ -182,6 +190,19 @@ export default function App() {
       <main
         className={`max-w-lg mx-auto px-4 pb-24 ${isCreator ? "pt-28" : "pt-20"}`}
       >
+        {/* Suspension banner */}
+        {isSuspended && (
+          <div className="mb-4 bg-yellow-500/15 border border-yellow-500/40 rounded-xl p-3 flex items-center gap-2">
+            <span className="material-symbols-outlined text-yellow-400 text-lg">
+              warning
+            </span>
+            <p className="text-sm text-yellow-300">
+              Your account is currently <strong>suspended</strong>. Some actions
+              are restricted.
+            </p>
+          </div>
+        )}
+
         {/* USER tabs */}
         {currentUser.role === "user" && (
           <>
@@ -211,6 +232,7 @@ export default function App() {
                 posts={posts}
                 violations={violations}
                 onUpdateBio={(bio) => updateCurrentUser({ bio })}
+                onUpdateUser={updateCurrentUser}
                 onLogout={logout}
               />
             )}
@@ -248,6 +270,7 @@ export default function App() {
                 currentUser={currentUser}
                 violations={violations}
                 onUpdateBio={(bio) => updateCurrentUser({ bio })}
+                onUpdateUser={updateCurrentUser}
                 onLogout={logout}
               />
             )}
@@ -299,6 +322,7 @@ export default function App() {
                 currentUser={currentUser}
                 violations={violations}
                 onUpdateBio={(bio) => updateCurrentUser({ bio })}
+                onUpdateUser={updateCurrentUser}
                 onLogout={logout}
               />
             )}
@@ -383,6 +407,14 @@ export default function App() {
                 onUpdatePermissionRequest={data.updatePermissionRequest}
                 onUpdateFlagReport={data.updateFlagReport}
                 onUpdateAccount={data.updateAccount}
+                onBanAccount={(id) => {
+                  data.banAccount(id);
+                  setRenderTick((t) => t + 1);
+                }}
+                onSuspendAccount={(id) => {
+                  data.suspendAccount(id);
+                  setRenderTick((t) => t + 1);
+                }}
               />
             )}
             {activeTab === "profile" && (
@@ -414,21 +446,15 @@ export default function App() {
         <PostPlaceModal
           currentUserId={currentUser.id}
           currentUsername={currentUser.username}
+          currentUserRole={currentUser.role}
           onClose={() => setShowPostModal(false)}
           onSubmit={(postData) => {
             data.addPost(postData);
             setRenderTick((t) => t + 1);
           }}
+          onIssueViolation={data.addViolation}
         />
       )}
-
-      {/* Footer */}
-      <footer
-        className="fixed bottom-16 left-0 right-0 pointer-events-none flex justify-center"
-        style={{ display: isCreator ? "none" : undefined }}
-      >
-        {/* Inline footer in profile tabs */}
-      </footer>
 
       <Toaster position="top-center" richColors />
     </div>

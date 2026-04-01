@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
 import { toast } from "sonner";
+import { applyTheme } from "../../hooks/useAuth";
 import type { Account, Violation } from "../../types";
 import { ViolationCard } from "../shared/ViolationCard";
 
@@ -9,13 +10,21 @@ interface Props {
   currentUser: Account;
   violations: Violation[];
   onUpdateBio: (bio: string) => void;
+  onUpdateUser: (updates: Partial<Account>) => void;
   onLogout: () => void;
 }
+
+const THEMES = [
+  { id: "dark", label: "Dark", desc: "Deep black" },
+  { id: "slate", label: "Slate", desc: "Cool blue-grey" },
+  { id: "warm", label: "Warm", desc: "Amber tones" },
+] as const;
 
 export function MemberProfileTab({
   currentUser,
   violations,
   onUpdateBio,
+  onUpdateUser,
   onLogout,
 }: Props) {
   const [editingBio, setEditingBio] = useState(false);
@@ -25,6 +34,28 @@ export function MemberProfileTab({
     onUpdateBio(bio);
     setEditingBio(false);
     toast.success("Bio updated!");
+  };
+
+  const handleThemeChange = (theme: string) => {
+    onUpdateUser({ theme: theme as Account["theme"] });
+    applyTheme(theme);
+    toast.success(`Theme changed to ${theme}`);
+  };
+
+  const handlePhotoTheme = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const dataUrl = evt.target?.result as string;
+      onUpdateUser({ themePhoto: dataUrl });
+      document.documentElement.style.setProperty(
+        "--theme-bg-photo",
+        `url("${dataUrl}")`,
+      );
+      toast.success("Custom photo theme applied!");
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -113,6 +144,69 @@ export function MemberProfileTab({
           </div>
         )}
       </div>
+
+      {/* Theme Switcher */}
+      <div className="bg-card border border-border rounded-xl p-4">
+        <h3 className="font-heading font-semibold mb-3 flex items-center gap-2">
+          <span className="material-symbols-outlined text-primary text-lg">
+            palette
+          </span>
+          App Theme
+        </h3>
+        <div className="grid grid-cols-3 gap-2 mb-3">
+          {THEMES.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => handleThemeChange(t.id)}
+              className={`rounded-xl p-3 text-center border transition-all ${
+                (currentUser.theme || "dark") === t.id
+                  ? "border-primary bg-primary/15"
+                  : "border-border bg-secondary hover:border-primary/40"
+              }`}
+              data-ocid={`profile.theme.${t.id}`}
+            >
+              <p className="text-xs font-semibold">{t.label}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {t.desc}
+              </p>
+            </button>
+          ))}
+        </div>
+
+        {/* Photo theme — Premier only */}
+        {currentUser.membershipTier === "Premier" && (
+          <div className="border-t border-border pt-3">
+            <p className="text-xs font-semibold mb-2 flex items-center gap-1">
+              <span className="text-primary">★</span> Premier: Custom Photo
+              Theme
+            </p>
+            {currentUser.themePhoto && (
+              <img
+                src={currentUser.themePhoto}
+                alt="Theme preview"
+                className="w-full h-20 object-cover rounded-lg mb-2 opacity-70"
+              />
+            )}
+            <label className="block">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoTheme}
+                className="hidden"
+                data-ocid="profile.photo_input"
+              />
+              <span className="inline-flex items-center gap-1.5 text-xs bg-primary/15 text-primary border border-primary/30 px-3 py-1.5 rounded-lg cursor-pointer hover:bg-primary/25 transition-colors">
+                <span className="material-symbols-outlined text-sm">
+                  upload
+                </span>
+                {currentUser.themePhoto ? "Change Photo" : "Set Theme Photo"}
+              </span>
+            </label>
+          </div>
+        )}
+      </div>
+
       <ViolationCard violations={violations} userId={currentUser.id} />
       <Button
         variant="outline"

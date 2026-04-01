@@ -11,20 +11,56 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
 import { toast } from "sonner";
-import type { Post } from "../../types";
+import type { Post, Role, Violation } from "../../types";
+
+const MILITARY_KEYWORDS = [
+  "army",
+  "military",
+  "camp",
+  "cantonment",
+  "barracks",
+  "soldier",
+  "uniform",
+  "weapon",
+  "ammunition",
+  "patrol",
+  "restricted",
+  "armed forces",
+  "defence",
+  "defense",
+  "regiment",
+  "brigade",
+  "battalion",
+  "artillery",
+  "armoured",
+  "infantry",
+  "navy",
+  "airforce",
+  "paramilitary",
+  "jawans",
+];
+
+function hasMilitaryContent(texts: string[]): boolean {
+  const combined = texts.join(" ").toLowerCase();
+  return MILITARY_KEYWORDS.some((kw) => combined.includes(kw));
+}
 
 interface Props {
   currentUserId: string;
   currentUsername: string;
+  currentUserRole: Role;
   onClose: () => void;
   onSubmit: (post: Omit<Post, "id" | "timestamp">) => void;
+  onIssueViolation: (v: Omit<Violation, "id" | "timestamp">) => void;
 }
 
 export function PostPlaceModal({
   currentUserId,
   currentUsername,
+  currentUserRole,
   onClose,
   onSubmit,
+  onIssueViolation,
 }: Props) {
   const [form, setForm] = useState({
     title: "",
@@ -49,6 +85,33 @@ export function PostPlaceModal({
       setError("Please fill in all required fields");
       return;
     }
+
+    // Military content check
+    if (
+      hasMilitaryContent([
+        form.title,
+        form.locationName,
+        form.description,
+        form.imageUrl,
+      ])
+    ) {
+      setError(
+        "⚠️ Military/restricted content detected. This upload has been blocked. Posting content related to army camps, military zones, or restricted areas is strictly prohibited. A Level 2 warning has been issued to your account.",
+      );
+      onIssueViolation({
+        targetUserId: currentUserId,
+        targetUsername: currentUsername,
+        targetRole: currentUserRole,
+        level: 2,
+        reason:
+          "Attempted to post military/restricted content. Auto-blocked by system.",
+        issuedBy: "system",
+        resolved: false,
+      });
+      toast.error("Military content blocked. Level 2 warning issued.");
+      return;
+    }
+
     setLoading(true);
     await new Promise((r) => setTimeout(r, 400));
     onSubmit({
@@ -199,13 +262,16 @@ export function PostPlaceModal({
               />
             </div>
             {error && (
-              <p className="text-sm text-red-400" data-ocid="post.error_state">
+              <p
+                className="text-sm text-red-400 leading-relaxed"
+                data-ocid="post.error_state"
+              >
                 {error}
               </p>
             )}
             <div className="bg-secondary rounded-lg p-3 text-xs text-muted-foreground">
-              ⚠️ Submitted places go through creator review before appearing
-              publicly.
+              ⚠️ No military or restricted area content. Submitted places go
+              through creator review.
             </div>
             <Button
               type="submit"

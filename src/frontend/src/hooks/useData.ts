@@ -28,7 +28,6 @@ function setLS<T>(key: string, data: T[]) {
 
 export function useData() {
   const [, forceUpdate] = useState(0);
-
   const refresh = useCallback(() => forceUpdate((n) => n + 1), []);
 
   // Accounts
@@ -41,6 +40,45 @@ export function useData() {
     const idx = accounts.findIndex((a) => a.id === id);
     if (idx >= 0) {
       accounts[idx] = { ...accounts[idx], ...updates };
+      setLS("lc_accounts", accounts);
+    }
+  }, []);
+
+  const banAccount = useCallback((accountId: string) => {
+    const accounts = getLS<Account>("lc_accounts");
+    const idx = accounts.findIndex((a) => a.id === accountId);
+    if (idx >= 0) {
+      accounts[idx] = {
+        ...accounts[idx],
+        status: "banned",
+        bio: undefined,
+        avatar: undefined,
+        themePhoto: undefined,
+        businessName: undefined,
+        businessDescription: undefined,
+        businessCategory: undefined,
+        businessLocation: undefined,
+      };
+      setLS("lc_accounts", accounts);
+    }
+    // Delete all posts by this user
+    const posts = getLS<Post>("lc_posts").filter(
+      (p) => p.submittedBy !== accountId,
+    );
+    localStorage.setItem("lc_posts", JSON.stringify(posts));
+    // Delete all reviews by or for this user
+    const reviews = getLS<Review>("lc_reviews").filter(
+      (r) => r.reviewerUserId !== accountId && r.targetMemberId !== accountId,
+    );
+    localStorage.setItem("lc_reviews", JSON.stringify(reviews));
+    notify();
+  }, []);
+
+  const suspendAccount = useCallback((accountId: string) => {
+    const accounts = getLS<Account>("lc_accounts");
+    const idx = accounts.findIndex((a) => a.id === accountId);
+    if (idx >= 0) {
+      accounts[idx] = { ...accounts[idx], status: "suspended" };
       setLS("lc_accounts", accounts);
     }
   }, []);
@@ -203,6 +241,8 @@ export function useData() {
     refresh,
     getAccounts,
     updateAccount,
+    banAccount,
+    suspendAccount,
     getPosts,
     addPost,
     updatePost,

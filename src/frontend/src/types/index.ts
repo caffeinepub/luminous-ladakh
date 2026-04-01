@@ -10,6 +10,9 @@ export interface Account {
   avatar?: string;
   bio?: string;
   createdAt: string;
+  status?: "active" | "suspended" | "banned";
+  theme?: "dark" | "slate" | "warm";
+  themePhoto?: string; // base64 dataURL, Premier members only
   // member-only
   businessName?: string;
   businessCategory?: string;

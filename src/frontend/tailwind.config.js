@@ -7,6 +7,7 @@ export default {
       fontFamily: {
         heading: ['BricolageGrotesque', 'sans-serif'],
         body: ['Figtree', 'sans-serif'],
+        display: ['PlayfairDisplay', 'serif'],
       },
       colors: {
         background: 'oklch(var(--background) / <alpha-value>)',
@@ -53,8 +54,8 @@ export default {
         sm: 'calc(var(--radius) - 4px)',
       },
       boxShadow: {
-        'card': '0 2px 12px oklch(0% 0 0 / 0.3)',
-        'card-hover': '0 8px 24px oklch(0% 0 0 / 0.5)',
+        'card': '0 2px 12px oklch(0% 0 0 / 0.4)',
+        'card-hover': '0 8px 24px oklch(0% 0 0 / 0.6)',
         'amber': '0 0 20px oklch(75% 0.17 65 / 0.3)',
       },
     },

@@ -22,31 +22,29 @@ interface Props {
   ) => void;
   onUpdateFlagReport: (id: string, updates: Partial<FlagReport>) => void;
   onUpdateAccount: (id: string, updates: Partial<Account>) => void;
+  onBanAccount: (accountId: string) => void;
+  onSuspendAccount: (accountId: string) => void;
 }
 
 const VIOLATION_LEVELS = [
   { level: 1, label: "Level 1 — Warning", desc: "Formal written warning" },
   {
     level: 2,
-    label: "Level 2 — Second Warning",
-    desc: "Final warning before action",
+    label: "Level 2 — Final Warning",
+    desc: "Last chance before action",
   },
-  {
-    level: 3,
-    label: "Level 3 — Content Removal",
-    desc: "Offending content removed",
-  },
-  { level: 4, label: "Level 4 — Fine ₹500", desc: "Monetary penalty issued" },
-  { level: 5, label: "Level 5 — Fine ₹1,000", desc: "Higher monetary penalty" },
+  { level: 3, label: "Level 3 — Fine ₹500", desc: "Monetary penalty ₹500" },
+  { level: 4, label: "Level 4 — Fine ₹1,000", desc: "Monetary penalty ₹1,000" },
+  { level: 5, label: "Level 5 — Fine ₹1,500", desc: "Monetary penalty ₹1,500" },
   {
     level: 6,
-    label: "Level 6 — 30-day Suspension",
+    label: "Level 6 — Suspension",
     desc: "Temporary account suspension",
   },
   {
     level: 7,
     label: "Level 7 — Permanent Ban",
-    desc: "Account permanently banned",
+    desc: "Account banned, content deleted",
   },
 ];
 
@@ -60,6 +58,8 @@ export function CreatorModeration({
   onUpdatePermissionRequest,
   onUpdateFlagReport,
   onUpdateAccount,
+  onBanAccount,
+  onSuspendAccount,
 }: Props) {
   const [subTab, setSubTab] = useState<
     "users" | "members" | "community" | "permissions" | "flags"
@@ -95,16 +95,27 @@ export function CreatorModeration({
     }
     const target = accounts.find((a) => a.id === violationForm.targetId);
     if (!target) return;
+    const level = Number.parseInt(violationForm.level, 10);
     onIssueViolation({
       targetUserId: target.id,
       targetUsername: target.username,
       targetRole: target.role,
-      level: Number.parseInt(violationForm.level, 10),
+      level,
       reason: violationForm.reason,
       issuedBy: "hunter",
       resolved: false,
     });
-    toast.success("Violation issued successfully.");
+    if (level === 6) {
+      onSuspendAccount(target.id);
+      toast.warning(`@${target.username} has been suspended.`);
+    } else if (level === 7) {
+      onBanAccount(target.id);
+      toast.error(
+        `@${target.username} has been permanently banned. All content deleted.`,
+      );
+    } else {
+      toast.success("Violation issued successfully.");
+    }
     setViolationForm({ targetId: "", level: "1", reason: "" });
     setShowIssueForm(false);
   };
@@ -137,6 +148,22 @@ export function CreatorModeration({
     { id: "flags", label: "Reports", badge: pendingFlags.length },
   ];
 
+  const getStatusBadge = (account: Account) => {
+    if (account.status === "banned")
+      return (
+        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30">
+          BANNED
+        </span>
+      );
+    if (account.status === "suspended")
+      return (
+        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+          SUSPENDED
+        </span>
+      );
+    return null;
+  };
+
   return (
     <div className="fade-in">
       {/* Sub-tabs */}
@@ -166,7 +193,7 @@ export function CreatorModeration({
         ))}
       </div>
 
-      {/* Violations Panels */}
+      {/* Violations + Account Management Panels */}
       {["users", "members", "community"].includes(subTab) && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -194,13 +221,18 @@ export function CreatorModeration({
                 onChange={(e) =>
                   setViolationForm((p) => ({ ...p, targetId: e.target.value }))
                 }
-                className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm text-foreground"
+                className="w-full rounded-lg px-3 py-2 text-sm border border-border"
                 data-ocid="moderation.select"
               >
                 <option value="">Select target account...</option>
                 {targetPool.map((a) => (
                   <option key={a.id} value={a.id}>
                     @{a.username}
+                    {a.status === "banned"
+                      ? " [BANNED]"
+                      : a.status === "suspended"
+                        ? " [SUSPENDED]"
+                        : ""}
                   </option>
                 ))}
               </select>
@@ -209,7 +241,7 @@ export function CreatorModeration({
                 onChange={(e) =>
                   setViolationForm((p) => ({ ...p, level: e.target.value }))
                 }
-                className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm text-foreground"
+                className="w-full rounded-lg px-3 py-2 text-sm border border-border"
                 data-ocid="moderation.select"
               >
                 {VIOLATION_LEVELS.map((l) => (
@@ -248,6 +280,102 @@ export function CreatorModeration({
             </div>
           )}
 
+          {/* Account list with quick actions */}
+          <div className="space-y-2">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              Account Management
+            </h3>
+            {targetPool.length === 0 ? (
+              <p
+                className="text-sm text-muted-foreground"
+                data-ocid="moderation.empty_state"
+              >
+                No accounts in this group.
+              </p>
+            ) : (
+              targetPool.map((a, i) => (
+                <div
+                  key={a.id}
+                  className={`bg-card border rounded-xl p-3 flex items-center justify-between gap-2 ${
+                    a.status === "banned"
+                      ? "border-red-500/30 opacity-60"
+                      : a.status === "suspended"
+                        ? "border-yellow-500/30"
+                        : "border-border"
+                  }`}
+                  data-ocid={`moderation.account.${i + 1}`}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                      <span className="text-xs font-bold text-primary">
+                        {a.username[0].toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-medium truncate">
+                          @{a.username}
+                        </span>
+                        {getStatusBadge(a)}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">
+                        {a.email}
+                      </p>
+                    </div>
+                  </div>
+                  {a.status !== "banned" && (
+                    <div className="flex gap-1.5 shrink-0">
+                      {a.status !== "suspended" && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onSuspendAccount(a.id);
+                            onIssueViolation({
+                              targetUserId: a.id,
+                              targetUsername: a.username,
+                              targetRole: a.role,
+                              level: 6,
+                              reason: "Account suspended by Creator",
+                              issuedBy: "hunter",
+                              resolved: false,
+                            });
+                            toast.warning(`@${a.username} suspended.`);
+                          }}
+                          className="text-[10px] px-2 py-1 rounded-lg font-medium border border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 transition-colors"
+                          data-ocid="moderation.suspend_button"
+                        >
+                          Suspend
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onBanAccount(a.id);
+                          onIssueViolation({
+                            targetUserId: a.id,
+                            targetUsername: a.username,
+                            targetRole: a.role,
+                            level: 7,
+                            reason: "Account permanently banned by Creator",
+                            issuedBy: "hunter",
+                            resolved: false,
+                          });
+                          toast.error(
+                            `@${a.username} banned. All content deleted.`,
+                          );
+                        }}
+                        className="text-[10px] px-2 py-1 rounded-lg font-medium border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors"
+                        data-ocid="moderation.ban_button"
+                      >
+                        Ban
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+
           {roleViolations.length === 0 ? (
             <p
               className="text-sm text-muted-foreground py-4 text-center"
@@ -257,6 +385,9 @@ export function CreatorModeration({
             </p>
           ) : (
             <div className="space-y-3">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Violation History
+              </h3>
               {roleViolations.map((v, i) => (
                 <div
                   key={v.id}
@@ -276,7 +407,7 @@ export function CreatorModeration({
                         Level {v.level}
                       </span>
                     </div>
-                    {!v.resolved && (
+                    {!v.resolved ? (
                       <Button
                         size="sm"
                         variant="outline"
@@ -289,8 +420,7 @@ export function CreatorModeration({
                       >
                         Resolve
                       </Button>
-                    )}
-                    {v.resolved && (
+                    ) : (
                       <span className="text-xs text-green-400">✓ Resolved</span>
                     )}
                   </div>

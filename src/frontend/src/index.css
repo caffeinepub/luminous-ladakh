@@ -12,34 +12,71 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: "PlayfairDisplay";
+  src: url("/assets/fonts/PlayfairDisplay.woff2") format("woff2");
+  font-weight: 400 900;
+  font-display: swap;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 10 0.01 30;
+    --background: 8 0.005 20;
     --foreground: 95 0.01 80;
-    --card: 14 0.015 30;
+    --card: 12 0.01 22;
     --card-foreground: 95 0.01 80;
-    --popover: 14 0.015 30;
+    --popover: 12 0.01 22;
     --popover-foreground: 95 0.01 80;
     --primary: 75 0.17 65;
     --primary-foreground: 15 0.01 30;
-    --secondary: 20 0.02 30;
+    --secondary: 18 0.015 25;
     --secondary-foreground: 85 0.01 80;
-    --muted: 22 0.02 30;
-    --muted-foreground: 60 0.01 60;
+    --muted: 18 0.015 25;
+    --muted-foreground: 60 0.01 55;
     --accent: 75 0.17 65;
     --accent-foreground: 15 0.01 30;
     --destructive: 55 0.22 25;
     --destructive-foreground: 95 0.01 80;
-    --border: 25 0.02 30;
-    --input: 20 0.02 30;
+    --border: 22 0.018 28;
+    --input: 16 0.01 24;
     --ring: 75 0.17 65;
     --success: 70 0.18 145;
     --warning: 78 0.18 65;
     --radius: 0.75rem;
+  }
+
+  [data-theme="slate"] {
+    --background: 12 0.02 240;
+    --foreground: 95 0.01 220;
+    --card: 16 0.025 235;
+    --card-foreground: 95 0.01 220;
+    --popover: 16 0.025 235;
+    --popover-foreground: 95 0.01 220;
+    --secondary: 20 0.02 230;
+    --secondary-foreground: 85 0.01 220;
+    --muted: 20 0.02 230;
+    --muted-foreground: 60 0.015 220;
+    --border: 25 0.025 235;
+    --input: 18 0.02 232;
+  }
+
+  [data-theme="warm"] {
+    --background: 10 0.01 35;
+    --foreground: 96 0.02 85;
+    --card: 14 0.02 38;
+    --card-foreground: 96 0.02 85;
+    --popover: 14 0.02 38;
+    --popover-foreground: 96 0.02 85;
+    --secondary: 18 0.02 40;
+    --secondary-foreground: 88 0.02 80;
+    --muted: 18 0.02 40;
+    --muted-foreground: 62 0.015 65;
+    --border: 25 0.025 40;
+    --input: 18 0.015 38;
   }
 
   * {
@@ -61,11 +98,24 @@
   h6 {
     font-family: "BricolageGrotesque", sans-serif;
   }
+
+  /* Force all inputs to be visible on dark background */
+  input,
+  textarea,
+  select {
+    color: oklch(92% 0.01 80) !important;
+    background-color: oklch(16% 0.01 24) !important;
+  }
+  input::placeholder,
+  textarea::placeholder {
+    color: oklch(50% 0.01 60) !important;
+    opacity: 1;
+  }
 }
 
 @layer utilities {
   .glass {
-    background: oklch(14% 0.015 30 / 0.8);
+    background: oklch(10% 0.008 22 / 0.85);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
   }
@@ -75,7 +125,7 @@
   }
 
   .amber-text {
-    background: linear-gradient(135deg, oklch(75% 0.17 65), oklch(80% 0.15 75));
+    background: linear-gradient(135deg, oklch(78% 0.18 68), oklch(85% 0.16 78));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -91,7 +141,7 @@
   }
   .card-hover:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px oklch(0% 0 0 / 0.4);
+    box-shadow: 0 8px 24px oklch(0% 0 0 / 0.5);
   }
 
   .fade-in {

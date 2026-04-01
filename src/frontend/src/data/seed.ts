@@ -13,9 +13,8 @@ function hashPassword(p: string): string {
 }
 
 export function initSeedData() {
-  if (localStorage.getItem("lc_seeded") === "v8") return;
+  if (localStorage.getItem("lc_seeded") === "v9") return;
 
-  // Keep existing accounts if already present (real user data), but ensure creator exists
   const existingRaw = localStorage.getItem("lc_accounts");
   const existingAccounts: Account[] = existingRaw
     ? JSON.parse(existingRaw)
@@ -33,12 +32,12 @@ export function initSeedData() {
           passwordHash: hashPassword("admin123"),
           role: "creator",
           electronicId: "LC-CRTX1",
+          status: "active",
           bio: "Founder & Creator of Ladakh Connect. Building Ladakh in one app.",
           createdAt: new Date().toISOString(),
         },
       ];
 
-  // Only reset everything on fresh start (no existing data)
   if (!existingRaw) {
     localStorage.setItem("lc_accounts", JSON.stringify(accounts));
     localStorage.setItem("lc_posts", JSON.stringify([]));
@@ -49,11 +48,10 @@ export function initSeedData() {
     localStorage.setItem("lc_walletTransactions", JSON.stringify([]));
     localStorage.setItem("lc_flagReports", JSON.stringify([]));
   } else {
-    // Just ensure creator account exists in existing data
     localStorage.setItem("lc_accounts", JSON.stringify(accounts));
   }
 
-  localStorage.setItem("lc_seeded", "v8");
+  localStorage.setItem("lc_seeded", "v9");
 }
 
 export function verifyPassword(plain: string, hash: string): boolean {

@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
 import { toast } from "sonner";
+import { applyTheme } from "../../hooks/useAuth";
 import type { Account, Post, Violation } from "../../types";
 import { ViolationCard } from "../shared/ViolationCard";
 
@@ -10,14 +11,22 @@ interface Props {
   posts: Post[];
   violations: Violation[];
   onUpdateBio: (bio: string) => void;
+  onUpdateUser: (updates: Partial<Account>) => void;
   onLogout: () => void;
 }
+
+const THEMES = [
+  { id: "dark", label: "Dark", desc: "Deep black" },
+  { id: "slate", label: "Slate", desc: "Cool blue-grey" },
+  { id: "warm", label: "Warm", desc: "Amber tones" },
+] as const;
 
 export function UserProfileTab({
   currentUser,
   posts,
   violations,
   onUpdateBio,
+  onUpdateUser,
   onLogout,
 }: Props) {
   const [editingBio, setEditingBio] = useState(false);
@@ -28,6 +37,12 @@ export function UserProfileTab({
     onUpdateBio(bio);
     setEditingBio(false);
     toast.success("Bio updated!");
+  };
+
+  const handleThemeChange = (theme: string) => {
+    onUpdateUser({ theme: theme as Account["theme"] });
+    applyTheme(theme);
+    toast.success(`Theme changed to ${theme}`);
   };
 
   return (
@@ -103,6 +118,36 @@ export function UserProfileTab({
             </button>
           </div>
         )}
+      </div>
+
+      {/* Theme Switcher */}
+      <div className="bg-card border border-border rounded-xl p-4">
+        <h3 className="font-heading font-semibold mb-3 flex items-center gap-2">
+          <span className="material-symbols-outlined text-primary text-lg">
+            palette
+          </span>
+          App Theme
+        </h3>
+        <div className="grid grid-cols-3 gap-2">
+          {THEMES.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => handleThemeChange(t.id)}
+              className={`rounded-xl p-3 text-center border transition-all ${
+                (currentUser.theme || "dark") === t.id
+                  ? "border-primary bg-primary/15"
+                  : "border-border bg-secondary hover:border-primary/40"
+              }`}
+              data-ocid={`profile.theme.${t.id}`}
+            >
+              <p className="text-xs font-semibold">{t.label}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {t.desc}
+              </p>
+            </button>
+          ))}
+        </div>
       </div>
 
       <ViolationCard violations={violations} userId={currentUser.id} />

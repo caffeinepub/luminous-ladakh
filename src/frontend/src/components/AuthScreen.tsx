@@ -9,7 +9,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { Role } from "../types";
@@ -28,6 +27,7 @@ interface Props {
 }
 
 export function AuthScreen({ onLogin, onSignup }: Props) {
+  const [mode, setMode] = useState<"login" | "signup">("login");
   const [loginForm, setLoginForm] = useState({ username: "", password: "" });
   const [signupForm, setSignupForm] = useState({
     username: "",
@@ -105,322 +105,441 @@ export function AuthScreen({ onLogin, onSignup }: Props) {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 relative overflow-hidden">
-      {/* Background */}
+    <div
+      className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden"
+      style={{ background: "#050505" }}
+    >
+      {/* Background image */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 left-0 right-0 h-80 bg-gradient-to-b from-amber-glow/10 to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-background to-transparent" />
         <img
           src="https://picsum.photos/seed/pangong99/1200/800"
           alt="Ladakh landscape"
-          className="w-full h-full object-cover opacity-10"
+          className="w-full h-full object-cover"
+          style={{ opacity: 0.08 }}
+        />
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(ellipse at 50% 0%, rgba(180,140,60,0.08) 0%, transparent 60%)",
+          }}
         />
       </div>
 
       <div className="relative z-10 w-full max-w-sm">
-        {/* Logo */}
+        {/* Logo + App name */}
         <div className="flex flex-col items-center mb-8 slide-up">
           <img
             src="/assets/generated/ladakh-logo-transparent.dim_200x200.png"
             alt="Ladakh Connect"
-            className="w-20 h-20 mb-3"
+            className="w-16 h-16 mb-3"
           />
-          <h1 className="text-3xl font-heading font-bold amber-text">
+          <h1
+            className="text-4xl amber-text"
+            style={{
+              fontFamily: "PlayfairDisplay, serif",
+              fontStyle: "italic",
+              fontWeight: 700,
+            }}
+          >
             Ladakh Connect
           </h1>
-          <p className="text-muted-foreground text-sm mt-1 text-center">
-            Discover the real Ladakh. Connect with its soul.
+          <p
+            className="text-sm mt-1 text-center"
+            style={{ color: "rgba(200,180,140,0.6)" }}
+          >
+            Discover the real Ladakh
           </p>
         </div>
 
         {/* Auth Card */}
-        <div className="bg-card border border-border rounded-xl p-6 shadow-card slide-up stagger-1">
-          <Tabs defaultValue="login">
-            <TabsList className="w-full mb-6 bg-secondary">
-              <TabsTrigger
-                value="login"
-                className="flex-1"
-                data-ocid="auth.tab"
-              >
-                Login
-              </TabsTrigger>
-              <TabsTrigger
-                value="signup"
-                className="flex-1"
-                data-ocid="auth.tab"
-              >
-                Sign Up
-              </TabsTrigger>
-            </TabsList>
+        <div
+          className="rounded-2xl p-6 slide-up stagger-1"
+          style={{
+            background: "rgba(18,15,12,0.95)",
+            border: "1px solid rgba(180,140,60,0.18)",
+            boxShadow: "0 24px 60px rgba(0,0,0,0.7)",
+          }}
+        >
+          {/* Heading */}
+          <h2
+            className="font-heading font-bold text-xl mb-1"
+            style={{ color: "#f5ecd0" }}
+          >
+            {mode === "login" ? "Welcome back" : "Create account"}
+          </h2>
+          <p
+            className="text-xs mb-5"
+            style={{ color: "rgba(200,180,140,0.55)" }}
+          >
+            {mode === "login"
+              ? "Sign in to continue to Ladakh Connect"
+              : "Join the Ladakh community today"}
+          </p>
 
-            <TabsContent value="login">
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-1">
-                  <Label
-                    htmlFor="login-username"
-                    className="text-sm text-muted-foreground"
-                  >
-                    Username
-                  </Label>
-                  <Input
-                    id="login-username"
-                    placeholder="Enter your username"
-                    value={loginForm.username}
-                    onChange={(e) =>
-                      setLoginForm((p) => ({ ...p, username: e.target.value }))
-                    }
-                    className="bg-input border-border"
-                    data-ocid="auth.input"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label
-                    htmlFor="login-password"
-                    className="text-sm text-muted-foreground"
-                  >
-                    Password
-                  </Label>
-                  <Input
-                    id="login-password"
-                    type="password"
-                    placeholder="Enter your password"
-                    value={loginForm.password}
-                    onChange={(e) =>
-                      setLoginForm((p) => ({ ...p, password: e.target.value }))
-                    }
-                    className="bg-input border-border"
-                    data-ocid="auth.input"
-                  />
-                </div>
-                {loginError && (
-                  <p
-                    className="text-sm text-red-400"
-                    data-ocid="auth.error_state"
-                  >
-                    {loginError}
-                  </p>
-                )}
-                <Button
-                  type="submit"
-                  className="w-full bg-primary text-primary-foreground font-semibold"
-                  disabled={loginLoading}
-                  data-ocid="auth.submit_button"
+          {mode === "login" ? (
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-1">
+                <Label
+                  htmlFor="login-username"
+                  className="text-xs font-medium"
+                  style={{ color: "rgba(220,200,160,0.7)" }}
                 >
-                  {loginLoading ? "Signing in..." : "Login"}
-                </Button>
-              </form>
+                  Username
+                </Label>
+                <Input
+                  id="login-username"
+                  placeholder="Enter your username"
+                  value={loginForm.username}
+                  onChange={(e) =>
+                    setLoginForm((p) => ({ ...p, username: e.target.value }))
+                  }
+                  style={{
+                    background: "rgba(255,255,255,0.06)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    color: "#f0e8d0",
+                    borderRadius: "10px",
+                  }}
+                  data-ocid="auth.input"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label
+                  htmlFor="login-password"
+                  className="text-xs font-medium"
+                  style={{ color: "rgba(220,200,160,0.7)" }}
+                >
+                  Password
+                </Label>
+                <Input
+                  id="login-password"
+                  type="password"
+                  placeholder="Enter your password"
+                  value={loginForm.password}
+                  onChange={(e) =>
+                    setLoginForm((p) => ({ ...p, password: e.target.value }))
+                  }
+                  style={{
+                    background: "rgba(255,255,255,0.06)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    color: "#f0e8d0",
+                    borderRadius: "10px",
+                  }}
+                  data-ocid="auth.input"
+                />
+              </div>
+              {loginError && (
+                <p
+                  className="text-sm text-red-400"
+                  data-ocid="auth.error_state"
+                >
+                  {loginError}
+                </p>
+              )}
+              <Button
+                type="submit"
+                className="w-full font-semibold"
+                style={{
+                  background: "linear-gradient(135deg, #c9a227, #e8c55a)",
+                  color: "#1a1000",
+                  borderRadius: "10px",
+                  height: "44px",
+                }}
+                disabled={loginLoading}
+                data-ocid="auth.submit_button"
+              >
+                {loginLoading ? "Signing in..." : "Sign in"}
+              </Button>
 
-              <div className="relative my-4">
+              <div className="relative my-3">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-border" />
+                  <div
+                    className="w-full"
+                    style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}
+                  />
                 </div>
-                <div className="relative flex justify-center text-xs">
-                  <span className="bg-card px-2 text-muted-foreground">
+                <div className="relative flex justify-center text-[11px]">
+                  <span
+                    style={{
+                      background: "rgba(18,15,12,0.95)",
+                      padding: "0 8px",
+                      color: "rgba(200,180,140,0.45)",
+                    }}
+                  >
                     or continue with
                   </span>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  variant="outline"
-                  className="text-xs border-border"
-                  onClick={() => toast.info("Google login coming soon!")}
-                  data-ocid="auth.secondary_button"
-                >
-                  🇬 Google
-                </Button>
-                <Button
-                  variant="outline"
-                  className="text-xs border-border"
-                  onClick={() => toast.info("Facebook login coming soon!")}
-                  data-ocid="auth.secondary_button"
-                >
-                  Facebook
-                </Button>
-              </div>
-            </TabsContent>
 
-            <TabsContent value="signup">
-              <form onSubmit={handleSignup} className="space-y-3">
-                <div className="space-y-1">
-                  <Label
-                    htmlFor="su-username"
-                    className="text-sm text-muted-foreground"
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { label: "Google", icon: "G" },
+                  { label: "Facebook", icon: "f" },
+                  { label: "Email", icon: "@" },
+                ].map((s) => (
+                  <button
+                    key={s.label}
+                    type="button"
+                    onClick={() => toast.info(`${s.label} login coming soon!`)}
+                    className="flex flex-col items-center gap-1 py-2.5 rounded-xl text-xs font-medium transition-all hover:opacity-80"
+                    style={{
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      color: "rgba(220,200,160,0.75)",
+                    }}
+                    data-ocid="auth.secondary_button"
                   >
-                    Username
-                  </Label>
-                  <Input
-                    id="su-username"
-                    placeholder="Choose a username"
-                    value={signupForm.username}
-                    onChange={(e) =>
-                      setSignupForm((p) => ({ ...p, username: e.target.value }))
-                    }
-                    className="bg-input border-border"
-                    data-ocid="auth.input"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label
-                    htmlFor="su-email"
-                    className="text-sm text-muted-foreground"
-                  >
-                    Email
-                  </Label>
-                  <Input
-                    id="su-email"
-                    type="email"
-                    placeholder="your@email.com"
-                    value={signupForm.email}
-                    onChange={(e) =>
-                      setSignupForm((p) => ({ ...p, email: e.target.value }))
-                    }
-                    className="bg-input border-border"
-                    data-ocid="auth.input"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label
-                    htmlFor="su-pass"
-                    className="text-sm text-muted-foreground"
-                  >
-                    Password
-                  </Label>
-                  <Input
-                    id="su-pass"
-                    type="password"
-                    placeholder="Min 6 characters"
-                    value={signupForm.password}
-                    onChange={(e) =>
-                      setSignupForm((p) => ({ ...p, password: e.target.value }))
-                    }
-                    className="bg-input border-border"
-                    data-ocid="auth.input"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label
-                    htmlFor="su-confirm"
-                    className="text-sm text-muted-foreground"
-                  >
-                    Confirm Password
-                  </Label>
-                  <Input
-                    id="su-confirm"
-                    type="password"
-                    placeholder="Repeat password"
-                    value={signupForm.confirmPassword}
-                    onChange={(e) =>
-                      setSignupForm((p) => ({
-                        ...p,
-                        confirmPassword: e.target.value,
-                      }))
-                    }
-                    className="bg-input border-border"
-                    data-ocid="auth.input"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-sm text-muted-foreground">
-                    Account Type
-                  </Label>
-                  <Select
-                    value={signupForm.role}
-                    onValueChange={(v) =>
-                      setSignupForm((p) => ({
-                        ...p,
-                        role: v as Exclude<Role, "creator">,
-                      }))
-                    }
-                  >
-                    <SelectTrigger
-                      className="bg-input border-border"
-                      data-ocid="auth.select"
+                    <span
+                      className="text-base font-bold"
+                      style={{ color: "#c9a227" }}
                     >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-card border-border">
-                      <SelectItem value="user">
-                        User — Explore & Discover
-                      </SelectItem>
-                      <SelectItem value="member">
-                        Member — Business Listing (₹1,000/mo)
-                      </SelectItem>
-                      <SelectItem value="community">
-                        Community — Partner with Creator
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="bg-secondary rounded-lg p-3 text-xs text-muted-foreground space-y-1">
-                  <p className="font-semibold text-foreground">
-                    📋 Rules & Guidelines
-                  </p>
-                  <p>• Only post real, undiscovered places (not businesses)</p>
-                  <p>
-                    • Member payments are{" "}
-                    <span className="text-red-400 font-semibold">
-                      non-refundable
+                      {s.icon}
                     </span>
-                  </p>
-                  <p>• Violations may lead to account suspension</p>
-                  <p>• Creator has full moderation authority</p>
-                </div>
-
-                <div className="flex items-start gap-2">
-                  <Checkbox
-                    id="tc"
-                    checked={tcAccepted}
-                    onCheckedChange={(v) => setTcAccepted(!!v)}
-                    data-ocid="auth.checkbox"
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handleSignup} className="space-y-3">
+              {[
+                {
+                  id: "su-username",
+                  label: "Username",
+                  placeholder: "Choose a username",
+                  field: "username",
+                  type: "text",
+                },
+                {
+                  id: "su-email",
+                  label: "Email",
+                  placeholder: "your@email.com",
+                  field: "email",
+                  type: "email",
+                },
+                {
+                  id: "su-pass",
+                  label: "Password",
+                  placeholder: "Min 6 characters",
+                  field: "password",
+                  type: "password",
+                },
+                {
+                  id: "su-confirm",
+                  label: "Confirm Password",
+                  placeholder: "Repeat password",
+                  field: "confirmPassword",
+                  type: "password",
+                },
+              ].map((f) => (
+                <div key={f.id} className="space-y-1">
+                  <Label
+                    htmlFor={f.id}
+                    className="text-xs font-medium"
+                    style={{ color: "rgba(220,200,160,0.7)" }}
+                  >
+                    {f.label}
+                  </Label>
+                  <Input
+                    id={f.id}
+                    type={f.type}
+                    placeholder={f.placeholder}
+                    value={
+                      signupForm[f.field as keyof typeof signupForm] as string
+                    }
+                    onChange={(e) =>
+                      setSignupForm((p) => ({
+                        ...p,
+                        [f.field]: e.target.value,
+                      }))
+                    }
+                    style={{
+                      background: "rgba(255,255,255,0.06)",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      color: "#f0e8d0",
+                      borderRadius: "10px",
+                    }}
+                    data-ocid="auth.input"
                   />
-                  <label
-                    htmlFor="tc"
-                    className="text-xs text-muted-foreground cursor-pointer"
-                  >
-                    I accept the{" "}
-                    <button
-                      type="button"
-                      onClick={() => setShowTc(true)}
-                      className="text-primary underline"
-                    >
-                      Terms & Conditions
-                    </button>{" "}
-                    and Privacy Policy
-                  </label>
                 </div>
+              ))}
 
-                {signupError && (
-                  <p
-                    className="text-sm text-red-400"
-                    data-ocid="auth.error_state"
-                  >
-                    {signupError}
-                  </p>
-                )}
-                <Button
-                  type="submit"
-                  className="w-full bg-primary text-primary-foreground font-semibold"
-                  disabled={signupLoading}
-                  data-ocid="auth.submit_button"
+              <div className="space-y-1">
+                <Label
+                  className="text-xs font-medium"
+                  style={{ color: "rgba(220,200,160,0.7)" }}
                 >
-                  {signupLoading ? "Creating account..." : "Create Account"}
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
+                  Account Type
+                </Label>
+                <Select
+                  value={signupForm.role}
+                  onValueChange={(v) =>
+                    setSignupForm((p) => ({
+                      ...p,
+                      role: v as Exclude<Role, "creator">,
+                    }))
+                  }
+                >
+                  <SelectTrigger
+                    style={{
+                      background: "rgba(255,255,255,0.06)",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      color: "#f0e8d0",
+                      borderRadius: "10px",
+                    }}
+                    data-ocid="auth.select"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent
+                    style={{
+                      background: "#141210",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                    }}
+                  >
+                    <SelectItem value="user">
+                      User — Explore & Discover
+                    </SelectItem>
+                    <SelectItem value="member">
+                      Member — Business Listing (₹1,000/mo)
+                    </SelectItem>
+                    <SelectItem value="community">
+                      Community — Partner with Creator
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div
+                className="rounded-xl p-3 text-xs space-y-1"
+                style={{
+                  background: "rgba(255,200,0,0.05)",
+                  border: "1px solid rgba(255,200,0,0.15)",
+                  color: "rgba(220,200,160,0.65)",
+                }}
+              >
+                <p
+                  className="font-semibold"
+                  style={{ color: "rgba(220,200,160,0.9)" }}
+                >
+                  📋 Rules & Guidelines
+                </p>
+                <p>• Only post real, undiscovered places (not businesses)</p>
+                <p>
+                  • Member payments are{" "}
+                  <span className="text-red-400 font-semibold">
+                    non-refundable
+                  </span>
+                </p>
+                <p>• Violations lead to fines and suspension (L1–L7)</p>
+                <p>
+                  • No army/military content — auto-blocked, Level 2 warning
+                </p>
+              </div>
+
+              <div className="flex items-start gap-2">
+                <Checkbox
+                  id="tc"
+                  checked={tcAccepted}
+                  onCheckedChange={(v) => setTcAccepted(!!v)}
+                  data-ocid="auth.checkbox"
+                />
+                <label
+                  htmlFor="tc"
+                  className="text-xs cursor-pointer"
+                  style={{ color: "rgba(200,180,140,0.6)" }}
+                >
+                  I accept the{" "}
+                  <button
+                    type="button"
+                    onClick={() => setShowTc(true)}
+                    className="underline"
+                    style={{ color: "#c9a227" }}
+                  >
+                    Terms & Conditions
+                  </button>{" "}
+                  and Privacy Policy
+                </label>
+              </div>
+
+              {signupError && (
+                <p
+                  className="text-sm text-red-400"
+                  data-ocid="auth.error_state"
+                >
+                  {signupError}
+                </p>
+              )}
+              <Button
+                type="submit"
+                className="w-full font-semibold"
+                style={{
+                  background: "linear-gradient(135deg, #c9a227, #e8c55a)",
+                  color: "#1a1000",
+                  borderRadius: "10px",
+                  height: "44px",
+                }}
+                disabled={signupLoading}
+                data-ocid="auth.submit_button"
+              >
+                {signupLoading ? "Creating account..." : "Create Account"}
+              </Button>
+            </form>
+          )}
+
+          {/* Toggle mode */}
+          <p
+            className="text-center text-xs mt-5"
+            style={{ color: "rgba(200,180,140,0.5)" }}
+          >
+            {mode === "login" ? (
+              <>
+                Don&apos;t have an account?{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("signup");
+                    setLoginError("");
+                  }}
+                  className="font-semibold underline"
+                  style={{ color: "#c9a227" }}
+                  data-ocid="auth.toggle_mode"
+                >
+                  Sign Up
+                </button>
+              </>
+            ) : (
+              <>
+                Already have an account?{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("login");
+                    setSignupError("");
+                  }}
+                  className="font-semibold underline"
+                  style={{ color: "#c9a227" }}
+                  data-ocid="auth.toggle_mode"
+                >
+                  Sign In
+                </button>
+              </>
+            )}
+          </p>
         </div>
 
-        <p className="text-center text-xs text-muted-foreground mt-6">
+        <p
+          className="text-center text-xs mt-5"
+          style={{ color: "rgba(180,160,120,0.35)" }}
+        >
           © {new Date().getFullYear()}.{" "}
           <a
             href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
             target="_blank"
             rel="noreferrer"
-            className="hover:text-primary transition-colors"
+            className="hover:opacity-80 transition-opacity"
           >
-            Built with love using caffeine.ai
+            Built with caffeine.ai
           </a>
         </p>
       </div>
@@ -428,7 +547,8 @@ export function AuthScreen({ onLogin, onSignup }: Props) {
       {/* T&C Modal */}
       {showTc && (
         <div
-          className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.8)" }}
           onClick={() => setShowTc(false)}
           role="presentation"
           onKeyDown={(e) => {
@@ -436,30 +556,54 @@ export function AuthScreen({ onLogin, onSignup }: Props) {
           }}
         >
           <div
-            className="bg-card border border-border rounded-xl p-6 max-w-md w-full max-h-[80vh] overflow-y-auto"
+            className="rounded-2xl p-6 max-w-md w-full max-h-[80vh] overflow-y-auto"
+            style={{
+              background: "#141210",
+              border: "1px solid rgba(180,140,60,0.2)",
+            }}
             onClick={(e) => e.stopPropagation()}
             role="presentation"
             onKeyDown={(e) => e.stopPropagation()}
             data-ocid="auth.dialog"
           >
-            <h2 className="font-heading text-lg font-bold mb-4">
+            <h2
+              className="font-heading text-lg font-bold mb-4"
+              style={{ color: "#f5ecd0" }}
+            >
               Terms & Conditions
             </h2>
-            <div className="text-sm text-muted-foreground space-y-3">
+            <div
+              className="text-sm space-y-3"
+              style={{ color: "rgba(200,180,140,0.7)" }}
+            >
               <p>
-                <strong className="text-foreground">1. Platform Purpose</strong>
+                <strong style={{ color: "#f5ecd0" }}>
+                  1. Platform Purpose
+                </strong>
                 <br />
                 Ladakh Connect is a community platform for discovering and
                 promoting authentic Ladakhi destinations and businesses.
               </p>
               <p>
-                <strong className="text-foreground">2. User Conduct</strong>
+                <strong style={{ color: "#f5ecd0" }}>2. User Conduct</strong>
                 <br />
                 Users must post only genuine undiscovered places. Misleading
                 content or spam will result in violations.
               </p>
               <p>
-                <strong className="text-foreground">3. Member Payments</strong>
+                <strong style={{ color: "#f5ecd0" }}>
+                  3. Military & Restricted Content
+                </strong>
+                <br />
+                Posting content showing army camps, military vehicles, uniforms,
+                or restricted zones is{" "}
+                <span className="text-red-400 font-semibold">
+                  strictly prohibited
+                </span>{" "}
+                and results in automatic Level 2 warning.
+              </p>
+              <p>
+                <strong style={{ color: "#f5ecd0" }}>4. Member Payments</strong>
                 <br />
                 All membership payments (₹1,000/mo Common, ₹1,500/mo Premier)
                 are{" "}
@@ -469,28 +613,29 @@ export function AuthScreen({ onLogin, onSignup }: Props) {
                 .
               </p>
               <p>
-                <strong className="text-foreground">4. Violation System</strong>
-                <br />
-                Violations range from Level 1 (warning) to Level 7 (permanent
-                ban). The Creator has final moderation authority.
-              </p>
-              <p>
-                <strong className="text-foreground">5. Privacy</strong>
-                <br />
-                Your data is stored locally on your device. Electronic IDs are
-                unique identifiers for re-login purposes.
-              </p>
-              <p>
-                <strong className="text-foreground">
-                  6. Community Standards
+                <strong style={{ color: "#f5ecd0" }}>
+                  5. Violation System
                 </strong>
                 <br />
-                Respect local culture, avoid posting restricted military zones
-                or sensitive areas.
+                Level 1: Warning • Level 2: Final Warning • Level 3: ₹500 Fine •
+                Level 4: ₹1,000 Fine • Level 5: ₹1,500 Fine • Level 6:
+                Suspension • Level 7: Permanent Ban. Content and history deleted
+                on ban; ID remains on cloud record.
+              </p>
+              <p>
+                <strong style={{ color: "#f5ecd0" }}>6. Privacy & Data</strong>
+                <br />
+                Your data is stored securely in the cloud. Electronic IDs are
+                unique identifiers for re-login purposes.
               </p>
             </div>
-            <Button
-              className="w-full mt-4 bg-primary text-primary-foreground"
+            <button
+              type="button"
+              className="w-full mt-5 py-3 rounded-xl font-semibold text-sm"
+              style={{
+                background: "linear-gradient(135deg, #c9a227, #e8c55a)",
+                color: "#1a1000",
+              }}
               onClick={() => {
                 setShowTc(false);
                 setTcAccepted(true);
@@ -498,7 +643,7 @@ export function AuthScreen({ onLogin, onSignup }: Props) {
               data-ocid="auth.confirm_button"
             >
               Accept & Close
-            </Button>
+            </button>
           </div>
         </div>
       )}
