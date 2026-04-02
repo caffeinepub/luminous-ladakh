@@ -2,6 +2,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AuthScreen } from "./components/AuthScreen";
+import { EventsTab } from "./components/EventsTab";
 import { ExploreTab } from "./components/ExploreTab";
 import { CommunityBusinessTab } from "./components/community/CommunityBusinessTab";
 import { CommunityPermissionsTab } from "./components/community/PermissionsTab";
@@ -14,18 +15,23 @@ import { MemberProfileTab } from "./components/member/MemberProfileTab";
 import { MembershipTab } from "./components/member/MembershipTab";
 import { MemberBusinessTab } from "./components/member/MyBusinessTab";
 import { BottomNav } from "./components/shared/BottomNav";
+import { DiscoverTab } from "./components/user/DiscoverTab";
 import { PostPlaceModal } from "./components/user/PostPlaceModal";
 import { SearchTab } from "./components/user/SearchTab";
 import { UserProfileTab } from "./components/user/UserProfileTab";
+import { initEventsData } from "./data/eventsData";
 import { initSeedData } from "./data/seed";
 import { useAuth } from "./hooks/useAuth";
 import { useData } from "./hooks/useData";
 
 // Init seed data once
 initSeedData();
+initEventsData();
 
 const USER_NAV = [
   { id: "explore", icon: "explore", label: "Explore" },
+  { id: "discover", icon: "travel_explore", label: "Discover" },
+  { id: "events", icon: "event", label: "Events" },
   { id: "search", icon: "search", label: "Search" },
   { id: "post", icon: "add_circle", label: "Post" },
   { id: "profile", icon: "person", label: "Profile" },
@@ -33,6 +39,7 @@ const USER_NAV = [
 
 const MEMBER_NAV = [
   { id: "explore", icon: "explore", label: "Explore" },
+  { id: "events", icon: "event", label: "Events" },
   { id: "search", icon: "search", label: "Search" },
   { id: "business", icon: "store", label: "My Business" },
   { id: "membership", icon: "card_membership", label: "Membership" },
@@ -41,6 +48,7 @@ const MEMBER_NAV = [
 
 const COMMUNITY_NAV = [
   { id: "explore", icon: "explore", label: "Explore" },
+  { id: "events", icon: "event", label: "Events" },
   { id: "search", icon: "search", label: "Search" },
   { id: "business", icon: "store", label: "My Business" },
   { id: "permissions", icon: "key", label: "Permissions" },
@@ -50,6 +58,8 @@ const COMMUNITY_NAV = [
 const CREATOR_NAV = [
   { id: "dashboard", icon: "dashboard", label: "Dashboard" },
   { id: "explore", icon: "explore", label: "Explore" },
+  { id: "discover", icon: "travel_explore", label: "Discover" },
+  { id: "events", icon: "event", label: "Events" },
   { id: "vault", icon: "inventory_2", label: "Vault" },
   { id: "wallet", icon: "account_balance_wallet", label: "Wallet" },
   { id: "moderation", icon: "shield", label: "Moderation" },
@@ -228,6 +238,15 @@ export default function App() {
                 onAddLocationReview={data.addLocationReview}
               />
             )}
+            {activeTab === "discover" && (
+              <DiscoverTab currentUser={currentUser} />
+            )}
+            {activeTab === "events" && (
+              <EventsTab
+                currentUser={currentUser}
+                onAddPendingPayment={data.addPendingPayment}
+              />
+            )}
             {activeTab === "search" && (
               <SearchTab
                 accounts={accounts}
@@ -264,6 +283,12 @@ export default function App() {
                 currentUserRole={currentUser.role}
                 onAddReview={data.addReview}
                 onAddLocationReview={data.addLocationReview}
+              />
+            )}
+            {activeTab === "events" && (
+              <EventsTab
+                currentUser={currentUser}
+                onAddPendingPayment={data.addPendingPayment}
               />
             )}
             {activeTab === "search" && (
@@ -321,6 +346,12 @@ export default function App() {
                 currentUserRole={currentUser.role}
                 onAddReview={data.addReview}
                 onAddLocationReview={data.addLocationReview}
+              />
+            )}
+            {activeTab === "events" && (
+              <EventsTab
+                currentUser={currentUser}
+                onAddPendingPayment={data.addPendingPayment}
               />
             )}
             {activeTab === "search" && (
@@ -406,6 +437,21 @@ export default function App() {
                 }}
               />
             )}
+            {activeTab === "discover" && (
+              <DiscoverTab
+                currentUser={currentUser}
+                isCreator
+                onPromoteToExplore={() => {
+                  setRenderTick((t) => t + 1);
+                }}
+              />
+            )}
+            {activeTab === "events" && (
+              <EventsTab
+                currentUser={currentUser}
+                onAddPendingPayment={data.addPendingPayment}
+              />
+            )}
             {activeTab === "vault" && <VaultTab />}
             {activeTab === "wallet" && (
               <CreatorWallet
@@ -426,11 +472,15 @@ export default function App() {
                   const pending = data.getPendingPayments();
                   const p = pending.find((x) => x.id === id);
                   if (p) {
+                    const note =
+                      p.paymentType === "event"
+                        ? `Event Post: ${p.eventTitle || "Event"} from @${p.memberUsername}`
+                        : `${p.tier} Membership from @${p.memberUsername}`;
                     data.addWalletTransaction({
                       type: "payment",
                       amount: p.amount,
                       from: p.memberUsername,
-                      note: `${p.tier} Membership from @${p.memberUsername}`,
+                      note,
                     });
                     data.removePendingPayment(id);
                     setRenderTick((t) => t + 1);

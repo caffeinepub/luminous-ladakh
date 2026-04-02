@@ -127,4 +127,42 @@ export interface PendingPayment {
   tier: string;
   timestamp: string;
   status: "pending";
+  paymentType?: "membership" | "event";
+  eventTitle?: string;
+}
+
+export interface LCEvent {
+  id: string;
+  title: string;
+  date: string; // ISO date
+  location: string;
+  description: string;
+  postedBy: string;
+  postedByUsername: string;
+  postedByRole: string;
+  paymentId: string;
+  status: "pending" | "approved";
+  timestamp: string;
+}
+
+export interface DiscoveryPost {
+  id: string;
+  title: string;
+  area: string;
+  description: string;
+  imageUrl?: string;
+  postedBy: string;
+  postedByUsername: string;
+  timestamp: string;
+  upvotes: string[];
+  promoted: boolean;
+}
+
+export interface RoadStatus {
+  id: string;
+  name: string;
+  status: "open" | "closed" | "caution";
+  note?: string;
+  updatedBy?: string;
+  updatedAt?: string;
 }

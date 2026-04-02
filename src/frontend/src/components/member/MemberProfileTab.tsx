@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { applyTheme } from "../../hooks/useAuth";
 import type { Account, Violation } from "../../types";
 import { ViolationCard } from "../shared/ViolationCard";
+import { ElectronicIDCard } from "./ElectronicIDCard";
 
 interface Props {
   currentUser: Account;
@@ -180,6 +181,7 @@ export function MemberProfileTab({
           </div>
         </div>
 
+        <ElectronicIDCard account={currentUser} />
         <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 flex items-center gap-3 mb-4">
           <span className="material-symbols-outlined text-primary">badge</span>
           <div>

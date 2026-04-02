@@ -163,7 +163,10 @@ export function CreatorWallet({
                       {p.memberEmail}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {p.tier} Plan · {new Date(p.timestamp).toLocaleString()}
+                      {p.paymentType === "event"
+                        ? `Event Post: ${p.eventTitle || "Event"}`
+                        : `${p.tier} Plan`}{" "}
+                      · {new Date(p.timestamp).toLocaleString()}
                     </p>
                   </div>
                   <p className="font-bold text-yellow-400">

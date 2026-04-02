@@ -1,31 +1,33 @@
-# Ladakh Connect
+# Ladakh Connect – Version 16 (6 New Features)
 
 ## Current State
-Version 14 is live. ExploreTab.tsx contains all location data and renders Details/Reviews as overlay panels. Creator can edit location text details. Location images are preloaded (AI/Wikimedia). No back button exists on overlay panels -- mobile users exit the app when pressing the browser back button.
+Version 15 is live with: deep black theme, role-based navigation (User/Member/Community/Creator), ExploreTab with 22 preloaded locations, Member business listings, violation system, Creator dashboard/wallet/moderation, user photo contributions with Creator approval, back buttons on panels.
 
 ## Requested Changes (Diff)
 
 ### Add
-- In-app back/close button on all Details and Reviews overlay panels (visible, tappable, returns to Explore without leaving the app)
-- User photo contribution: any logged-in user can submit a photo for any location via a "Contribute Photo" button on the location card/details panel
-- Pending photo queue in Creator dashboard -- shows submitted photos with location name, submitter, and approve/reject actions
-- Creator photo management: upload new photos, delete existing photos (including AI-generated or false ones) on any location
-- Creator can delete individual user reviews (but cannot edit review text)
+1. Live Weather Widget – top of Explore, shows Leh/Pangong/Nubra weather (temp, condition, wind) using realistic static data.
+2. Road Status Alerts – section in Explore showing status of Manali-Leh, Srinagar-Leh, Khardung La, Chang La, Zoji La. Creator/Community can update status.
+3. Electronic ID Card – digital membership card in Member profile with name, tier, unique ID, join date, QR code.
+4. Undiscovered Places Feed – "Discover" tab for Users to submit new spots (name, desc, photo, area), upvote, Creator promotes to Explore.
+5. Festival & Event Calendar – "Events" tab for all roles. Creator manages official list. Any role can post event by paying Rs650 (pending payment to Creator wallet, requires Creator confirmation before going live).
+6. Emergency SOS Button – floating button on Explore, opens panel with SNM Hospital, Leh Police, fire, mountain rescue numbers.
 
 ### Modify
-- Details panel: add back button at top, add "Contribute Photo" button for logged-in non-creator users
-- Reviews panel: add back button at top; Creator sees a delete button on each review
-- Creator dashboard: add "Photo Approvals" section showing pending user-submitted photos
-- Location data structure: support dynamic photo arrays that can be modified by Creator
+- App.tsx: Add discover tab (User), events tab (all roles)
+- ExploreTab.tsx: Add weather widget, road status, SOS button
+- DashboardTab.tsx: Add event approvals panel, road status management
+- WalletTab.tsx: Event payments (Rs650) as pending payments
+- MemberProfileTab.tsx: Add Electronic ID card section
 
 ### Remove
-- Nothing removed
+Nothing removed.
 
 ## Implementation Plan
-1. Add `pendingPhotos` and `locationPhotos` state to app-level state (localStorage-backed)
-2. In ExploreTab: add visible X/back button on all overlay panels (Details, Reviews)
-3. Add "Contribute Photo" button in Details panel for non-creator logged-in users -- opens file picker, stores to pending queue
-4. Creator controls in Details panel: upload photo button, delete button on each photo in the gallery
-5. Creator delete button on each review in Reviews panel
-6. Creator dashboard (DashboardTab or new section): Photo Approvals panel listing pending photos with Approve/Reject
-7. On approval, photo moves from pending to the location's photo array and appears in gallery
+1. Add Event, RoadStatus, DiscoveryPost types to types.ts
+2. Create weatherData.ts, roadStatus.ts (localStorage), events.ts (localStorage with 5 seed festivals)
+3. Create WeatherWidget.tsx, RoadStatusWidget.tsx, EmergencySOS.tsx
+4. Create EventsTab.tsx with Rs650 payment gate and Creator approval flow
+5. Create DiscoverTab.tsx with submit + upvote for Users
+6. Create ElectronicIDCard.tsx for Member profile
+7. Update ExploreTab.tsx, App.tsx, DashboardTab.tsx, MemberProfileTab.tsx

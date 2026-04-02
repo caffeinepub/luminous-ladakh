@@ -1,5 +1,6 @@
 import { useState } from "react";
-import type { Account, Post, Violation } from "../../types";
+import { loadEvents, saveEvents } from "../../data/eventsData";
+import type { Account, LCEvent, Post, Violation } from "../../types";
 import type { PendingPhoto } from "../ExploreTab";
 
 const PENDING_PHOTOS_KEY = "lc_pending_photos";
@@ -40,6 +41,79 @@ interface Props {
   posts: Post[];
   violations: Violation[];
   walletBalance: number;
+}
+
+function EventApprovalsPanel() {
+  const [events, setEvents] = useState<LCEvent[]>(loadEvents);
+  const pending = events.filter((e) => e.status === "pending");
+
+  function approve(id: string) {
+    const updated = events.map((e) =>
+      e.id === id ? { ...e, status: "approved" as const } : e,
+    );
+    setEvents(updated);
+    saveEvents(updated);
+  }
+
+  function reject(id: string) {
+    const updated = events.filter((e) => e.id !== id);
+    setEvents(updated);
+    saveEvents(updated);
+  }
+
+  return (
+    <div className="bg-card border border-border rounded-xl p-4">
+      <h2 className="font-heading font-semibold mb-3 flex items-center gap-2">
+        <span className="material-symbols-outlined text-purple-400 text-lg">
+          event
+        </span>
+        Event Approvals
+        {pending.length > 0 && (
+          <span className="ml-auto bg-purple-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+            {pending.length}
+          </span>
+        )}
+      </h2>
+      {pending.length === 0 ? (
+        <div className="text-center py-4">
+          <p className="text-sm text-muted-foreground">No pending events</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {pending.map((ev) => (
+            <div
+              key={ev.id}
+              className="bg-zinc-800/60 rounded-xl p-3 border border-zinc-700"
+            >
+              <p className="font-semibold text-sm">{ev.title}</p>
+              <p className="text-xs text-muted-foreground">
+                {ev.date} &middot; {ev.location}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                by @{ev.postedByUsername} &middot; &#8377;650 payment pending
+              </p>
+              <div className="flex gap-2 mt-2">
+                <button
+                  type="button"
+                  onClick={() => approve(ev.id)}
+                  className="flex-1 py-1.5 rounded-lg bg-green-600 hover:bg-green-500 text-white text-xs font-semibold"
+                >
+                  Approve
+                </button>
+                <button
+                  type="button"
+                  onClick={() => reject(ev.id)}
+                  className="flex-1 py-1.5 rounded-lg bg-red-700 hover:bg-red-600 text-white text-xs font-semibold"
+                >
+                  Reject
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function PhotoApprovalsPanel() {
@@ -116,7 +190,8 @@ function PhotoApprovalsPanel() {
                     {photo.locationName}
                   </p>
                   <p className="text-zinc-300 text-xs">
-                    by @{photo.submittedBy} · {formatDate(photo.submittedAt)}
+                    by @{photo.submittedBy} &middot;{" "}
+                    {formatDate(photo.submittedAt)}
                   </p>
                 </div>
               </div>
@@ -126,14 +201,14 @@ function PhotoApprovalsPanel() {
                   onClick={() => approvePhoto(photo)}
                   className="flex-1 py-2 rounded-lg bg-green-600 hover:bg-green-500 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-1"
                 >
-                  ✅ Approve
+                  Approve
                 </button>
                 <button
                   type="button"
                   onClick={() => rejectPhoto(photo.id)}
                   className="flex-1 py-2 rounded-lg bg-red-700 hover:bg-red-600 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-1"
                 >
-                  ❌ Reject
+                  Reject
                 </button>
               </div>
             </div>
@@ -181,7 +256,7 @@ export function CreatorDashboard({
     {
       icon: "account_balance_wallet",
       label: "Wallet Balance",
-      value: `₹${walletBalance.toLocaleString()}`,
+      value: `\u20b9${walletBalance.toLocaleString()}`,
       color: "text-green-400",
       bg: "bg-green-400/10 border-green-400/20",
     },
@@ -234,6 +309,9 @@ export function CreatorDashboard({
       {/* Photo Approvals */}
       <PhotoApprovalsPanel />
 
+      {/* Event Approvals */}
+      <EventApprovalsPanel />
+
       {/* Recent Activity */}
       <div className="bg-card border border-border rounded-xl p-4">
         <h2 className="font-heading font-semibold mb-3 flex items-center gap-2">
@@ -262,7 +340,7 @@ export function CreatorDashboard({
               Monthly revenue
             </span>
             <span className="font-semibold text-green-400">
-              ₹
+              &#8377;
               {members
                 .reduce(
                   (s, m) => s + (m.membershipTier === "Premier" ? 1500 : 1000),

@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { loadRoadStatus, saveRoadStatus } from "../data/roadStatusData";
+import type { RoadStatus } from "../types";
 import type { Account, LocationReview, Post, Review } from "../types";
+import { EmergencySOS } from "./EmergencySOS";
+import { RoadStatusWidget } from "./RoadStatusWidget";
+import { WeatherWidget } from "./WeatherWidget";
 
 interface Location {
   id: string;
@@ -1478,6 +1483,8 @@ export function ExploreTab({
   const [locations, setLocations] = useState<Location[]>(loadLocations);
   const [locationPhotosMap, setLocationPhotosMap] =
     useState<Record<string, string[]>>(loadLocationPhotos);
+  const [roadStatuses, setRoadStatuses] =
+    useState<RoadStatus[]>(loadRoadStatus);
 
   const currentAccount = accounts.find((a) => a.id === currentUserId);
   const currentUsername = currentAccount?.username || "user";
@@ -1537,6 +1544,22 @@ export function ExploreTab({
           Discover monasteries, places, and local businesses
         </p>
       </div>
+
+      <WeatherWidget />
+      <RoadStatusWidget
+        roads={roadStatuses}
+        canEdit={isCreator || currentUserRole === "community"}
+        onUpdateStatus={(id, status, note) => {
+          const updated = roadStatuses.map((r) =>
+            r.id === id
+              ? { ...r, status, note, updatedAt: new Date().toISOString() }
+              : r,
+          );
+          setRoadStatuses(updated);
+          saveRoadStatus(updated);
+        }}
+      />
+      <EmergencySOS />
 
       <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide">
         {ALL_CATEGORIES.map((cat) => (
