@@ -1,41 +1,62 @@
-# Ladakh Connect
+# Ladakh Connect — Version 23: Stability & Security Layer
 
 ## Current State
-Version 17 is live with: multi-role app (User, Member, Community Member, Creator), explore with 22 preloaded locations, business listings, payments, violation system, weather widget, road status alerts, electronic ID, undiscovered places feed, festival/event calendar with ₹650 fee, emergency SOS, and language support (3 main + all world languages downloadable).
+Version 22 is live. The app has:
+- 4 roles: User, Member, Community Member, Creator
+- Role-based navigation and conditional rendering
+- Auth via useAuth hook (localStorage-based accounts)
+- Account model (Account type in types/index.ts)
+- Creator wallet (WalletTab.tsx) with pending payments, confirm/reject, withdraw
+- AuthScreen.tsx handles login/signup with role selector
+- Language system (LanguageContext.tsx) with 3 main languages
+- main.tsx wraps App in QueryClientProvider + InternetIdentityProvider
+- No global error boundary — a crash in any component takes down the whole app
+- No security word / password recovery in Account model or AuthScreen
+- No content moderation on uploads
+- No withdrawal security watch or wallet audit log
+- No role isolation enforcement beyond UI conditionals
 
 ## Requested Changes (Diff)
 
 ### Add
-1. **Offline Mode / Saved Locations** -- Bookmark button on every location/business card; saved locations accessible from a new "Saved" tab or section in User profile; cached locally so details viewable without signal
-2. **Trip Planner** -- New "Trip Planner" tab for Users; add locations from Explore to itinerary by day; reorder days; share trip as a readable summary; free for all roles
-3. **Business Review Verification Badge** -- When a user leaves a review on a business, show a "Visited" badge if their check-in location is near the business (within Leh area); unverified reviews show without badge; businesses display verified review count
-4. **Seasonal Attraction Alerts** -- Each location card shows a season tag ("Open May–Oct", "Year Round", etc.); saved locations trigger a banner notification when their season opens; Creator can edit season info per location
-5. **Member Loyalty Tier** -- Track consecutive payment months per member; after 6 months Common members get "Trusted Seller" badge; after 12 months Premier members get "Verified Partner" badge; badges shown on business cards and member profiles
-6. **Community Polls** -- Creator can create polls (question + up to 4 options) from Creator Dashboard; polls visible to all roles in Explore or a dedicated section; users can vote once; results shown as percentage bars; Creator can close/delete polls
-7. **Visitor Count / Check-in Stats** -- Each location/business card shows a visitor count ("X visitors"); users can tap a "Check In" button when viewing a location; count increments and is stored; shown on cards and in Details panel
-8. **Business Analytics for Members** -- In the My Business section, each business listing shows a stats panel: total views, total Directions taps, total reviews, check-ins this week; data is per-business and visible only to the owning member
+- **Global Error Boundary** (ErrorBoundary.tsx): React class component wrapping entire app. Catches any render crash, shows a friendly retry/refresh UI instead of blank screen. Also wraps individual tabs so one tab crash doesn't kill the whole app.
+- **AppErrorBoundary** in main.tsx: Wrap `<App />` with the error boundary
+- **Security Word field** on Account type: `securityWord?: string` — stored hashed alongside passwordHash
+- **Security Word setup during signup**: All roles (user, member, community, creator) must set a security word during signup. Creator's security word must be a valid 52-card deck card name (e.g. "King of Hearts", "Ace of Spades") OR the phrase "52 decks of cards".
+- **Forgot Password flow** in AuthScreen: "Forgot Password?" link on login screen → enter username → enter security word → set new password + confirm → save. Works for all roles.
+- **Security Word validation for Creator withdrawal**: Before processing any withdrawal in WalletTab, Creator must enter their security word. Wrong word blocks withdrawal.
+- **Wallet Audit Log**: Every payment confirmation, rejection, and withdrawal attempt (successful or blocked) is logged with timestamp, amount, and action type. Displayed in WalletTab as a scrollable log.
+- **ROG-style Security Watch panel** in WalletTab: Shows a security status monitor during withdrawal — logs the attempt in real time, validates the security word, shows a visual "scanning" state before approving or blocking.
+- **Content moderation on uploads**: When any file/text is submitted (photo contribution, business photo, post), scan for banned keywords (military, army, nude, explicit, spam keywords). Block flagged content and show warning.
+- **Role isolation enforcement**: Add guard utilities so Creator-only data (wallet balance, wallet transactions, moderation data) cannot be accessed from non-Creator components. Each role's data access is scoped.
+- **Auto-retry wrapper**: A `RetryWrapper` component that catches failed data loads and shows a retry button with countdown.
 
 ### Modify
-- ExploreTab: add bookmark button, visitor count, check-in button, seasonal tag on cards
-- UserProfileTab: add Saved Locations section; add Trip Planner access
-- MyBusinessTab: add analytics panel per business
-- DashboardTab (Creator): add Poll creation panel
-- Member business cards: show loyalty badge if earned
-- Review submission: record whether user is near Leh for verification badge
+- **Account type** (types/index.ts): Add `securityWord?: string` field
+- **useAuth hook** (hooks/useAuth.ts): 
+  - signup() requires securityWord parameter, hashes and stores it
+  - Add recoverPassword(username, securityWord, newPassword) function
+  - login() brute-force protection: track failed attempts per username in localStorage, lock account UI after 5 failed attempts for 15 minutes
+- **AuthScreen.tsx**: 
+  - Add securityWord field to all signup forms (email + social)
+  - Add "Forgot Password?" link on login → recovery flow UI
+  - Creator signup not allowed (login only), but Creator already has security word set via a one-time setup prompt if not set
+- **WalletTab.tsx**: 
+  - Add security word confirmation step before withdrawal processes
+  - Add ROG Edge Pro style security watch UI (scanning animation, status log)
+  - Add full wallet audit log section
+- **main.tsx**: Wrap App in ErrorBoundary
 
 ### Remove
-- Nothing removed
+- Nothing removed — this is additive
 
 ## Implementation Plan
-1. Add `savedLocations`, `checkIns`, `tripPlans`, `polls`, `memberStats` to local state/data layer in types/index.ts and relevant data files
-2. Add bookmark (save) button to every location card in ExploreTab; persist to localStorage under user account
-3. Add "Saved" section to UserProfileTab showing bookmarked locations with remove option
-4. Create TripPlannerTab component: add locations to days, reorder, share as text summary
-5. Add seasonal tags to location data (seed.ts); render tag badge on cards; show open/closed status
-6. Add check-in button to location Details panel; increment visitor count stored per location in localStorage
-7. Show visitor count on all location/business cards
-8. Add "Verified" badge logic on reviews: if user's browser geolocation is within Ladakh region, mark review as verified
-9. Add loyalty tier tracking: count payment months per member account; render badge on business cards and profile
-10. Add PollsSection component; Creator creates polls from Dashboard; all roles can view and vote in Explore
-11. Add analytics panel in MyBusinessTab per business: views, directions taps, reviews, check-ins
-12. Wire all new features to existing language translation system
+1. Create `src/frontend/src/components/ErrorBoundary.tsx` — React class-based error boundary with retry button
+2. Create `src/frontend/src/components/RetryWrapper.tsx` — functional wrapper for async data with retry UI  
+3. Update `src/frontend/src/types/index.ts` — add securityWord to Account
+4. Update `src/frontend/src/hooks/useAuth.ts` — add securityWord to signup, add recoverPassword(), add brute-force tracking
+5. Update `src/frontend/src/components/AuthScreen.tsx` — add security word field to signup, add forgot password flow
+6. Update `src/frontend/src/components/creator/WalletTab.tsx` — add security word gate on withdrawal, ROG security watch UI, full audit log
+7. Update `src/frontend/src/main.tsx` — wrap App in ErrorBoundary
+8. Create `src/frontend/src/utils/contentModeration.ts` — keyword scanner for uploads
+9. Create `src/frontend/src/utils/cardValidator.ts` — validates Creator security word as valid card name

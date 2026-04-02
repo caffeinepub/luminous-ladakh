@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ReactDOM from "react-dom/client";
 import App from "./App";
-import { LanguageProvider } from "./context/LanguageContext";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { InternetIdentityProvider } from "./hooks/useInternetIdentity";
 import "./index.css";
 
@@ -18,11 +18,11 @@ declare global {
 const queryClient = new QueryClient();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
-  <QueryClientProvider client={queryClient}>
-    <InternetIdentityProvider>
-      <LanguageProvider>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <InternetIdentityProvider>
         <App />
-      </LanguageProvider>
-    </InternetIdentityProvider>
-  </QueryClientProvider>,
+      </InternetIdentityProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>,
 );

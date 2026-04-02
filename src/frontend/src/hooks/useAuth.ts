@@ -6,6 +6,10 @@ import {
   verifyPassword,
 } from "../data/seed";
 import type { Account, Role } from "../types";
+import { isValidCreatorSecurityWord } from "../utils/contentModeration";
+
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_MINUTES = 15;
 
 interface SignupData {
   username: string;
@@ -13,6 +17,7 @@ interface SignupData {
   password: string;
   role: Exclude<Role, "creator">;
   communityCode?: string;
+  securityWord?: string;
 }
 
 interface AuthState {
@@ -87,8 +92,66 @@ export function useAuth() {
           error:
             "This account has been permanently banned. Your electronic ID remains on record.",
         };
-      if (!verifyPassword(password, account.passwordHash))
-        return { success: false, error: "Incorrect password" };
+
+      // Lockout check
+      if (account.lockoutUntil) {
+        const lockoutDate = new Date(account.lockoutUntil);
+        if (lockoutDate > new Date()) {
+          const minsLeft = Math.ceil(
+            (lockoutDate.getTime() - Date.now()) / 60000,
+          );
+          return {
+            success: false,
+            error: `Account temporarily locked due to too many failed attempts. Try again in ${minsLeft} minute${minsLeft !== 1 ? "s" : ""}.`,
+          };
+        }
+      }
+
+      if (!verifyPassword(password, account.passwordHash)) {
+        // Increment failed attempts
+        const failedAttempts = (account.failedLoginAttempts || 0) + 1;
+        const updates: Partial<Account> = {
+          failedLoginAttempts: failedAttempts,
+        };
+        if (failedAttempts >= MAX_FAILED_ATTEMPTS) {
+          const lockoutUntil = new Date(
+            Date.now() + LOCKOUT_MINUTES * 60 * 1000,
+          ).toISOString();
+          updates.lockoutUntil = lockoutUntil;
+          updates.failedLoginAttempts = 0;
+          const idx = accounts.findIndex((a) => a.id === account.id);
+          if (idx >= 0) {
+            accounts[idx] = { ...accounts[idx], ...updates };
+            saveAccounts(accounts);
+          }
+          return {
+            success: false,
+            error: `Too many failed attempts. Account locked for ${LOCKOUT_MINUTES} minutes.`,
+          };
+        }
+        const idx = accounts.findIndex((a) => a.id === account.id);
+        if (idx >= 0) {
+          accounts[idx] = { ...accounts[idx], ...updates };
+          saveAccounts(accounts);
+        }
+        const remaining = MAX_FAILED_ATTEMPTS - failedAttempts;
+        return {
+          success: false,
+          error: `Incorrect password. ${remaining} attempt${remaining !== 1 ? "s" : ""} remaining before lockout.`,
+        };
+      }
+
+      // Successful login — reset failed attempts
+      const idx = accounts.findIndex((a) => a.id === account.id);
+      if (idx >= 0 && (account.failedLoginAttempts || 0) > 0) {
+        accounts[idx] = {
+          ...accounts[idx],
+          failedLoginAttempts: 0,
+          lockoutUntil: undefined,
+        };
+        saveAccounts(accounts);
+      }
+
       localStorage.setItem(
         "lc_session",
         JSON.stringify({ userId: account.id }),
@@ -124,7 +187,6 @@ export function useAuth() {
             error: "This account has been permanently banned.",
           };
         }
-        // Log them in regardless of authProvider
         localStorage.setItem(
           "lc_session",
           JSON.stringify({ userId: existing.id }),
@@ -212,6 +274,9 @@ export function useAuth() {
         return { success: false, error: "This username is reserved" };
       }
       const electronicId = generateElectronicId();
+      const hashedSecurityWord = data.securityWord
+        ? hashPw(data.securityWord.trim().toLowerCase())
+        : undefined;
       const newAccount: Account = {
         id: generateId(),
         username: data.username,
@@ -222,6 +287,7 @@ export function useAuth() {
         status: "active",
         authProvider: "email",
         createdAt: new Date().toISOString(),
+        ...(hashedSecurityWord ? { securityWord: hashedSecurityWord } : {}),
         ...(data.role === "member"
           ? {
               membershipTier: "Common",
@@ -241,6 +307,66 @@ export function useAuth() {
       applyFontColorById(newAccount.fontColor);
       setState({ currentUser: newAccount, isLoading: false });
       return { success: true, electronicId };
+    },
+    [],
+  );
+
+  const recoverPassword = useCallback(
+    (
+      username: string,
+      securityWordInput: string,
+      newPassword: string,
+    ): { success: boolean; error?: string } => {
+      const accounts = getAccounts();
+      const account = accounts.find(
+        (a) => a.username.toLowerCase() === username.toLowerCase(),
+      );
+      if (!account) return { success: false, error: "Username not found" };
+      if (account.status === "banned") {
+        return { success: false, error: "This account has been banned." };
+      }
+
+      const normalized = securityWordInput.trim().toLowerCase();
+
+      // Creator special handling: accept any valid card name or "52 decks of cards"
+      if (account.role === "creator") {
+        if (!isValidCreatorSecurityWord(normalized)) {
+          return {
+            success: false,
+            error:
+              'Invalid security card. Enter a valid card name (e.g. King of Hearts) or "52 decks of cards".',
+          };
+        }
+      } else {
+        // All other roles: verify against stored hash
+        if (!account.securityWord) {
+          return {
+            success: false,
+            error:
+              "No security word set for this account. Please contact support.",
+          };
+        }
+        const hashedInput = hashPw(normalized);
+        if (hashedInput !== account.securityWord) {
+          return {
+            success: false,
+            error: "Incorrect security word. Please try again.",
+          };
+        }
+      }
+
+      // Update password
+      const idx = accounts.findIndex((a) => a.id === account.id);
+      if (idx >= 0) {
+        accounts[idx] = {
+          ...accounts[idx],
+          passwordHash: hashPw(newPassword),
+          failedLoginAttempts: 0,
+          lockoutUntil: undefined,
+        };
+        saveAccounts(accounts);
+      }
+      return { success: true };
     },
     [],
   );
@@ -295,5 +421,6 @@ export function useAuth() {
     logout,
     updateCurrentUser,
     refreshUser,
+    recoverPassword,
   };
 }

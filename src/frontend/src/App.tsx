@@ -2,6 +2,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AuthScreen } from "./components/AuthScreen";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { EventsTab } from "./components/EventsTab";
 import { ExploreTab } from "./components/ExploreTab";
 import { LanguageSelectScreen } from "./components/LanguageSelectScreen";
@@ -23,17 +24,25 @@ import { SearchTab } from "./components/user/SearchTab";
 import { UserProfileTab } from "./components/user/UserProfileTab";
 import { useLanguage } from "./context/LanguageContext";
 import { initEventsData } from "./data/eventsData";
-import { initSeedData } from "./data/seed";
+import { initSeedData, verifyPassword } from "./data/seed";
 import { useAuth } from "./hooks/useAuth";
 import { useData } from "./hooks/useData";
+import { isValidCreatorSecurityWord } from "./utils/contentModeration";
 
 // Init seed data once
 initSeedData();
 initEventsData();
 
 export default function App() {
-  const { currentUser, login, socialLogin, signup, logout, updateCurrentUser } =
-    useAuth();
+  const {
+    currentUser,
+    login,
+    socialLogin,
+    signup,
+    logout,
+    updateCurrentUser,
+    recoverPassword,
+  } = useAuth();
   const data = useData();
   const { t, languageSelected } = useLanguage();
   const [activeTab, setActiveTab] = useState<string>("");
@@ -66,6 +75,23 @@ export default function App() {
     }
   }, []);
 
+  // Security word verifier for Creator wallet
+  const verifySecurityWord = useCallback(
+    (input: string): boolean => {
+      if (!currentUser || currentUser.role !== "creator") return false;
+      const normalized = input.trim().toLowerCase();
+      // If Creator has a stored security word, verify against it
+      if (currentUser.securityWord) {
+        if (verifyPassword(normalized, currentUser.securityWord)) return true;
+        // Also accept any valid card name as fallback if hash doesn't match
+        return isValidCreatorSecurityWord(normalized);
+      }
+      // No security word set yet: accept any valid card name
+      return isValidCreatorSecurityWord(normalized);
+    },
+    [currentUser],
+  );
+
   // Language selection gate
   if (!languageSelected) {
     return (
@@ -83,6 +109,7 @@ export default function App() {
           onLogin={login}
           onSignup={signup}
           onSocialLogin={socialLogin}
+          onRecoverPassword={recoverPassword}
         />
         <Toaster position="top-center" richColors />
       </>
@@ -242,45 +269,55 @@ export default function App() {
         {currentUser.role === "user" && (
           <>
             {activeTab === "explore" && (
-              <ExploreTab
-                accounts={accounts}
-                posts={posts}
-                reviews={reviews}
-                locationReviews={locationReviews}
-                currentUserId={currentUser.id}
-                currentUserRole={currentUser.role}
-                onAddReview={data.addReview}
-                onAddLocationReview={data.addLocationReview}
-              />
+              <ErrorBoundary minimal>
+                <ExploreTab
+                  accounts={accounts}
+                  posts={posts}
+                  reviews={reviews}
+                  locationReviews={locationReviews}
+                  currentUserId={currentUser.id}
+                  currentUserRole={currentUser.role}
+                  onAddReview={data.addReview}
+                  onAddLocationReview={data.addLocationReview}
+                />
+              </ErrorBoundary>
             )}
             {activeTab === "discover" && (
-              <DiscoverTab currentUser={currentUser} />
+              <ErrorBoundary minimal>
+                <DiscoverTab currentUser={currentUser} />
+              </ErrorBoundary>
             )}
             {activeTab === "events" && (
-              <EventsTab
-                currentUser={currentUser}
-                onAddPendingPayment={data.addPendingPayment}
-              />
+              <ErrorBoundary minimal>
+                <EventsTab
+                  currentUser={currentUser}
+                  onAddPendingPayment={data.addPendingPayment}
+                />
+              </ErrorBoundary>
             )}
             {activeTab === "search" && (
-              <SearchTab
-                accounts={accounts}
-                posts={posts}
-                reviews={reviews}
-                currentUserId={currentUser.id}
-                currentUserRole={currentUser.role}
-                onAddReview={data.addReview}
-              />
+              <ErrorBoundary minimal>
+                <SearchTab
+                  accounts={accounts}
+                  posts={posts}
+                  reviews={reviews}
+                  currentUserId={currentUser.id}
+                  currentUserRole={currentUser.role}
+                  onAddReview={data.addReview}
+                />
+              </ErrorBoundary>
             )}
             {activeTab === "profile" && (
-              <UserProfileTab
-                currentUser={currentUser}
-                posts={posts}
-                violations={violations}
-                onUpdateBio={(bio) => updateCurrentUser({ bio })}
-                onUpdateUser={updateCurrentUser}
-                onLogout={logout}
-              />
+              <ErrorBoundary minimal>
+                <UserProfileTab
+                  currentUser={currentUser}
+                  posts={posts}
+                  violations={violations}
+                  onUpdateBio={(bio) => updateCurrentUser({ bio })}
+                  onUpdateUser={updateCurrentUser}
+                  onLogout={logout}
+                />
+              </ErrorBoundary>
             )}
           </>
         )}
@@ -289,61 +326,74 @@ export default function App() {
         {currentUser.role === "member" && (
           <>
             {activeTab === "explore" && (
-              <ExploreTab
-                accounts={accounts}
-                posts={posts}
-                reviews={reviews}
-                locationReviews={locationReviews}
-                currentUserId={currentUser.id}
-                currentUserRole={currentUser.role}
-                onAddReview={data.addReview}
-                onAddLocationReview={data.addLocationReview}
-              />
+              <ErrorBoundary minimal>
+                <ExploreTab
+                  accounts={accounts}
+                  posts={posts}
+                  reviews={reviews}
+                  locationReviews={locationReviews}
+                  currentUserId={currentUser.id}
+                  currentUserRole={currentUser.role}
+                  onAddReview={data.addReview}
+                  onAddLocationReview={data.addLocationReview}
+                />
+              </ErrorBoundary>
             )}
             {activeTab === "events" && (
-              <EventsTab
-                currentUser={currentUser}
-                onAddPendingPayment={data.addPendingPayment}
-              />
+              <ErrorBoundary minimal>
+                <EventsTab
+                  currentUser={currentUser}
+                  onAddPendingPayment={data.addPendingPayment}
+                />
+              </ErrorBoundary>
             )}
             {activeTab === "search" && (
-              <SearchTab
-                accounts={accounts}
-                posts={posts}
-                reviews={reviews}
-                currentUserId={currentUser.id}
-                currentUserRole={currentUser.role}
-                onAddReview={data.addReview}
-              />
+              <ErrorBoundary minimal>
+                <SearchTab
+                  accounts={accounts}
+                  posts={posts}
+                  reviews={reviews}
+                  currentUserId={currentUser.id}
+                  currentUserRole={currentUser.role}
+                  onAddReview={data.addReview}
+                />
+              </ErrorBoundary>
             )}
             {activeTab === "business" && (
-              <MemberBusinessTab
-                currentUser={currentUser}
-                reviews={reviews}
-                onUpdate={(updates) => {
-                  data.updateAccount(currentUser.id, updates);
-                  updateCurrentUser(updates);
-                }}
-                onIssueViolation={data.addViolation}
-              />
+              <ErrorBoundary minimal>
+                <MemberBusinessTab
+                  currentUser={currentUser}
+                  reviews={reviews}
+                  onUpdate={(updates) => {
+                    data.updateAccount(currentUser.id, updates);
+                    updateCurrentUser(updates);
+                  }}
+                  onIssueViolation={data.addViolation}
+                />
+              </ErrorBoundary>
             )}
             {activeTab === "membership" && (
-              <MembershipTab
-                currentUser={currentUser}
-                paymentHistory={JSON.parse(
-                  localStorage.getItem(`lc_memberPayments_${currentUser.id}`) ||
-                    "[]",
-                )}
-              />
+              <ErrorBoundary minimal>
+                <MembershipTab
+                  currentUser={currentUser}
+                  paymentHistory={JSON.parse(
+                    localStorage.getItem(
+                      `lc_memberPayments_${currentUser.id}`,
+                    ) || "[]",
+                  )}
+                />
+              </ErrorBoundary>
             )}
             {activeTab === "profile" && (
-              <MemberProfileTab
-                currentUser={currentUser}
-                violations={violations}
-                onUpdateBio={(bio) => updateCurrentUser({ bio })}
-                onUpdateUser={updateCurrentUser}
-                onLogout={logout}
-              />
+              <ErrorBoundary minimal>
+                <MemberProfileTab
+                  currentUser={currentUser}
+                  violations={violations}
+                  onUpdateBio={(bio) => updateCurrentUser({ bio })}
+                  onUpdateUser={updateCurrentUser}
+                  onLogout={logout}
+                />
+              </ErrorBoundary>
             )}
           </>
         )}
@@ -352,68 +402,80 @@ export default function App() {
         {currentUser.role === "community" && (
           <>
             {activeTab === "explore" && (
-              <ExploreTab
-                accounts={accounts}
-                posts={posts}
-                reviews={reviews}
-                locationReviews={locationReviews}
-                currentUserId={currentUser.id}
-                currentUserRole={currentUser.role}
-                onAddReview={data.addReview}
-                onAddLocationReview={data.addLocationReview}
-              />
+              <ErrorBoundary minimal>
+                <ExploreTab
+                  accounts={accounts}
+                  posts={posts}
+                  reviews={reviews}
+                  locationReviews={locationReviews}
+                  currentUserId={currentUser.id}
+                  currentUserRole={currentUser.role}
+                  onAddReview={data.addReview}
+                  onAddLocationReview={data.addLocationReview}
+                />
+              </ErrorBoundary>
             )}
             {activeTab === "events" && (
-              <EventsTab
-                currentUser={currentUser}
-                onAddPendingPayment={data.addPendingPayment}
-              />
+              <ErrorBoundary minimal>
+                <EventsTab
+                  currentUser={currentUser}
+                  onAddPendingPayment={data.addPendingPayment}
+                />
+              </ErrorBoundary>
             )}
             {activeTab === "search" && (
-              <SearchTab
-                accounts={accounts}
-                posts={posts}
-                reviews={reviews}
-                currentUserId={currentUser.id}
-                currentUserRole={currentUser.role}
-                onAddReview={data.addReview}
-              />
+              <ErrorBoundary minimal>
+                <SearchTab
+                  accounts={accounts}
+                  posts={posts}
+                  reviews={reviews}
+                  currentUserId={currentUser.id}
+                  currentUserRole={currentUser.role}
+                  onAddReview={data.addReview}
+                />
+              </ErrorBoundary>
             )}
             {activeTab === "business" && (
-              <CommunityBusinessTab
-                currentUser={currentUser}
-                permissionRequests={permissionRequests}
-                onUpdate={(updates) => {
-                  data.updateAccount(currentUser.id, updates);
-                  updateCurrentUser(updates);
-                }}
-                onRequestPermission={data.addPermissionRequest}
-              />
+              <ErrorBoundary minimal>
+                <CommunityBusinessTab
+                  currentUser={currentUser}
+                  permissionRequests={permissionRequests}
+                  onUpdate={(updates) => {
+                    data.updateAccount(currentUser.id, updates);
+                    updateCurrentUser(updates);
+                  }}
+                  onRequestPermission={data.addPermissionRequest}
+                />
+              </ErrorBoundary>
             )}
             {activeTab === "permissions" && (
-              <CommunityPermissionsTab
-                currentUser={currentUser}
-                permissionRequests={permissionRequests}
-                violations={violations}
-                members={members}
-                flagReports={flagReports}
-                onRequestPermission={data.addPermissionRequest}
-                onFlagMember={data.addFlagReport}
-                onUpdateUser={(updates) => {
-                  data.updateAccount(currentUser.id, updates);
-                  updateCurrentUser(updates);
-                }}
-                onLogout={logout}
-              />
+              <ErrorBoundary minimal>
+                <CommunityPermissionsTab
+                  currentUser={currentUser}
+                  permissionRequests={permissionRequests}
+                  violations={violations}
+                  members={members}
+                  flagReports={flagReports}
+                  onRequestPermission={data.addPermissionRequest}
+                  onFlagMember={data.addFlagReport}
+                  onUpdateUser={(updates) => {
+                    data.updateAccount(currentUser.id, updates);
+                    updateCurrentUser(updates);
+                  }}
+                  onLogout={logout}
+                />
+              </ErrorBoundary>
             )}
             {activeTab === "profile" && (
-              <MemberProfileTab
-                currentUser={currentUser}
-                violations={violations}
-                onUpdateBio={(bio) => updateCurrentUser({ bio })}
-                onUpdateUser={updateCurrentUser}
-                onLogout={logout}
-              />
+              <ErrorBoundary minimal>
+                <MemberProfileTab
+                  currentUser={currentUser}
+                  violations={violations}
+                  onUpdateBio={(bio) => updateCurrentUser({ bio })}
+                  onUpdateUser={updateCurrentUser}
+                  onLogout={logout}
+                />
+              </ErrorBoundary>
             )}
           </>
         )}
@@ -422,124 +484,143 @@ export default function App() {
         {currentUser.role === "creator" && (
           <>
             {activeTab === "dashboard" && (
-              <CreatorDashboard
-                accounts={accounts}
-                posts={posts}
-                violations={violations}
-                walletBalance={walletBalance}
-              />
+              <ErrorBoundary minimal>
+                <CreatorDashboard
+                  accounts={accounts}
+                  posts={posts}
+                  violations={violations}
+                  walletBalance={walletBalance}
+                />
+              </ErrorBoundary>
             )}
             {activeTab === "explore" && (
-              <ExploreTab
-                accounts={accounts}
-                posts={posts}
-                reviews={reviews}
-                locationReviews={locationReviews}
-                currentUserId={currentUser.id}
-                currentUserRole={currentUser.role}
-                isCreator
-                onAddReview={data.addReview}
-                onAddLocationReview={data.addLocationReview}
-                onApprovePost={(id) => {
-                  data.updatePost(id, { status: "approved" });
-                  toast.success("Post approved!");
-                  setRenderTick((tick) => tick + 1);
-                }}
-                onRejectPost={(id) => {
-                  data.deletePost(id);
-                  toast.success("Post rejected and removed.");
-                  setRenderTick((tick) => tick + 1);
-                }}
-              />
+              <ErrorBoundary minimal>
+                <ExploreTab
+                  accounts={accounts}
+                  posts={posts}
+                  reviews={reviews}
+                  locationReviews={locationReviews}
+                  currentUserId={currentUser.id}
+                  currentUserRole={currentUser.role}
+                  isCreator
+                  onAddReview={data.addReview}
+                  onAddLocationReview={data.addLocationReview}
+                  onApprovePost={(id) => {
+                    data.updatePost(id, { status: "approved" });
+                    toast.success("Post approved!");
+                    setRenderTick((tick) => tick + 1);
+                  }}
+                  onRejectPost={(id) => {
+                    data.deletePost(id);
+                    toast.success("Post rejected and removed.");
+                    setRenderTick((tick) => tick + 1);
+                  }}
+                />
+              </ErrorBoundary>
             )}
             {activeTab === "discover" && (
-              <DiscoverTab
-                currentUser={currentUser}
-                isCreator
-                onPromoteToExplore={() => {
-                  setRenderTick((tick) => tick + 1);
-                }}
-              />
+              <ErrorBoundary minimal>
+                <DiscoverTab
+                  currentUser={currentUser}
+                  isCreator
+                  onPromoteToExplore={() => {
+                    setRenderTick((tick) => tick + 1);
+                  }}
+                />
+              </ErrorBoundary>
             )}
             {activeTab === "events" && (
-              <EventsTab
-                currentUser={currentUser}
-                onAddPendingPayment={data.addPendingPayment}
-              />
+              <ErrorBoundary minimal>
+                <EventsTab
+                  currentUser={currentUser}
+                  onAddPendingPayment={data.addPendingPayment}
+                />
+              </ErrorBoundary>
             )}
-            {activeTab === "vault" && <VaultTab />}
+            {activeTab === "vault" && (
+              <ErrorBoundary minimal>
+                <VaultTab />
+              </ErrorBoundary>
+            )}
             {activeTab === "wallet" && (
-              <CreatorWallet
-                balance={walletBalance}
-                transactions={walletTransactions}
-                pendingPayments={data.getPendingPayments()}
-                members={members}
-                onWithdraw={(amount, bankName) => {
-                  data.addWalletTransaction({
-                    type: "withdrawal",
-                    amount,
-                    bankName,
-                    note: `Withdrawal to ${bankName}`,
-                  });
-                  setRenderTick((tick) => tick + 1);
-                }}
-                onConfirmPayment={(id) => {
-                  const pending = data.getPendingPayments();
-                  const p = pending.find((x) => x.id === id);
-                  if (p) {
-                    const note =
-                      p.paymentType === "event"
-                        ? `Event Post: ${p.eventTitle || "Event"} from @${p.memberUsername}`
-                        : `${p.tier} Membership from @${p.memberUsername}`;
+              <ErrorBoundary minimal>
+                <CreatorWallet
+                  balance={walletBalance}
+                  transactions={walletTransactions}
+                  pendingPayments={data.getPendingPayments()}
+                  members={members}
+                  verifySecurityWord={verifySecurityWord}
+                  onWithdraw={(amount, bankName) => {
                     data.addWalletTransaction({
-                      type: "payment",
-                      amount: p.amount,
-                      from: p.memberUsername,
-                      note,
+                      type: "withdrawal",
+                      amount,
+                      bankName,
+                      note: `Withdrawal to ${bankName}`,
                     });
+                    setRenderTick((tick) => tick + 1);
+                  }}
+                  onConfirmPayment={(id) => {
+                    const pending = data.getPendingPayments();
+                    const p = pending.find((x) => x.id === id);
+                    if (p) {
+                      const note =
+                        p.paymentType === "event"
+                          ? `Event Post: ${p.eventTitle || "Event"} from @${p.memberUsername}`
+                          : `${p.tier} Membership from @${p.memberUsername}`;
+                      data.addWalletTransaction({
+                        type: "payment",
+                        amount: p.amount,
+                        from: p.memberUsername,
+                        note,
+                      });
+                      data.removePendingPayment(id);
+                      setRenderTick((tick) => tick + 1);
+                    }
+                  }}
+                  onRejectPayment={(id) => {
                     data.removePendingPayment(id);
                     setRenderTick((tick) => tick + 1);
-                  }
-                }}
-                onRejectPayment={(id) => {
-                  data.removePendingPayment(id);
-                  setRenderTick((tick) => tick + 1);
-                }}
-              />
+                  }}
+                />
+              </ErrorBoundary>
             )}
             {activeTab === "moderation" && (
-              <CreatorModeration
-                accounts={accounts}
-                violations={violations}
-                permissionRequests={permissionRequests}
-                flagReports={flagReports}
-                onIssueViolation={data.addViolation}
-                onResolveViolation={data.resolveViolation}
-                onUpdatePermissionRequest={data.updatePermissionRequest}
-                onUpdateFlagReport={data.updateFlagReport}
-                onUpdateAccount={data.updateAccount}
-                onBanAccount={(id) => {
-                  data.banAccount(id);
-                  setRenderTick((tick) => tick + 1);
-                }}
-                onSuspendAccount={(id) => {
-                  data.suspendAccount(id);
-                  setRenderTick((tick) => tick + 1);
-                }}
-              />
+              <ErrorBoundary minimal>
+                <CreatorModeration
+                  accounts={accounts}
+                  violations={violations}
+                  permissionRequests={permissionRequests}
+                  flagReports={flagReports}
+                  onIssueViolation={data.addViolation}
+                  onResolveViolation={data.resolveViolation}
+                  onUpdatePermissionRequest={data.updatePermissionRequest}
+                  onUpdateFlagReport={data.updateFlagReport}
+                  onUpdateAccount={data.updateAccount}
+                  onBanAccount={(id) => {
+                    data.banAccount(id);
+                    setRenderTick((tick) => tick + 1);
+                  }}
+                  onSuspendAccount={(id) => {
+                    data.suspendAccount(id);
+                    setRenderTick((tick) => tick + 1);
+                  }}
+                />
+              </ErrorBoundary>
             )}
             {activeTab === "profile" && (
-              <CreatorProfileTab
-                currentUser={currentUser}
-                accounts={accounts}
-                posts={posts}
-                reviews={reviews}
-                violations={violations}
-                walletBalance={walletBalance}
-                onLogout={logout}
-                onUpdateUser={updateCurrentUser}
-                onSetCommunityCode={data.setCommunityCode}
-              />
+              <ErrorBoundary minimal>
+                <CreatorProfileTab
+                  currentUser={currentUser}
+                  accounts={accounts}
+                  posts={posts}
+                  reviews={reviews}
+                  violations={violations}
+                  walletBalance={walletBalance}
+                  onLogout={logout}
+                  onUpdateUser={updateCurrentUser}
+                  onSetCommunityCode={data.setCommunityCode}
+                />
+              </ErrorBoundary>
             )}
           </>
         )}

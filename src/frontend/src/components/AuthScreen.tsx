@@ -16,6 +16,7 @@ interface Props {
     password: string;
     role: Exclude<Role, "creator">;
     communityCode?: string;
+    securityWord?: string;
   }) => { success: boolean; error?: string; electronicId?: string };
   onSocialLogin?: (
     provider: "google" | "facebook",
@@ -28,10 +29,16 @@ interface Props {
     isNew?: boolean;
     electronicId?: string;
   };
+  onRecoverPassword: (
+    username: string,
+    securityWord: string,
+    newPassword: string,
+  ) => { success: boolean; error?: string };
 }
 
 type AuthMethod = "email" | "google" | "facebook";
 type RoleChoice = "user" | "member" | "community" | "creator";
+type RecoveryStep = "username" | "secword" | "newpassword";
 
 const ROLES: {
   value: RoleChoice;
@@ -65,7 +72,12 @@ const ROLES: {
   },
 ];
 
-export function AuthScreen({ onLogin, onSignup, onSocialLogin }: Props) {
+export function AuthScreen({
+  onLogin,
+  onSignup,
+  onSocialLogin,
+  onRecoverPassword,
+}: Props) {
   const [selectedRole, setSelectedRole] = useState<RoleChoice | null>(null);
   const [isLogin, setIsLogin] = useState(true);
   const [method, setMethod] = useState<AuthMethod>("email");
@@ -79,6 +91,7 @@ export function AuthScreen({ onLogin, onSignup, onSocialLogin }: Props) {
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupConfirm, setSignupConfirm] = useState("");
+  const [signupSecurityWord, setSignupSecurityWord] = useState("");
   const [communityCode, setCommunityCode] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
 
@@ -86,6 +99,14 @@ export function AuthScreen({ onLogin, onSignup, onSocialLogin }: Props) {
   const [socialEmail, setSocialEmail] = useState("");
   const [socialName, setSocialName] = useState("");
   const [socialCommunityCode, setSocialCommunityCode] = useState("");
+
+  // Forgot password
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [recoveryStep, setRecoveryStep] = useState<RecoveryStep>("username");
+  const [recoveryUsername, setRecoveryUsername] = useState("");
+  const [recoverySecWord, setRecoverySecWord] = useState("");
+  const [recoveryNewPw, setRecoveryNewPw] = useState("");
+  const [recoveryConfirmPw, setRecoveryConfirmPw] = useState("");
 
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
@@ -96,6 +117,16 @@ export function AuthScreen({ onLogin, onSignup, onSocialLogin }: Props) {
     setSuccessMsg("");
     setLoginUsername("");
     setLoginPassword("");
+  }
+
+  function resetRecovery() {
+    setShowForgotPassword(false);
+    setRecoveryStep("username");
+    setRecoveryUsername("");
+    setRecoverySecWord("");
+    setRecoveryNewPw("");
+    setRecoveryConfirmPw("");
+    setError("");
   }
 
   function handleEmailLogin(e: React.FormEvent) {
@@ -123,6 +154,7 @@ export function AuthScreen({ onLogin, onSignup, onSocialLogin }: Props) {
       password: signupPassword,
       role,
       communityCode: role === "community" ? communityCode : undefined,
+      securityWord: signupSecurityWord || undefined,
     });
     if (!result.success) {
       setError(result.error || "Signup failed");
@@ -155,7 +187,200 @@ export function AuthScreen({ onLogin, onSignup, onSocialLogin }: Props) {
     }
   }
 
+  function handleRecoveryNext() {
+    setError("");
+    if (recoveryStep === "username") {
+      if (!recoveryUsername.trim()) {
+        setError("Please enter your username");
+        return;
+      }
+      setRecoveryStep("secword");
+    } else if (recoveryStep === "secword") {
+      if (!recoverySecWord.trim()) {
+        setError("Please enter your security word");
+        return;
+      }
+      setRecoveryStep("newpassword");
+    } else if (recoveryStep === "newpassword") {
+      if (recoveryNewPw !== recoveryConfirmPw) {
+        setError("Passwords do not match");
+        return;
+      }
+      if (recoveryNewPw.length < 6) {
+        setError("Password must be at least 6 characters");
+        return;
+      }
+      const result = onRecoverPassword(
+        recoveryUsername,
+        recoverySecWord,
+        recoveryNewPw,
+      );
+      if (!result.success) {
+        setError(result.error || "Recovery failed");
+        setRecoveryStep("secword");
+        setRecoverySecWord("");
+      } else {
+        setShowForgotPassword(false);
+        setRecoveryStep("username");
+        setSuccessMsg(
+          "Password reset successfully! You can now log in with your new password.",
+        );
+      }
+    }
+  }
+
   const providerName = method === "google" ? "Google" : "Facebook";
+
+  // Forgot password flow
+  if (showForgotPassword) {
+    const isCreatorRole = selectedRole === "creator";
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center px-4">
+        <div className="w-full max-w-sm">
+          <button
+            type="button"
+            onClick={resetRecovery}
+            className="text-zinc-400 hover:text-white text-sm flex items-center gap-1 mb-6 transition-colors"
+          >
+            ← Back to Login
+          </button>
+
+          <div className="text-center mb-6">
+            <div className="w-14 h-14 mx-auto bg-amber-500/15 rounded-full flex items-center justify-center mb-3">
+              <span className="material-symbols-outlined text-amber-400 text-2xl">
+                lock_reset
+              </span>
+            </div>
+            <h2 className="text-xl font-bold text-white">Recover Password</h2>
+            <p className="text-zinc-500 text-sm mt-1">
+              {recoveryStep === "username" && "Enter your username"}
+              {recoveryStep === "secword" && "Enter your security word"}
+              {recoveryStep === "newpassword" && "Set a new password"}
+            </p>
+          </div>
+
+          {/* Step indicator */}
+          <div className="flex gap-2 mb-6">
+            {(["username", "secword", "newpassword"] as RecoveryStep[]).map(
+              (step, i) => (
+                <div
+                  key={step}
+                  className={`flex-1 h-1.5 rounded-full transition-colors ${
+                    ["username", "secword", "newpassword"].indexOf(
+                      recoveryStep,
+                    ) >= i
+                      ? "bg-amber-500"
+                      : "bg-zinc-700"
+                  }`}
+                />
+              ),
+            )}
+          </div>
+
+          {error && (
+            <div className="mb-4 p-3 rounded-lg bg-red-500/15 border border-red-500/30 text-red-400 text-sm">
+              {error}
+            </div>
+          )}
+
+          {recoveryStep === "username" && (
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="rec-username" className={labelCls}>
+                  Username
+                </label>
+                <input
+                  id="rec-username"
+                  className={inputCls}
+                  placeholder="Enter your username"
+                  value={recoveryUsername}
+                  onChange={(e) => setRecoveryUsername(e.target.value)}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleRecoveryNext}
+                className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold transition-colors"
+              >
+                Next →
+              </button>
+            </div>
+          )}
+
+          {recoveryStep === "secword" && (
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="rec-secword" className={labelCls}>
+                  Security Word
+                </label>
+                <input
+                  id="rec-secword"
+                  className={inputCls}
+                  placeholder={
+                    isCreatorRole
+                      ? "e.g. King of Hearts, Ace of Spades"
+                      : "Your personal security word"
+                  }
+                  value={recoverySecWord}
+                  onChange={(e) => setRecoverySecWord(e.target.value)}
+                />
+                {isCreatorRole && (
+                  <p className="text-xs text-amber-400/70 mt-1">
+                    Enter a card from a 52-card deck, or "52 decks of cards"
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={handleRecoveryNext}
+                className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold transition-colors"
+              >
+                Next →
+              </button>
+            </div>
+          )}
+
+          {recoveryStep === "newpassword" && (
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="rec-newpw" className={labelCls}>
+                  New Password
+                </label>
+                <input
+                  id="rec-newpw"
+                  type="password"
+                  className={inputCls}
+                  placeholder="Create a new password"
+                  value={recoveryNewPw}
+                  onChange={(e) => setRecoveryNewPw(e.target.value)}
+                />
+              </div>
+              <div>
+                <label htmlFor="rec-confirmpw" className={labelCls}>
+                  Confirm New Password
+                </label>
+                <input
+                  id="rec-confirmpw"
+                  type="password"
+                  className={inputCls}
+                  placeholder="Confirm your new password"
+                  value={recoveryConfirmPw}
+                  onChange={(e) => setRecoveryConfirmPw(e.target.value)}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleRecoveryNext}
+                className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold transition-colors"
+              >
+                Reset Password
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   // Step 1: Role selection
   if (!selectedRole) {
@@ -250,6 +475,12 @@ export function AuthScreen({ onLogin, onSignup, onSocialLogin }: Props) {
           </span>
         </div>
 
+        {successMsg && (
+          <div className="mb-4 p-3 rounded-lg bg-green-500/15 border border-green-500/30 text-green-400 text-sm">
+            {successMsg}
+          </div>
+        )}
+
         {/* Creator: login only */}
         {isCreatorRole ? (
           <div>
@@ -263,10 +494,11 @@ export function AuthScreen({ onLogin, onSignup, onSocialLogin }: Props) {
             )}
             <form onSubmit={handleEmailLogin} className="space-y-4">
               <div>
-                <label htmlFor="auth-username" className={labelCls}>
+                <label htmlFor="rec-username" className={labelCls}>
                   Username
                 </label>
                 <input
+                  id="rec-username"
                   className={inputCls}
                   placeholder="Enter your username"
                   value={loginUsername}
@@ -276,10 +508,11 @@ export function AuthScreen({ onLogin, onSignup, onSocialLogin }: Props) {
                 />
               </div>
               <div>
-                <label htmlFor="auth-password" className={labelCls}>
+                <label htmlFor="creator-password" className={labelCls}>
                   Password
                 </label>
                 <input
+                  id="creator-password"
                   type="password"
                   className={inputCls}
                   placeholder="Enter your password"
@@ -294,6 +527,16 @@ export function AuthScreen({ onLogin, onSignup, onSocialLogin }: Props) {
                 className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold transition-colors"
               >
                 Sign In as Creator
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowForgotPassword(true);
+                  setError("");
+                }}
+                className="w-full text-center text-xs text-amber-400/70 hover:text-amber-400 transition-colors"
+              >
+                Forgot Password? (Creator recovery)
               </button>
             </form>
           </div>
@@ -358,15 +601,10 @@ export function AuthScreen({ onLogin, onSignup, onSocialLogin }: Props) {
               ))}
             </div>
 
-            {/* Error / Success */}
+            {/* Error */}
             {error && (
               <div className="mb-4 p-3 rounded-lg bg-red-500/15 border border-red-500/30 text-red-400 text-sm">
                 {error}
-              </div>
-            )}
-            {successMsg && (
-              <div className="mb-4 p-3 rounded-lg bg-green-500/15 border border-green-500/30 text-green-400 text-sm">
-                {successMsg}
               </div>
             )}
 
@@ -374,10 +612,11 @@ export function AuthScreen({ onLogin, onSignup, onSocialLogin }: Props) {
             {isLogin && method === "email" && (
               <form onSubmit={handleEmailLogin} className="space-y-4">
                 <div>
-                  <label htmlFor="auth-username" className={labelCls}>
+                  <label htmlFor="login-username" className={labelCls}>
                     Username
                   </label>
                   <input
+                    id="login-username"
                     className={inputCls}
                     placeholder="Enter your username"
                     value={loginUsername}
@@ -387,10 +626,11 @@ export function AuthScreen({ onLogin, onSignup, onSocialLogin }: Props) {
                   />
                 </div>
                 <div>
-                  <label htmlFor="auth-password" className={labelCls}>
+                  <label htmlFor="login-password" className={labelCls}>
                     Password
                   </label>
                   <input
+                    id="login-password"
                     type="password"
                     className={inputCls}
                     placeholder="Enter your password"
@@ -406,6 +646,17 @@ export function AuthScreen({ onLogin, onSignup, onSocialLogin }: Props) {
                 >
                   Sign In
                 </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForgotPassword(true);
+                    setError("");
+                    setSuccessMsg("");
+                  }}
+                  className="w-full text-center text-xs text-amber-400/70 hover:text-amber-400 transition-colors"
+                >
+                  Forgot Password?
+                </button>
               </form>
             )}
 
@@ -413,10 +664,11 @@ export function AuthScreen({ onLogin, onSignup, onSocialLogin }: Props) {
             {!isLogin && method === "email" && (
               <form onSubmit={handleEmailSignup} className="space-y-4">
                 <div>
-                  <label htmlFor="auth-username" className={labelCls}>
+                  <label htmlFor="signup-username" className={labelCls}>
                     Username
                   </label>
                   <input
+                    id="signup-username"
                     className={inputCls}
                     placeholder="Choose a username"
                     value={signupUsername}
@@ -426,10 +678,11 @@ export function AuthScreen({ onLogin, onSignup, onSocialLogin }: Props) {
                   />
                 </div>
                 <div>
-                  <label htmlFor="auth-email" className={labelCls}>
+                  <label htmlFor="signup-email" className={labelCls}>
                     Email
                   </label>
                   <input
+                    id="signup-email"
                     type="email"
                     className={inputCls}
                     placeholder="your@email.com"
@@ -440,10 +693,11 @@ export function AuthScreen({ onLogin, onSignup, onSocialLogin }: Props) {
                   />
                 </div>
                 <div>
-                  <label htmlFor="auth-password" className={labelCls}>
+                  <label htmlFor="signup-password" className={labelCls}>
                     Password
                   </label>
                   <input
+                    id="signup-password"
                     type="password"
                     className={inputCls}
                     placeholder="Create a password"
@@ -454,10 +708,11 @@ export function AuthScreen({ onLogin, onSignup, onSocialLogin }: Props) {
                   />
                 </div>
                 <div>
-                  <label htmlFor="auth-confirm" className={labelCls}>
+                  <label htmlFor="signup-confirm" className={labelCls}>
                     Confirm Password
                   </label>
                   <input
+                    id="signup-confirm"
                     type="password"
                     className={inputCls}
                     placeholder="Confirm your password"
@@ -467,12 +722,31 @@ export function AuthScreen({ onLogin, onSignup, onSocialLogin }: Props) {
                     required
                   />
                 </div>
+                <div>
+                  <label htmlFor="signup-secword" className={labelCls}>
+                    Security Word
+                    <span className="text-zinc-600 ml-1">
+                      (for password recovery)
+                    </span>
+                  </label>
+                  <input
+                    id="signup-secword"
+                    className={inputCls}
+                    placeholder="A word or phrase only you know"
+                    value={signupSecurityWord}
+                    onChange={(e) => setSignupSecurityWord(e.target.value)}
+                  />
+                  <p className="text-xs text-zinc-600 mt-1">
+                    Save this — you'll need it if you forget your password.
+                  </p>
+                </div>
                 {selectedRole === "community" && (
                   <div>
-                    <label htmlFor="auth-code" className={labelCls}>
+                    <label htmlFor="signup-code" className={labelCls}>
                       Community Access Code
                     </label>
                     <input
+                      id="signup-code"
                       className={inputCls}
                       placeholder="Enter the access code from your Creator"
                       value={communityCode}
@@ -532,23 +806,27 @@ export function AuthScreen({ onLogin, onSignup, onSocialLogin }: Props) {
                   </div>
                 </div>
                 <div>
-                  <label htmlFor="auth-social-email" className={labelCls}>
+                  <label htmlFor="social-email" className={labelCls}>
                     {providerName} Email
                   </label>
                   <input
+                    id="social-email"
                     type="email"
                     className={inputCls}
-                    placeholder={`your@${method === "google" ? "gmail.com" : "facebook.com"}`}
+                    placeholder={`your@${
+                      method === "google" ? "gmail.com" : "facebook.com"
+                    }`}
                     value={socialEmail}
                     onChange={(e) => setSocialEmail(e.target.value)}
                     required
                   />
                 </div>
                 <div>
-                  <label htmlFor="auth-name" className={labelCls}>
+                  <label htmlFor="social-name" className={labelCls}>
                     Your Full Name
                   </label>
                   <input
+                    id="social-name"
                     className={inputCls}
                     placeholder="Name as on your account"
                     value={socialName}
@@ -558,10 +836,11 @@ export function AuthScreen({ onLogin, onSignup, onSocialLogin }: Props) {
                 </div>
                 {!isLogin && selectedRole === "community" && (
                   <div>
-                    <label htmlFor="auth-code" className={labelCls}>
+                    <label htmlFor="social-code" className={labelCls}>
                       Community Access Code
                     </label>
                     <input
+                      id="social-code"
                       className={inputCls}
                       placeholder="Enter access code"
                       value={socialCommunityCode}

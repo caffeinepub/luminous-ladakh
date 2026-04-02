@@ -36,6 +36,10 @@ export interface Account {
   themePhoto?: string;
   fontColor?: "default" | "gold" | "sky" | "mint" | "rose" | "lavender";
   authProvider?: "email" | "google" | "facebook";
+  // Security
+  securityWord?: string; // hashed security word for password recovery
+  failedLoginAttempts?: number;
+  lockoutUntil?: string; // ISO timestamp
   // member-only (legacy single business)
   businessName?: string;
   businessCategory?: string;
