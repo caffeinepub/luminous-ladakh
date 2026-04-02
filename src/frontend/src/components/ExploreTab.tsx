@@ -3,7 +3,6 @@ import { toast } from "sonner";
 import { loadRoadStatus, saveRoadStatus } from "../data/roadStatusData";
 import type { RoadStatus } from "../types";
 import type { Account, LocationReview, Post, Review } from "../types";
-import { CommunityPolls } from "./CommunityPolls";
 import { EmergencySOS } from "./EmergencySOS";
 import { RoadStatusWidget } from "./RoadStatusWidget";
 import { WeatherWidget } from "./WeatherWidget";
@@ -487,126 +486,6 @@ function saveDeletedReviews(ids: string[]) {
   } catch {}
 }
 
-// ---- BOOKMARKS ----
-function loadBookmarks(userId: string): string[] {
-  try {
-    return JSON.parse(localStorage.getItem(`lc_bookmarks_${userId}`) || "[]");
-  } catch {
-    return [];
-  }
-}
-function saveBookmarks(userId: string, ids: string[]) {
-  try {
-    localStorage.setItem(`lc_bookmarks_${userId}`, JSON.stringify(ids));
-  } catch {}
-}
-
-// ---- CHECKINS ----
-function loadCheckins(): Record<string, string[]> {
-  try {
-    return JSON.parse(localStorage.getItem("lc_checkins") || "{}");
-  } catch {
-    return {};
-  }
-}
-function saveCheckins(data: Record<string, string[]>) {
-  try {
-    localStorage.setItem("lc_checkins", JSON.stringify(data));
-  } catch {}
-}
-
-// ---- BUSINESS ANALYTICS ----
-function loadBizViews(): Record<string, number> {
-  try {
-    return JSON.parse(localStorage.getItem("lc_biz_views") || "{}");
-  } catch {
-    return {};
-  }
-}
-function saveBizViews(data: Record<string, number>) {
-  try {
-    localStorage.setItem("lc_biz_views", JSON.stringify(data));
-  } catch {}
-}
-function loadBizDirTaps(): Record<string, number> {
-  try {
-    return JSON.parse(localStorage.getItem("lc_biz_dir_taps") || "{}");
-  } catch {
-    return {};
-  }
-}
-function saveBizDirTaps(data: Record<string, number>) {
-  try {
-    localStorage.setItem("lc_biz_dir_taps", JSON.stringify(data));
-  } catch {}
-}
-
-// ---- SEASON ----
-type SeasonStatus = "open" | "soon" | "closed";
-const MONTH_MAP: Record<string, number> = {
-  Jan: 1,
-  Feb: 2,
-  Mar: 3,
-  Apr: 4,
-  May: 5,
-  Jun: 6,
-  Jul: 7,
-  Aug: 8,
-  Sep: 9,
-  Oct: 10,
-  Nov: 11,
-  Dec: 12,
-};
-function getSeasonStatus(season?: string): SeasonStatus {
-  if (!season || season === "Year Round") return "open";
-  const m = new Date().getMonth() + 1;
-  const match = season.match(/(\w{3})[\u2013-](\w{3})/u);
-  if (!match) return "open";
-  const start = MONTH_MAP[match[1]] || 1;
-  const end = MONTH_MAP[match[2]] || 12;
-  const inRange =
-    start <= end ? m >= start && m <= end : m >= start || m <= end;
-  const soonPrev = start <= end ? m === start - 1 || m === end + 1 : false;
-  if (inRange) return "open";
-  if (soonPrev) return "soon";
-  return "closed";
-}
-function SeasonBadge({ season }: { season?: string }) {
-  if (!season) return null;
-  const status = getSeasonStatus(season);
-  const colors = {
-    open: "bg-green-500/90 text-white",
-    soon: "bg-amber-500/90 text-black",
-    closed: "bg-red-600/90 text-white",
-  };
-  const labels = { open: "Open", soon: "Opening Soon", closed: "Closed" };
-  return (
-    <span
-      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${colors[status]}`}
-    >
-      {season} · {labels[status]}
-    </span>
-  );
-}
-
-// ---- VERIFIED REVIEW ----
-function isInLadakh(lat: number, lon: number): boolean {
-  return lat >= 33 && lat <= 36 && lon >= 75 && lon <= 80;
-}
-async function checkLadakhVerification(): Promise<boolean> {
-  return new Promise((resolve) => {
-    if (!navigator.geolocation) {
-      resolve(false);
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => resolve(isInLadakh(pos.coords.latitude, pos.coords.longitude)),
-      () => resolve(false),
-      { timeout: 5000 },
-    );
-  });
-}
-
 function loadLocations(): Location[] {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -946,7 +825,6 @@ function LocationCard({
   onEditLocation,
   locationPhotosMap,
   onLocationPhotosChange,
-  isPopular,
 }: {
   location: Location;
   locationReviews: LocationReview[];
@@ -957,7 +835,6 @@ function LocationCard({
   onEditLocation?: (id: string, changes: Partial<Location>) => void;
   locationPhotosMap: Record<string, string[]>;
   onLocationPhotosChange: (locationId: string, photos: string[]) => void;
-  isPopular?: boolean;
 }) {
   const [sheet, setSheet] = useState<"" | "details" | "reviews" | "edit">("");
   const [newRating, setNewRating] = useState(5);
@@ -967,46 +844,10 @@ function LocationCard({
   const [editDetails, setEditDetails] = useState(location.details);
   const [editAddress, setEditAddress] = useState(location.address);
   const [editMaps, setEditMaps] = useState(location.mapsUrl);
-  const [editSeason, setEditSeason] = useState(location.season || "");
   const [deletedReviewIds, setDeletedReviewIds] = useState<string[]>(() =>
     loadDeletedReviews(),
   );
-  const [bookmarked, setBookmarked] = useState(() =>
-    loadBookmarks(currentUserId).includes(location.id),
-  );
-  const [checkins, setCheckins] = useState(loadCheckins);
   const contributeInputRef = useRef<HTMLInputElement>(null);
-
-  const myCheckins = checkins[location.id] || [];
-  const checkinCount = myCheckins.length;
-  const hasCheckedIn = myCheckins.includes(currentUserId);
-
-  function toggleBookmark(e: React.MouseEvent) {
-    e.stopPropagation();
-    const current = loadBookmarks(currentUserId);
-    let next: string[];
-    if (bookmarked) {
-      next = current.filter((id) => id !== location.id);
-      toast.success("Removed from saved");
-    } else {
-      next = [...current, location.id];
-      toast.success("Saved!");
-    }
-    saveBookmarks(currentUserId, next);
-    setBookmarked(!bookmarked);
-    window.dispatchEvent(new Event("lc_bookmarks_changed"));
-  }
-
-  function doCheckIn() {
-    if (hasCheckedIn) {
-      toast.info("Already checked in!");
-      return;
-    }
-    const next = { ...checkins, [location.id]: [...myCheckins, currentUserId] };
-    setCheckins(next);
-    saveCheckins(next);
-    toast.success("Checked in! 🏔️");
-  }
 
   // Resolve photos: localStorage override first, then location default
   const resolvedPhotos = locationPhotosMap[location.id] ?? location.photos;
@@ -1022,12 +863,8 @@ function LocationCard({
     ? myReviews.reduce((s, r) => s + r.rating, 0) / myReviews.length
     : 0;
 
-  async function submitReview() {
+  function submitReview() {
     if (!newComment.trim()) return;
-    let verified = false;
-    try {
-      verified = await checkLadakhVerification();
-    } catch {}
     onAddLocationReview?.({
       locationId: location.id,
       reviewerUserId: currentUserId,
@@ -1037,9 +874,7 @@ function LocationCard({
     });
     setNewComment("");
     setNewRating(5);
-    toast.success(
-      verified ? "Review submitted! ✓ Verified Visit" : "Review submitted!",
-    );
+    toast.success("Review submitted!");
   }
 
   function deleteReview(reviewId: string) {
@@ -1057,7 +892,6 @@ function LocationCard({
       details: editDetails,
       address: editAddress,
       mapsUrl: editMaps,
-      season: editSeason || undefined,
     };
     onEditLocation?.(location.id, changes);
     setSheet("");
@@ -1106,7 +940,6 @@ function LocationCard({
             <span className="text-xs bg-amber-500/90 text-black px-2 py-0.5 rounded-full font-semibold">
               {location.category}
             </span>
-            {location.season && <SeasonBadge season={location.season} />}
           </div>
           {avgRating > 0 && (
             <div className="absolute top-2 right-2 bg-black/70 px-2 py-1 rounded-lg text-xs text-amber-400 font-bold">
@@ -1123,35 +956,9 @@ function LocationCard({
               Edit
             </button>
           )}
-          {!isCreator && (
-            <button
-              type="button"
-              onClick={toggleBookmark}
-              className={`absolute top-2 left-2 p-1.5 rounded-full transition-all ${bookmarked ? "bg-amber-500 text-black" : "bg-black/60 text-white hover:bg-black/80"}`}
-              aria-label={bookmarked ? "Remove bookmark" : "Bookmark"}
-              data-ocid="explore.bookmark.toggle"
-            >
-              <span className="material-symbols-outlined text-sm">
-                {bookmarked ? "bookmark" : "bookmark_border"}
-              </span>
-            </button>
-          )}
-          {checkinCount > 0 && (
-            <div className="absolute bottom-10 right-2 bg-black/70 px-1.5 py-0.5 rounded-full text-xs text-green-400 font-semibold flex items-center gap-0.5">
-              <span className="material-symbols-outlined text-xs">
-                check_circle
-              </span>
-              {checkinCount}
-            </div>
-          )}
           {resolvedPhotos.length > 1 && (
             <div className="absolute bottom-2 right-2 bg-black/60 px-1.5 py-0.5 rounded-full text-xs text-white">
               📷 {resolvedPhotos.length}
-            </div>
-          )}
-          {isPopular && (
-            <div className="absolute top-2 right-10 bg-orange-500/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-              🔥 Popular
             </div>
           )}
         </div>
@@ -1237,33 +1044,6 @@ function LocationCard({
                 </p>
                 <p className="text-zinc-300 text-sm">{location.address}</p>
               </div>
-            </div>
-
-            {/* Check In */}
-            <div className="mt-4 flex items-center justify-between bg-zinc-800/40 rounded-xl p-3">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-green-400 text-base">
-                  check_circle
-                </span>
-                <div>
-                  <p className="text-xs font-semibold text-zinc-300">
-                    Visitor Check-ins
-                  </p>
-                  <p className="text-xs text-zinc-500">
-                    {checkinCount} {checkinCount === 1 ? "person" : "people"}{" "}
-                    visited
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={doCheckIn}
-                disabled={hasCheckedIn}
-                data-ocid="explore.checkin.button"
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${hasCheckedIn ? "bg-green-500/20 text-green-400 cursor-default" : "bg-green-600 hover:bg-green-500 text-white"}`}
-              >
-                {hasCheckedIn ? "✓ Checked In" : "Check In"}
-              </button>
             </div>
 
             {/* User photo contribution */}
@@ -1358,11 +1138,6 @@ function LocationCard({
                     <span className="text-sm font-semibold text-white">
                       @{r.reviewerUsername}
                     </span>
-                    {(r as any).verified && (
-                      <span className="ml-2 text-[10px] bg-green-500/20 text-green-400 border border-green-500/30 px-1.5 py-0.5 rounded-full font-semibold">
-                        ✓ Verified Visit
-                      </span>
-                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <StarRating rating={r.rating} />
@@ -1467,21 +1242,6 @@ function LocationCard({
                   onChange={(e) => setEditMaps(e.target.value)}
                 />
               </div>
-              <div>
-                <label
-                  className="text-xs text-zinc-400 font-semibold mb-1 block"
-                  htmlFor="edit-season"
-                >
-                  Season (e.g. "May–Oct", "Year Round")
-                </label>
-                <input
-                  id="edit-season"
-                  className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
-                  value={editSeason}
-                  placeholder="May–Oct"
-                  onChange={(e) => setEditSeason(e.target.value)}
-                />
-              </div>
             </div>
             <div className="flex gap-2 mt-4">
               <button
@@ -1522,41 +1282,8 @@ function BusinessCard({
   const [sheet, setSheet] = useState<"" | "details" | "reviews">("");
   const [newRating, setNewRating] = useState(5);
   const [newComment, setNewComment] = useState("");
-  const [bookmarked, setBookmarked] = useState(() =>
-    loadBookmarks(currentUserId).includes(`biz_${account.id}`),
-  );
-
   const closeSheet = () => setSheet("");
   useOverlayHistory(sheet !== "", closeSheet);
-
-  function toggleBookmark(e: React.MouseEvent) {
-    e.stopPropagation();
-    const key = `biz_${account.id}`;
-    const current = loadBookmarks(currentUserId);
-    let next: string[];
-    if (bookmarked) {
-      next = current.filter((id) => id !== key);
-      toast.success("Removed from saved");
-    } else {
-      next = [...current, key];
-      toast.success("Saved!");
-    }
-    saveBookmarks(currentUserId, next);
-    setBookmarked(!bookmarked);
-    window.dispatchEvent(new Event("lc_bookmarks_changed"));
-  }
-
-  function trackView() {
-    const views = loadBizViews();
-    views[account.id] = (views[account.id] || 0) + 1;
-    saveBizViews(views);
-  }
-
-  function trackDirections() {
-    const taps = loadBizDirTaps();
-    taps[account.id] = (taps[account.id] || 0) + 1;
-    saveBizDirTaps(taps);
-  }
 
   const businesses = account.businesses || [];
   const firstBiz = businesses[0];
@@ -1619,17 +1346,6 @@ function BusinessCard({
           <div className="absolute top-2 left-2 bg-amber-500/20 border border-amber-500/40 px-2 py-0.5 rounded-full text-xs text-amber-300">
             {account.membershipTier === "Premier" ? "⭐ Premier" : "Member"}
           </div>
-          <button
-            type="button"
-            onClick={toggleBookmark}
-            className={`absolute top-8 left-2 mt-1 p-1.5 rounded-full transition-all ${bookmarked ? "bg-amber-500 text-black" : "bg-black/60 text-white hover:bg-black/80"}`}
-            aria-label={bookmarked ? "Remove bookmark" : "Bookmark"}
-            data-ocid="explore.biz_bookmark.toggle"
-          >
-            <span className="material-symbols-outlined text-sm">
-              {bookmarked ? "bookmark" : "bookmark_border"}
-            </span>
-          </button>
           {bizPhotos.length > 1 && (
             <div className="absolute bottom-2 right-2 bg-black/60 px-1.5 py-0.5 rounded-full text-xs text-white">
               📷 {bizPhotos.length}
@@ -1646,7 +1362,6 @@ function BusinessCard({
                 href={bizMaps}
                 target="_blank"
                 rel="noreferrer"
-                onClick={trackDirections}
                 className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-zinc-200 transition-colors"
               >
                 <span className="material-symbols-outlined text-sm">
@@ -1667,7 +1382,6 @@ function BusinessCard({
               type="button"
               onClick={() => {
                 setSheet("details");
-                trackView();
               }}
               className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-zinc-200 transition-colors"
             >
@@ -1848,13 +1562,6 @@ export function ExploreTab({
 
   const pendingPosts = posts.filter((p) => p.status === "pending");
 
-  // Calculate popular locations (top 5 by checkins)
-  const allCheckins = loadCheckins();
-  const popularIds = Object.entries(allCheckins)
-    .sort(([, a], [, b]) => b.length - a.length)
-    .slice(0, 5)
-    .map(([id]) => id);
-
   return (
     <div>
       <div className="mb-4">
@@ -1879,8 +1586,6 @@ export function ExploreTab({
         }}
       />
       <EmergencySOS />
-
-      <CommunityPolls currentUserId={currentUserId} />
 
       <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide">
         {ALL_CATEGORIES.map((cat) => (
@@ -1951,7 +1656,6 @@ export function ExploreTab({
                 onAddLocationReview={onAddLocationReview}
                 isCreator={isCreator}
                 onEditLocation={handleEditLocation}
-                isPopular={popularIds.includes(loc.id)}
                 locationPhotosMap={locationPhotosMap}
                 onLocationPhotosChange={handleLocationPhotosChange}
               />

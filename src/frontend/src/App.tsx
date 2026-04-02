@@ -6,7 +6,6 @@ import { EventsTab } from "./components/EventsTab";
 import { ExploreTab } from "./components/ExploreTab";
 import { LanguageSelectScreen } from "./components/LanguageSelectScreen";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
-import { TripPlannerTab } from "./components/TripPlannerTab";
 import { CommunityBusinessTab } from "./components/community/CommunityBusinessTab";
 import { CommunityPermissionsTab } from "./components/community/PermissionsTab";
 import { CreatorProfileTab } from "./components/creator/CreatorProfileTab";
@@ -106,7 +105,6 @@ export default function App() {
     { id: "discover", icon: "travel_explore", label: t("discover") },
     { id: "events", icon: "event", label: t("events") },
     { id: "search", icon: "search", label: t("search") },
-    { id: "trip", icon: "luggage", label: t("trip") },
     { id: "post", icon: "add_circle", label: t("post") },
     { id: "profile", icon: "person", label: t("profile") },
   ];
@@ -257,9 +255,6 @@ export default function App() {
             )}
             {activeTab === "discover" && (
               <DiscoverTab currentUser={currentUser} />
-            )}
-            {activeTab === "trip" && (
-              <TripPlannerTab currentUserId={currentUser.id} />
             )}
             {activeTab === "events" && (
               <EventsTab
