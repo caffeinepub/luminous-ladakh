@@ -4,6 +4,9 @@ import { toast } from "sonner";
 import { AuthScreen } from "./components/AuthScreen";
 import { EventsTab } from "./components/EventsTab";
 import { ExploreTab } from "./components/ExploreTab";
+import { LanguageSelectScreen } from "./components/LanguageSelectScreen";
+import { LanguageSwitcher } from "./components/LanguageSwitcher";
+import { TripPlannerTab } from "./components/TripPlannerTab";
 import { CommunityBusinessTab } from "./components/community/CommunityBusinessTab";
 import { CommunityPermissionsTab } from "./components/community/PermissionsTab";
 import { CreatorProfileTab } from "./components/creator/CreatorProfileTab";
@@ -19,6 +22,7 @@ import { DiscoverTab } from "./components/user/DiscoverTab";
 import { PostPlaceModal } from "./components/user/PostPlaceModal";
 import { SearchTab } from "./components/user/SearchTab";
 import { UserProfileTab } from "./components/user/UserProfileTab";
+import { useLanguage } from "./context/LanguageContext";
 import { initEventsData } from "./data/eventsData";
 import { initSeedData } from "./data/seed";
 import { useAuth } from "./hooks/useAuth";
@@ -28,54 +32,17 @@ import { useData } from "./hooks/useData";
 initSeedData();
 initEventsData();
 
-const USER_NAV = [
-  { id: "explore", icon: "explore", label: "Explore" },
-  { id: "discover", icon: "travel_explore", label: "Discover" },
-  { id: "events", icon: "event", label: "Events" },
-  { id: "search", icon: "search", label: "Search" },
-  { id: "post", icon: "add_circle", label: "Post" },
-  { id: "profile", icon: "person", label: "Profile" },
-];
-
-const MEMBER_NAV = [
-  { id: "explore", icon: "explore", label: "Explore" },
-  { id: "events", icon: "event", label: "Events" },
-  { id: "search", icon: "search", label: "Search" },
-  { id: "business", icon: "store", label: "My Business" },
-  { id: "membership", icon: "card_membership", label: "Membership" },
-  { id: "profile", icon: "person", label: "Profile" },
-];
-
-const COMMUNITY_NAV = [
-  { id: "explore", icon: "explore", label: "Explore" },
-  { id: "events", icon: "event", label: "Events" },
-  { id: "search", icon: "search", label: "Search" },
-  { id: "business", icon: "store", label: "My Business" },
-  { id: "permissions", icon: "key", label: "Permissions" },
-  { id: "profile", icon: "person", label: "Profile" },
-];
-
-const CREATOR_NAV = [
-  { id: "dashboard", icon: "dashboard", label: "Dashboard" },
-  { id: "explore", icon: "explore", label: "Explore" },
-  { id: "discover", icon: "travel_explore", label: "Discover" },
-  { id: "events", icon: "event", label: "Events" },
-  { id: "vault", icon: "inventory_2", label: "Vault" },
-  { id: "wallet", icon: "account_balance_wallet", label: "Wallet" },
-  { id: "moderation", icon: "shield", label: "Moderation" },
-  { id: "profile", icon: "person", label: "Profile" },
-];
-
 export default function App() {
   const { currentUser, login, socialLogin, signup, logout, updateCurrentUser } =
     useAuth();
   const data = useData();
+  const { t, languageSelected } = useLanguage();
   const [activeTab, setActiveTab] = useState<string>("");
   const [showPostModal, setShowPostModal] = useState(false);
   const [_renderTick, setRenderTick] = useState(0);
 
   useEffect(() => {
-    const handler = () => setRenderTick((t) => t + 1);
+    const handler = () => setRenderTick((tick) => tick + 1);
     window.addEventListener("lc_data_changed", handler);
     return () => window.removeEventListener("lc_data_changed", handler);
   }, []);
@@ -100,6 +67,16 @@ export default function App() {
     }
   }, []);
 
+  // Language selection gate
+  if (!languageSelected) {
+    return (
+      <>
+        <LanguageSelectScreen />
+        <Toaster position="top-center" richColors />
+      </>
+    );
+  }
+
   if (!currentUser) {
     return (
       <>
@@ -123,6 +100,45 @@ export default function App() {
   const walletTransactions = data.getWalletTransactions();
   const flagReports = data.getFlagReports();
   const members = accounts.filter((a) => a.role === "member");
+
+  const USER_NAV = [
+    { id: "explore", icon: "explore", label: t("explore") },
+    { id: "discover", icon: "travel_explore", label: t("discover") },
+    { id: "events", icon: "event", label: t("events") },
+    { id: "search", icon: "search", label: t("search") },
+    { id: "trip", icon: "luggage", label: t("trip") },
+    { id: "post", icon: "add_circle", label: t("post") },
+    { id: "profile", icon: "person", label: t("profile") },
+  ];
+
+  const MEMBER_NAV = [
+    { id: "explore", icon: "explore", label: t("explore") },
+    { id: "events", icon: "event", label: t("events") },
+    { id: "search", icon: "search", label: t("search") },
+    { id: "business", icon: "store", label: t("business") },
+    { id: "membership", icon: "card_membership", label: t("membership") },
+    { id: "profile", icon: "person", label: t("profile") },
+  ];
+
+  const COMMUNITY_NAV = [
+    { id: "explore", icon: "explore", label: t("explore") },
+    { id: "events", icon: "event", label: t("events") },
+    { id: "search", icon: "search", label: t("search") },
+    { id: "business", icon: "store", label: t("business") },
+    { id: "permissions", icon: "key", label: t("permissions") },
+    { id: "profile", icon: "person", label: t("profile") },
+  ];
+
+  const CREATOR_NAV = [
+    { id: "dashboard", icon: "dashboard", label: t("dashboard") },
+    { id: "explore", icon: "explore", label: t("explore") },
+    { id: "discover", icon: "travel_explore", label: t("discover") },
+    { id: "events", icon: "event", label: t("events") },
+    { id: "vault", icon: "inventory_2", label: t("vault") },
+    { id: "wallet", icon: "account_balance_wallet", label: t("wallet") },
+    { id: "moderation", icon: "shield", label: t("moderation") },
+    { id: "profile", icon: "person", label: t("profile") },
+  ];
 
   const navItems =
     currentUser.role === "user"
@@ -166,6 +182,7 @@ export default function App() {
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <LanguageSwitcher />
             <span
               className={`text-xs px-2 py-0.5 rounded-full border capitalize ${roleColors[currentUser.role] || roleColors.user}`}
             >
@@ -240,6 +257,9 @@ export default function App() {
             )}
             {activeTab === "discover" && (
               <DiscoverTab currentUser={currentUser} />
+            )}
+            {activeTab === "trip" && (
+              <TripPlannerTab currentUserId={currentUser.id} />
             )}
             {activeTab === "events" && (
               <EventsTab
@@ -428,12 +448,12 @@ export default function App() {
                 onApprovePost={(id) => {
                   data.updatePost(id, { status: "approved" });
                   toast.success("Post approved!");
-                  setRenderTick((t) => t + 1);
+                  setRenderTick((tick) => tick + 1);
                 }}
                 onRejectPost={(id) => {
                   data.deletePost(id);
                   toast.success("Post rejected and removed.");
-                  setRenderTick((t) => t + 1);
+                  setRenderTick((tick) => tick + 1);
                 }}
               />
             )}
@@ -442,7 +462,7 @@ export default function App() {
                 currentUser={currentUser}
                 isCreator
                 onPromoteToExplore={() => {
-                  setRenderTick((t) => t + 1);
+                  setRenderTick((tick) => tick + 1);
                 }}
               />
             )}
@@ -466,7 +486,7 @@ export default function App() {
                     bankName,
                     note: `Withdrawal to ${bankName}`,
                   });
-                  setRenderTick((t) => t + 1);
+                  setRenderTick((tick) => tick + 1);
                 }}
                 onConfirmPayment={(id) => {
                   const pending = data.getPendingPayments();
@@ -483,12 +503,12 @@ export default function App() {
                       note,
                     });
                     data.removePendingPayment(id);
-                    setRenderTick((t) => t + 1);
+                    setRenderTick((tick) => tick + 1);
                   }
                 }}
                 onRejectPayment={(id) => {
                   data.removePendingPayment(id);
-                  setRenderTick((t) => t + 1);
+                  setRenderTick((tick) => tick + 1);
                 }}
               />
             )}
@@ -505,11 +525,11 @@ export default function App() {
                 onUpdateAccount={data.updateAccount}
                 onBanAccount={(id) => {
                   data.banAccount(id);
-                  setRenderTick((t) => t + 1);
+                  setRenderTick((tick) => tick + 1);
                 }}
                 onSuspendAccount={(id) => {
                   data.suspendAccount(id);
-                  setRenderTick((t) => t + 1);
+                  setRenderTick((tick) => tick + 1);
                 }}
               />
             )}
@@ -546,7 +566,7 @@ export default function App() {
           onClose={() => setShowPostModal(false)}
           onSubmit={(postData) => {
             data.addPost(postData);
-            setRenderTick((t) => t + 1);
+            setRenderTick((tick) => tick + 1);
           }}
           onIssueViolation={data.addViolation}
         />

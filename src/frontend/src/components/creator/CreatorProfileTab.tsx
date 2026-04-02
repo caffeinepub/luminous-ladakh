@@ -1,8 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
+import { useLanguage } from "../../context/LanguageContext";
 import { applyTheme } from "../../hooks/useAuth";
+import { LANGUAGES } from "../../i18n/translations";
 import type { Account, Post, Review, Violation } from "../../types";
+import { WorldLanguageDownloader } from "../WorldLanguageDownloader";
 
 interface Props {
   currentUser: Account;
@@ -60,6 +63,7 @@ export function CreatorProfileTab({
   const [newCode, setNewCode] = useState("");
   const [showCode, setShowCode] = useState(false);
   const currentCode = localStorage.getItem("lc_communityCode") || "blackjack";
+  const { language, setLanguage, isPWA } = useLanguage();
 
   const photoRef = useRef<HTMLInputElement>(null);
 
@@ -129,7 +133,7 @@ export function CreatorProfileTab({
             </h2>
             <p className="text-xs text-zinc-400">{currentUser.email}</p>
             <span className="text-xs bg-amber-500/15 text-amber-400 px-2 py-0.5 rounded-full mt-1 inline-block">
-              Creator ✦
+              Creator ❆
             </span>
           </div>
         </div>
@@ -144,6 +148,47 @@ export function CreatorProfileTab({
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Language */}
+      <div
+        className="bg-zinc-900 border border-zinc-700 rounded-xl p-4"
+        data-ocid="profile.language.panel"
+      >
+        <h3 className="font-semibold text-white mb-3 flex items-center gap-2">
+          <span className="material-symbols-outlined text-amber-400 text-lg">
+            language
+          </span>
+          Language
+        </h3>
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          {LANGUAGES.map((lang) => (
+            <button
+              key={lang.code}
+              type="button"
+              data-ocid="profile.language.toggle"
+              onClick={() => setLanguage(lang.code)}
+              className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border transition-all text-left ${
+                language === lang.code
+                  ? "border-amber-400 bg-amber-400/10"
+                  : "border-zinc-700 bg-zinc-800 hover:border-amber-400/40"
+              }`}
+            >
+              <span className="text-base">{lang.flag}</span>
+              <div className="min-w-0">
+                <p
+                  className={`text-xs font-semibold truncate ${language === lang.code ? "text-amber-400" : "text-white"}`}
+                >
+                  {lang.nativeName}
+                </p>
+                <p className="text-[10px] text-zinc-500 truncate">
+                  {lang.name}
+                </p>
+              </div>
+            </button>
+          ))}
+        </div>
+        {isPWA && <WorldLanguageDownloader />}
       </div>
 
       {/* Community Code */}

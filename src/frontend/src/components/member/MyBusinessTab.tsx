@@ -56,6 +56,192 @@ interface Props {
   onIssueViolation?: (v: Omit<Violation, "id" | "timestamp">) => void;
 }
 
+// ---- ANALYTICS HELPERS ----
+function loadBizViews(): Record<string, number> {
+  try {
+    return JSON.parse(localStorage.getItem("lc_biz_views") || "{}");
+  } catch {
+    return {};
+  }
+}
+function loadBizDirTaps(): Record<string, number> {
+  try {
+    return JSON.parse(localStorage.getItem("lc_biz_dir_taps") || "{}");
+  } catch {
+    return {};
+  }
+}
+function loadCheckins(): Record<string, string[]> {
+  try {
+    return JSON.parse(localStorage.getItem("lc_checkins") || "{}");
+  } catch {
+    return {};
+  }
+}
+function loadMemberPayments(userId: string): any[] {
+  try {
+    return JSON.parse(
+      localStorage.getItem(`lc_memberPayments_${userId}`) || "[]",
+    );
+  } catch {
+    return [];
+  }
+}
+
+interface BizStats {
+  views: number;
+  dirTaps: number;
+  reviews: number;
+  checkins: number;
+}
+
+function BusinessAnalyticsPanel({
+  bizId,
+  reviews,
+}: { bizId: string; reviews: { targetMemberId: string }[] }) {
+  const [open, setOpen] = useState(false);
+  const views = loadBizViews();
+  const taps = loadBizDirTaps();
+  const checkins = loadCheckins();
+  const stats: BizStats = {
+    views: views[bizId] || 0,
+    dirTaps: taps[bizId] || 0,
+    reviews: reviews.filter((r) => r.targetMemberId === bizId).length,
+    checkins: (checkins[bizId] || []).length,
+  };
+  return (
+    <div className="mt-3 border-t border-zinc-800 pt-3">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        data-ocid="business.analytics.toggle"
+        className="flex items-center gap-2 text-xs text-zinc-400 hover:text-amber-400 transition-colors w-full"
+      >
+        <span className="material-symbols-outlined text-sm">analytics</span>
+        <span className="font-semibold">Business Analytics</span>
+        <span className="material-symbols-outlined text-xs ml-auto">
+          {open ? "expand_less" : "expand_more"}
+        </span>
+      </button>
+      {open && (
+        <div
+          className="grid grid-cols-2 gap-2 mt-3"
+          data-ocid="business.analytics.panel"
+        >
+          {[
+            {
+              icon: "visibility",
+              label: "Profile Views",
+              value: stats.views,
+              color: "text-blue-400",
+            },
+            {
+              icon: "near_me",
+              label: "Directions Taps",
+              value: stats.dirTaps,
+              color: "text-amber-400",
+            },
+            {
+              icon: "star",
+              label: "Total Reviews",
+              value: stats.reviews,
+              color: "text-yellow-400",
+            },
+            {
+              icon: "check_circle",
+              label: "Check-ins",
+              value: stats.checkins,
+              color: "text-green-400",
+            },
+          ].map((stat) => (
+            <div
+              key={stat.label}
+              className="bg-zinc-800/60 rounded-xl p-3 flex items-start gap-2"
+            >
+              <span
+                className={`material-symbols-outlined text-base ${stat.color} mt-0.5`}
+              >
+                {stat.icon}
+              </span>
+              <div>
+                <p className="text-lg font-bold text-white leading-none">
+                  {stat.value}
+                </p>
+                <p className="text-[10px] text-zinc-500 mt-0.5">{stat.label}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LoyaltyBadge({
+  tier,
+  monthsPaid,
+}: { tier: "Common" | "Premier" | undefined; monthsPaid: number }) {
+  if (tier === "Common" && monthsPaid >= 6) {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs bg-amber-500/20 border border-amber-500/40 text-amber-400 px-2 py-0.5 rounded-full font-semibold">
+        ⭐ Trusted Seller
+      </span>
+    );
+  }
+  if (tier === "Premier" && monthsPaid >= 12) {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs bg-blue-500/20 border border-blue-500/40 text-blue-400 px-2 py-0.5 rounded-full font-semibold">
+        ✓ Verified Partner
+      </span>
+    );
+  }
+  return null;
+}
+
+function LoyaltyProgress({
+  tier,
+  monthsPaid,
+}: { tier?: "Common" | "Premier"; monthsPaid: number }) {
+  const target = tier === "Premier" ? 12 : 6;
+  const label =
+    tier === "Premier"
+      ? "Verified Partner (12 months)"
+      : "Trusted Seller (6 months)";
+  const pct = Math.min(100, (monthsPaid / target) * 100);
+  const achieved = monthsPaid >= target;
+  return (
+    <div
+      className="bg-zinc-800/60 rounded-xl p-4 mt-4"
+      data-ocid="membership.loyalty.panel"
+    >
+      <p className="text-xs font-bold text-zinc-300 mb-1 flex items-center gap-2">
+        <span className="material-symbols-outlined text-amber-400 text-sm">
+          military_tech
+        </span>
+        Loyalty Progress
+      </p>
+      {achieved ? (
+        <p className="text-sm text-amber-400 font-semibold">
+          🏆 Badge Earned! {label.split(" (")[0]}
+        </p>
+      ) : (
+        <>
+          <p className="text-xs text-zinc-500 mb-2">{label}</p>
+          <div className="h-2 bg-zinc-700 rounded-full overflow-hidden mb-1">
+            <div
+              className="h-full bg-amber-500 rounded-full transition-all"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+          <p className="text-xs text-zinc-500">
+            {monthsPaid}/{target} months paid
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
+
 function StorageBar({ usedMB, limitMB }: { usedMB: number; limitMB: number }) {
   const pct = Math.min(100, (usedMB / limitMB) * 100);
   const color =
@@ -95,6 +281,7 @@ export function MemberBusinessTab({
   const storageLimitMB = isPremier ? 1024 : 300;
 
   const businesses: Business[] = currentUser.businesses || [];
+  const monthsPaid = loadMemberPayments(currentUser.id).length;
 
   // Calculate used storage
   let usedBytes = 0;
@@ -263,6 +450,22 @@ export function MemberBusinessTab({
       </div>
 
       <StorageBar usedMB={usedMB} limitMB={storageLimitMB} />
+      <div className="flex items-center gap-2 mb-4">
+        <LoyaltyBadge
+          tier={currentUser.membershipTier}
+          monthsPaid={monthsPaid}
+        />
+        {monthsPaid > 0 && (
+          <span className="text-xs text-zinc-500">
+            {monthsPaid} month{monthsPaid !== 1 ? "s" : ""} paid
+          </span>
+        )}
+      </div>
+
+      <LoyaltyProgress
+        tier={currentUser.membershipTier}
+        monthsPaid={monthsPaid}
+      />
 
       {!isPremier && (
         <div className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30">
@@ -359,6 +562,10 @@ export function MemberBusinessTab({
                     ))}
                   </div>
                 )}
+                <BusinessAnalyticsPanel
+                  bizId={currentUser.id}
+                  reviews={reviews}
+                />
               </div>
             </div>
           );

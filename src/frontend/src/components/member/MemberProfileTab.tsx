@@ -2,8 +2,11 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
+import { useLanguage } from "../../context/LanguageContext";
 import { applyTheme } from "../../hooks/useAuth";
+import { LANGUAGES } from "../../i18n/translations";
 import type { Account, Violation } from "../../types";
+import { WorldLanguageDownloader } from "../WorldLanguageDownloader";
 import { ViolationCard } from "../shared/ViolationCard";
 import { ElectronicIDCard } from "./ElectronicIDCard";
 
@@ -46,10 +49,10 @@ export function MemberProfileTab({
   const [editingBio, setEditingBio] = useState(false);
   const [bio, setBio] = useState(currentUser.bio || "");
   const photoRef = useRef<HTMLInputElement>(null);
+  const { language, setLanguage, isPWA } = useLanguage();
 
   const isPremier = currentUser.membershipTier === "Premier";
 
-  // Storage calculation
   let usedBytes = 0;
   for (const biz of currentUser.businesses || []) {
     for (const p of biz.photos) usedBytes += Math.round((p.length * 3) / 4);
@@ -159,7 +162,6 @@ export function MemberProfileTab({
           </div>
         </div>
 
-        {/* Storage bar */}
         <div className="mb-4">
           <div className="flex justify-between text-xs text-zinc-400 mb-1">
             <span>Storage</span>
@@ -231,6 +233,45 @@ export function MemberProfileTab({
             </button>
           </div>
         )}
+      </div>
+
+      {/* Language */}
+      <div
+        className="bg-card border border-border rounded-xl p-4"
+        data-ocid="profile.language.panel"
+      >
+        <h3 className="font-heading font-semibold mb-3 flex items-center gap-2">
+          <span className="material-symbols-outlined text-primary text-lg">
+            language
+          </span>
+          Language
+        </h3>
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          {LANGUAGES.map((lang) => (
+            <button
+              key={lang.code}
+              type="button"
+              data-ocid="profile.language.toggle"
+              onClick={() => setLanguage(lang.code)}
+              className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border transition-all text-left ${
+                language === lang.code
+                  ? "border-amber-400 bg-amber-400/10 text-amber-400"
+                  : "border-border bg-secondary hover:border-amber-400/40"
+              }`}
+            >
+              <span className="text-base">{lang.flag}</span>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold truncate">
+                  {lang.nativeName}
+                </p>
+                <p className="text-[10px] text-muted-foreground truncate">
+                  {lang.name}
+                </p>
+              </div>
+            </button>
+          ))}
+        </div>
+        {isPWA && <WorldLanguageDownloader />}
       </div>
 
       {/* Theme */}
