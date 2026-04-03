@@ -7,6 +7,7 @@ import { EventsTab } from "./components/EventsTab";
 import { ExploreTab } from "./components/ExploreTab";
 import { LanguageSelectScreen } from "./components/LanguageSelectScreen";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
+import { RestaurantsTab } from "./components/RestaurantsTab";
 import { CommunityBusinessTab } from "./components/community/CommunityBusinessTab";
 import { CommunityPermissionsTab } from "./components/community/PermissionsTab";
 import { CreatorProfileTab } from "./components/creator/CreatorProfileTab";
@@ -131,6 +132,11 @@ export default function App() {
     { id: "explore", icon: "explore", label: t("explore") },
     { id: "discover", icon: "travel_explore", label: t("discover") },
     { id: "events", icon: "event", label: t("events") },
+    {
+      id: "restaurants",
+      icon: "restaurant",
+      label: t("restaurants", "Restaurants"),
+    },
     { id: "search", icon: "search", label: t("search") },
     { id: "post", icon: "add_circle", label: t("post") },
     { id: "profile", icon: "person", label: t("profile") },
@@ -139,6 +145,11 @@ export default function App() {
   const MEMBER_NAV = [
     { id: "explore", icon: "explore", label: t("explore") },
     { id: "events", icon: "event", label: t("events") },
+    {
+      id: "restaurants",
+      icon: "restaurant",
+      label: t("restaurants", "Restaurants"),
+    },
     { id: "search", icon: "search", label: t("search") },
     { id: "business", icon: "store", label: t("business") },
     { id: "membership", icon: "card_membership", label: t("membership") },
@@ -148,6 +159,11 @@ export default function App() {
   const COMMUNITY_NAV = [
     { id: "explore", icon: "explore", label: t("explore") },
     { id: "events", icon: "event", label: t("events") },
+    {
+      id: "restaurants",
+      icon: "restaurant",
+      label: t("restaurants", "Restaurants"),
+    },
     { id: "search", icon: "search", label: t("search") },
     { id: "business", icon: "store", label: t("business") },
     { id: "permissions", icon: "key", label: t("permissions") },
@@ -159,6 +175,11 @@ export default function App() {
     { id: "explore", icon: "explore", label: t("explore") },
     { id: "discover", icon: "travel_explore", label: t("discover") },
     { id: "events", icon: "event", label: t("events") },
+    {
+      id: "restaurants",
+      icon: "restaurant",
+      label: t("restaurants", "Restaurants"),
+    },
     { id: "vault", icon: "inventory_2", label: t("vault") },
     { id: "wallet", icon: "account_balance_wallet", label: t("wallet") },
     { id: "moderation", icon: "shield", label: t("moderation") },
@@ -295,6 +316,11 @@ export default function App() {
                 />
               </ErrorBoundary>
             )}
+            {activeTab === "restaurants" && (
+              <ErrorBoundary minimal>
+                <RestaurantsTab accounts={accounts} currentUser={currentUser} />
+              </ErrorBoundary>
+            )}
             {activeTab === "search" && (
               <ErrorBoundary minimal>
                 <SearchTab
@@ -345,6 +371,11 @@ export default function App() {
                   currentUser={currentUser}
                   onAddPendingPayment={data.addPendingPayment}
                 />
+              </ErrorBoundary>
+            )}
+            {activeTab === "restaurants" && (
+              <ErrorBoundary minimal>
+                <RestaurantsTab accounts={accounts} currentUser={currentUser} />
               </ErrorBoundary>
             )}
             {activeTab === "search" && (
@@ -432,6 +463,11 @@ export default function App() {
                   currentUser={currentUser}
                   onAddPendingPayment={data.addPendingPayment}
                 />
+              </ErrorBoundary>
+            )}
+            {activeTab === "restaurants" && (
+              <ErrorBoundary minimal>
+                <RestaurantsTab accounts={accounts} currentUser={currentUser} />
               </ErrorBoundary>
             )}
             {activeTab === "search" && (
@@ -546,6 +582,11 @@ export default function App() {
                   currentUser={currentUser}
                   onAddPendingPayment={data.addPendingPayment}
                 />
+              </ErrorBoundary>
+            )}
+            {activeTab === "restaurants" && (
+              <ErrorBoundary minimal>
+                <RestaurantsTab accounts={accounts} currentUser={currentUser} />
               </ErrorBoundary>
             )}
             {activeTab === "vault" && (

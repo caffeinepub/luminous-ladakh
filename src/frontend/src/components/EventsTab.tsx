@@ -38,6 +38,20 @@ function formatDate(iso: string) {
   }
 }
 
+function getDaysUntil(dateStr: string): number {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const eventDate = new Date(dateStr);
+    eventDate.setHours(0, 0, 0, 0);
+    return Math.ceil(
+      (eventDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+    );
+  } catch {
+    return 0;
+  }
+}
+
 export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
   const { t } = useLanguage();
   const [events, setEvents] = useState<LCEvent[]>(loadEvents);
@@ -52,14 +66,26 @@ export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
 
   const isCreator = currentUser.role === "creator";
   const approvedEvents = events.filter((e) => e.status === "approved");
+
+  // Only show UPCOMING approved events (today and future)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const upcomingEvents = approvedEvents.filter(
+    (e) => new Date(e.date) >= today,
+  );
+
+  // Creator sees all pending events regardless of date
   const pendingEvents = isCreator
     ? events.filter((e) => e.status === "pending")
     : [];
+
   const groups = groupByMonth(
-    [...approvedEvents].sort(
+    [...upcomingEvents].sort(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
     ),
   );
+
+  const todayStr = new Date().toISOString().split("T")[0];
 
   function handleApprove(id: string) {
     const updated = events.map((e) =>
@@ -86,6 +112,11 @@ export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
       !form.description.trim()
     ) {
       toast.error("Please fill in all fields.");
+      return;
+    }
+    // Prevent past dates
+    if (form.date < todayStr) {
+      toast.error("Event date cannot be in the past.");
       return;
     }
     setSubmitting(true);
@@ -136,7 +167,7 @@ export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
             {t("eventsTitle", "Events & Festivals")}
           </h2>
           <p className="text-xs text-muted-foreground">
-            Ladakh cultural events calendar
+            {t("upcomingEventsSubtitle", "Upcoming Ladakh cultural events")}
           </p>
         </div>
         <button
@@ -202,7 +233,10 @@ export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
             event
           </span>
           <p className="text-zinc-500 text-sm">
-            {t("noEventsYet", "No events yet. Be the first to post one!")}
+            {t(
+              "noUpcomingEvents",
+              "No upcoming events. Be the first to post one!",
+            )}
           </p>
         </div>
       ) : (
@@ -212,42 +246,59 @@ export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
               {month}
             </h3>
             <div className="space-y-3">
-              {monthEvents.map((ev, i) => (
-                <div
-                  key={ev.id}
-                  className="bg-card border border-border rounded-xl overflow-hidden"
-                  data-ocid={`events.item.${i + 1}`}
-                >
-                  <div className="bg-gradient-to-r from-primary/20 to-amber-600/10 px-4 py-3 border-b border-border">
-                    <div className="flex items-start justify-between gap-2">
-                      <h4 className="font-bold text-sm">{ev.title}</h4>
-                      <span className="flex-shrink-0 text-xs bg-primary/20 text-primary border border-primary/30 px-2 py-0.5 rounded-full">
-                        {t("free", "Free")}
-                      </span>
+              {monthEvents.map((ev, i) => {
+                const daysUntil = getDaysUntil(ev.date);
+                const isToday = daysUntil === 0;
+                const isSoon = daysUntil <= 7;
+                return (
+                  <div
+                    key={ev.id}
+                    className="bg-card border border-border rounded-xl overflow-hidden"
+                    data-ocid={`events.item.${i + 1}`}
+                  >
+                    <div className="bg-gradient-to-r from-primary/20 to-amber-600/10 px-4 py-3 border-b border-border">
+                      <div className="flex items-start justify-between gap-2">
+                        <h4 className="font-bold text-sm">{ev.title}</h4>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          {isToday && (
+                            <span className="text-xs bg-green-500/20 text-green-400 border border-green-500/40 px-2 py-0.5 rounded-full font-semibold">
+                              Today!
+                            </span>
+                          )}
+                          {!isToday && isSoon && (
+                            <span className="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full">
+                              {daysUntil}d away
+                            </span>
+                          )}
+                          <span className="text-xs bg-primary/20 text-primary border border-primary/30 px-2 py-0.5 rounded-full">
+                            {t("free", "Free")}
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-xs">
+                          calendar_today
+                        </span>
+                        {formatDate(ev.date)}
+                      </p>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                      <span className="material-symbols-outlined text-xs">
-                        calendar_today
-                      </span>
-                      {formatDate(ev.date)}
-                    </p>
+                    <div className="px-4 py-3">
+                      <p className="text-xs text-muted-foreground flex items-center gap-1 mb-2">
+                        <span className="material-symbols-outlined text-xs">
+                          location_on
+                        </span>
+                        {ev.location}
+                      </p>
+                      <p className="text-sm text-foreground/90 leading-relaxed">
+                        {ev.description}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Posted by @{ev.postedByUsername}
+                      </p>
+                    </div>
                   </div>
-                  <div className="px-4 py-3">
-                    <p className="text-xs text-muted-foreground flex items-center gap-1 mb-2">
-                      <span className="material-symbols-outlined text-xs">
-                        location_on
-                      </span>
-                      {ev.location}
-                    </p>
-                    <p className="text-sm text-foreground/90 leading-relaxed">
-                      {ev.description}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Posted by @{ev.postedByUsername}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         ))
@@ -323,6 +374,7 @@ export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
                 <input
                   id="evt-date"
                   type="date"
+                  min={todayStr}
                   value={form.date}
                   onChange={(e) =>
                     setForm((p) => ({ ...p, date: e.target.value }))
