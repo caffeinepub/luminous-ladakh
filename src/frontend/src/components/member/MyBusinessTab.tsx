@@ -6,10 +6,8 @@ import type {
   Business,
   BusinessType,
   MenuItem,
-  PendingPayment,
   RentalAddon,
   RoomType,
-  ShopProduct,
   Violation,
 } from "../../types";
 
@@ -67,17 +65,6 @@ const ROOM_TYPES = ["Suite", "Deluxe", "Standard", "Family"] as const;
 const MENU_CATEGORIES = ["Starters", "Main Course", "Desserts", "Beverages"];
 const VEHICLE_TYPES = ["Bike", "Car", "Bicycle", "Scooter", "E-Bike", "Other"];
 
-const SHOP_PRODUCT_CATEGORIES = [
-  "Clothing & Fashion",
-  "Electronics",
-  "Handicrafts",
-  "Jewellery",
-  "Food & Groceries",
-  "Vehicles",
-  "Tools & Equipment",
-  "Other",
-];
-
 const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = {
   hotel: "🏨 Hotel",
   restaurant: "🍽️ Restaurant",
@@ -96,7 +83,6 @@ interface Props {
   }[];
   onUpdate: (updates: Partial<Account>) => void;
   onIssueViolation?: (v: Omit<Violation, "id" | "timestamp">) => void;
-  onAddPendingPayment?: (p: Omit<PendingPayment, "id" | "timestamp">) => void;
 }
 
 function StorageBar({ usedMB, limitMB }: { usedMB: number; limitMB: number }) {
@@ -532,208 +518,12 @@ function RentalAddonForm({
 }
 
 // ----- Shop Product Form -----
-function ShopProductForm({
-  onSave,
-  onCancel,
-  initial,
-  maxPhotos,
-}: {
-  onSave: (p: ShopProduct) => void;
-  onCancel: () => void;
-  initial?: ShopProduct;
-  maxPhotos: number;
-}) {
-  const [name, setName] = useState(initial?.name ?? "");
-  const [description, setDescription] = useState(initial?.description ?? "");
-  const [price, setPrice] = useState(String(initial?.price ?? ""));
-  const [category, setCategory] = useState(
-    initial?.category ?? SHOP_PRODUCT_CATEGORIES[0],
-  );
-  const [inStock, setInStock] = useState(initial?.inStock ?? true);
-  const [photos, setPhotos] = useState<string[]>(initial?.photos ?? []);
-  const photoRef = useRef<HTMLInputElement>(null);
-
-  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files || []);
-    const toAdd: string[] = [];
-    for (const file of files) {
-      const b64 = await fileToBase64(file);
-      toAdd.push(b64);
-    }
-    setPhotos((prev) => [...prev, ...toAdd].slice(0, maxPhotos));
-    if (e.target) e.target.value = "";
-  }
-
-  function handleSave() {
-    if (!name.trim()) {
-      toast.error("Product name required");
-      return;
-    }
-    const priceNum = Number(price);
-    if (!price || Number.isNaN(priceNum) || priceNum < 0) {
-      toast.error("Enter a valid price");
-      return;
-    }
-    onSave({
-      id: initial?.id ?? generateId(),
-      name: name.trim(),
-      description: description.trim(),
-      price: priceNum,
-      category,
-      inStock,
-      photos,
-      isAnnouncement: initial?.isAnnouncement,
-      announcementPaid: initial?.announcementPaid,
-    });
-  }
-
-  return (
-    <div className="bg-zinc-800/60 border border-amber-500/20 rounded-xl p-4 space-y-3">
-      <div>
-        <p className="block text-xs text-zinc-400 mb-1">Product Name *</p>
-        <input
-          className={inputCls}
-          placeholder="e.g. Pashmina Shawl"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <p className="block text-xs text-zinc-400 mb-1">Category</p>
-          <select
-            className={inputCls}
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-          >
-            {SHOP_PRODUCT_CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <p className="block text-xs text-zinc-400 mb-1">Price (₹)</p>
-          <input
-            className={inputCls}
-            type="number"
-            min="0"
-            placeholder="500"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-          />
-        </div>
-      </div>
-      <div>
-        <p className="block text-xs text-zinc-400 mb-1">Description</p>
-        <textarea
-          className={`${inputCls} resize-none`}
-          rows={2}
-          placeholder="Describe the product..."
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-      </div>
-      <div className="flex items-center gap-3">
-        <span className="text-xs text-zinc-400">Stock:</span>
-        <button
-          type="button"
-          onClick={() => setInStock(true)}
-          className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-            inStock
-              ? "bg-green-600/20 border-green-500/60 text-green-400"
-              : "bg-zinc-800 border-zinc-700 text-zinc-400"
-          }`}
-        >
-          In Stock
-        </button>
-        <button
-          type="button"
-          onClick={() => setInStock(false)}
-          className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-            !inStock
-              ? "bg-red-600/20 border-red-500/60 text-red-400"
-              : "bg-zinc-800 border-zinc-700 text-zinc-400"
-          }`}
-        >
-          Out of Stock
-        </button>
-      </div>
-
-      {/* Photos */}
-      <div>
-        <p className="block text-xs text-zinc-400 mb-1">
-          Photos (max {maxPhotos})
-        </p>
-        <div className="flex gap-2 flex-wrap mb-2">
-          {photos.map((p, i) => (
-            <div key={String(i)} className="relative">
-              <img
-                src={p}
-                alt=""
-                className="w-16 h-16 object-cover rounded-lg"
-              />
-              <button
-                type="button"
-                onClick={() =>
-                  setPhotos((prev) => prev.filter((_, j) => j !== i))
-                }
-                className="absolute -top-1 -right-1 bg-red-500 rounded-full w-4 h-4 flex items-center justify-center text-white text-xs"
-              >
-                ×
-              </button>
-            </div>
-          ))}
-        </div>
-        <input
-          ref={photoRef}
-          type="file"
-          accept="image/*"
-          multiple
-          className="hidden"
-          onChange={handlePhotoUpload}
-        />
-        <button
-          type="button"
-          onClick={() => photoRef.current?.click()}
-          disabled={photos.length >= maxPhotos}
-          className="px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-sm text-zinc-300 transition-colors disabled:opacity-50"
-          data-ocid="business.upload_button"
-        >
-          <span className="material-symbols-outlined text-sm mr-1">
-            add_photo_alternate
-          </span>
-          Add Photos
-        </button>
-      </div>
-
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="flex-1 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-sm transition-colors"
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          onClick={handleSave}
-          className="flex-1 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-sm transition-colors"
-        >
-          Save Product
-        </button>
-      </div>
-    </div>
-  );
-}
 
 export function MemberBusinessTab({
   currentUser,
   reviews,
   onUpdate,
   onIssueViolation,
-  onAddPendingPayment,
 }: Props) {
   const isPremier = currentUser.membershipTier === "Premier";
   const maxBusinesses = isPremier ? 3 : 1;
@@ -789,7 +579,6 @@ export function MemberBusinessTab({
   const [formRoomTypes, setFormRoomTypes] = useState<RoomType[]>([]);
   const [formMenuItems, setFormMenuItems] = useState<MenuItem[]>([]);
   const [formRentalAddons, setFormRentalAddons] = useState<RentalAddon[]>([]);
-  const [formShopProducts, setFormShopProducts] = useState<ShopProduct[]>([]);
 
   // Sub-form visibility
   const [addingRoom, setAddingRoom] = useState(false);
@@ -798,10 +587,6 @@ export function MemberBusinessTab({
   const [editingMenuItem, setEditingMenuItem] = useState<MenuItem | null>(null);
   const [addingRental, setAddingRental] = useState(false);
   const [editingRental, setEditingRental] = useState<RentalAddon | null>(null);
-  const [addingProduct, setAddingProduct] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<ShopProduct | null>(
-    null,
-  );
 
   function getBizTypeLabel(biz: Business): string {
     if (biz.businessType) return BUSINESS_TYPE_LABELS[biz.businessType];
@@ -823,15 +608,12 @@ export function MemberBusinessTab({
     setFormRoomTypes([]);
     setFormMenuItems([]);
     setFormRentalAddons([]);
-    setFormShopProducts([]);
     setAddingRoom(false);
     setEditingRoom(null);
     setAddingMenuItem(false);
     setEditingMenuItem(null);
     setAddingRental(false);
     setEditingRental(null);
-    setAddingProduct(false);
-    setEditingProduct(null);
   }
 
   function openEdit(biz: Business) {
@@ -849,15 +631,12 @@ export function MemberBusinessTab({
     setFormRoomTypes(biz.roomTypes ?? []);
     setFormMenuItems(biz.menuItems ?? []);
     setFormRentalAddons(biz.rentalAddons ?? []);
-    setFormShopProducts(biz.shopProducts ?? []);
     setAddingRoom(false);
     setEditingRoom(null);
     setAddingMenuItem(false);
     setEditingMenuItem(null);
     setAddingRental(false);
     setEditingRental(null);
-    setAddingProduct(false);
-    setEditingProduct(null);
   }
 
   function validateMapsUrl(url: string): boolean {
@@ -939,20 +718,11 @@ export function MemberBusinessTab({
       toast.error("Rental listings require a contact phone number.");
       return;
     }
-    if (formBizType === "shop" && !formPhone.trim()) {
-      toast.error("Shop listings require a contact phone number.");
-      return;
-    }
 
     const biz: Business = {
       id: editing?.id || generateId(),
       name: formName.trim(),
-      category:
-        formBizType === "hotel"
-          ? "Hotels"
-          : formBizType === "shop"
-            ? "Shopping"
-            : formCategory,
+      category: formBizType === "hotel" ? "Hotels" : formCategory,
       description: formDesc.trim(),
       mapsUrl: formMaps.trim(),
       photos: formPhotos,
@@ -970,7 +740,6 @@ export function MemberBusinessTab({
         formBizType === "rental" || formBizType === "hotel"
           ? formRentalAddons
           : undefined,
-      shopProducts: formBizType === "shop" ? formShopProducts : undefined,
       lastAvailabilityUpdate:
         formBizType === "hotel" ? new Date().toISOString() : undefined,
     };
@@ -993,39 +762,12 @@ export function MemberBusinessTab({
     toast.success("Business removed");
   }
 
-  function handleAnnounceProduct(product: ShopProduct) {
-    if (!onAddPendingPayment) {
-      toast.error("Payment system unavailable.");
-      return;
-    }
-    onAddPendingPayment({
-      memberId: currentUser.id,
-      memberUsername: currentUser.username,
-      memberEmail: currentUser.email,
-      amount: 200,
-      tier: "Shop Announcement",
-      status: "pending",
-      paymentType: "shop_announcement",
-      eventTitle: product.name,
-    });
-    // Mark as announcement paid in local state
-    const updatedProducts = formShopProducts.map((p) =>
-      p.id === product.id ? { ...p, announcementPaid: true } : p,
-    );
-    setFormShopProducts(updatedProducts);
-    toast.success(
-      "Announcement submitted! ₹200 payment pending Creator confirmation.",
-    );
-  }
-
   const showForm = isNew || editing !== null;
 
   const isHotelForm = formBizType === "hotel" && canUseHotel;
   const isRestaurantForm = formBizType === "restaurant";
   const isRentalForm = formBizType === "rental";
-  const isShopForm = formBizType === "shop";
-  const needsContact =
-    isHotelForm || isRestaurantForm || isRentalForm || isShopForm;
+  const needsContact = isHotelForm || isRestaurantForm || isRentalForm;
 
   if (membershipLocked) {
     return (
@@ -1255,13 +997,6 @@ export function MemberBusinessTab({
                       ))}
                     </div>
                   )}
-                {/* Shop product count */}
-                {biz.businessType === "shop" && (
-                  <p className="text-xs text-zinc-500 mt-2">
-                    {(biz.shopProducts ?? []).length} product
-                    {(biz.shopProducts ?? []).length !== 1 ? "s" : ""} listed
-                  </p>
-                )}
                 {(biz.photos ?? []).length > 0 && (
                   <div className="mt-3 flex gap-2 overflow-x-auto">
                     {(biz.photos ?? []).map((p, i) => (
@@ -1403,7 +1138,7 @@ export function MemberBusinessTab({
             </div>
 
             {/* Category: only show for non-hotel, non-shop */}
-            {formBizType !== "hotel" && formBizType !== "shop" && (
+            {formBizType !== "hotel" && (
               <div>
                 <p className="block text-xs text-zinc-400 mb-1">Category</p>
                 <select
@@ -1467,9 +1202,7 @@ export function MemberBusinessTab({
                     Users will call this number to enquire / book
                   </p>
                 </div>
-                {(formBizType === "hotel" ||
-                  formBizType === "restaurant" ||
-                  formBizType === "shop") && (
+                {(formBizType === "hotel" || formBizType === "restaurant") && (
                   <div>
                     <p className="block text-xs text-zinc-400 mb-1">
                       Email Address
@@ -1867,131 +1600,6 @@ export function MemberBusinessTab({
                       setAddingRental(false);
                     }}
                     onCancel={() => setAddingRental(false)}
-                  />
-                )}
-              </div>
-            )}
-
-            {/* ---- Shop Products ---- */}
-            {isShopForm && (
-              <div className="border-t border-zinc-700 pt-5">
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <h4 className="text-sm font-bold text-white">🛍️ Products</h4>
-                    <p className="text-xs text-zinc-500">
-                      Add unlimited products · max {maxPhotos} photos each
-                    </p>
-                  </div>
-                  {!addingProduct && !editingProduct && (
-                    <button
-                      type="button"
-                      onClick={() => setAddingProduct(true)}
-                      className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1"
-                      data-ocid="business.open_modal_button"
-                    >
-                      <span className="material-symbols-outlined text-sm">
-                        add
-                      </span>
-                      Add Product
-                    </button>
-                  )}
-                </div>
-
-                {formShopProducts.map((product) => (
-                  <div key={product.id}>
-                    {editingProduct?.id === product.id ? (
-                      <ShopProductForm
-                        initial={editingProduct}
-                        maxPhotos={maxPhotos}
-                        onSave={(p) => {
-                          setFormShopProducts((prev) =>
-                            prev.map((x) => (x.id === p.id ? p : x)),
-                          );
-                          setEditingProduct(null);
-                        }}
-                        onCancel={() => setEditingProduct(null)}
-                      />
-                    ) : (
-                      <div className="bg-zinc-800/60 border border-zinc-700 rounded-xl p-3 mb-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <p className="text-sm font-semibold text-white truncate">
-                                {product.name}
-                              </p>
-                              {product.announcementPaid && (
-                                <span className="text-xs bg-amber-500/20 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded-full flex-shrink-0">
-                                  🆕 New
-                                </span>
-                              )}
-                              <span
-                                className={`text-xs px-1.5 py-0.5 rounded-full flex-shrink-0 ${
-                                  product.inStock
-                                    ? "text-green-400 bg-green-600/10"
-                                    : "text-red-400 bg-red-600/10"
-                                }`}
-                              >
-                                {product.inStock ? "In Stock" : "Out of Stock"}
-                              </span>
-                            </div>
-                            <p className="text-xs text-zinc-500">
-                              {product.category} · ₹
-                              {product.price.toLocaleString()}
-                            </p>
-                          </div>
-                          <div className="flex gap-1.5 flex-shrink-0">
-                            {product.inStock && !product.announcementPaid && (
-                              <button
-                                type="button"
-                                onClick={() => handleAnnounceProduct(product)}
-                                className="p-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 text-xs"
-                                title="Announce New Arrival (₹200)"
-                                data-ocid="business.button"
-                              >
-                                <span className="material-symbols-outlined text-sm">
-                                  campaign
-                                </span>
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => setEditingProduct(product)}
-                              className="p-1.5 rounded-lg bg-zinc-700 hover:bg-zinc-600 text-zinc-300"
-                              data-ocid="business.edit_button"
-                            >
-                              <span className="material-symbols-outlined text-sm">
-                                edit
-                              </span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setFormShopProducts((prev) =>
-                                  prev.filter((x) => x.id !== product.id),
-                                )
-                              }
-                              className="p-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-400"
-                              data-ocid="business.delete_button"
-                            >
-                              <span className="material-symbols-outlined text-sm">
-                                delete
-                              </span>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-
-                {addingProduct && (
-                  <ShopProductForm
-                    maxPhotos={maxPhotos}
-                    onSave={(p) => {
-                      setFormShopProducts((prev) => [...prev, p]);
-                      setAddingProduct(false);
-                    }}
-                    onCancel={() => setAddingProduct(false)}
                   />
                 )}
               </div>

@@ -11,8 +11,8 @@ function generateId(): string {
 export { generateId };
 
 export function initSeedData() {
-  // Version check: bump to v13 triggers test-account cleanup
-  const currentVersion = "v13";
+  // Version check: bump to v10 resets to v31 stable state
+  const currentVersion = "v10";
 
   if (localStorage.getItem("lc_seeded") !== currentVersion) {
     // Clean wallet state on version upgrade
@@ -128,10 +128,6 @@ export function initSeedData() {
 
   if (!localStorage.getItem("lc_pendingPayments")) {
     localStorage.setItem("lc_pendingPayments", JSON.stringify([]));
-  }
-
-  if (!localStorage.getItem("lc_shopAnnouncements")) {
-    localStorage.setItem("lc_shopAnnouncements", JSON.stringify([]));
   }
 
   localStorage.setItem("lc_seeded", currentVersion);

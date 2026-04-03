@@ -43,50 +43,6 @@ export interface RentalAddon {
   available: boolean;
 }
 
-export interface VehicleRental {
-  id: string;
-  vehicleType: string;
-  model: string;
-  pricePerDay: number;
-  pricePerMonth?: number;
-  photos: string[];
-  description?: string;
-  available: boolean;
-  reviews?: {
-    userId: string;
-    username: string;
-    rating: number;
-    comment: string;
-    timestamp: string;
-  }[];
-}
-
-export interface ShopProduct {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  photos: string[];
-  category: string;
-  inStock: boolean;
-  isAnnouncement?: boolean;
-  announcementPaid?: boolean;
-}
-
-export interface ShopAnnouncement {
-  id: string;
-  businessId: string;
-  memberId: string;
-  memberUsername: string;
-  productName: string;
-  description: string;
-  photo?: string;
-  paymentId: string;
-  status: "pending" | "active" | "expired";
-  timestamp: string;
-  expiresAt?: string;
-}
-
 export interface PharmacyEntry {
   id: string;
   name: string;
@@ -108,8 +64,6 @@ export interface Business {
   roomTypes?: RoomType[];
   menuItems?: MenuItem[];
   rentalAddons?: RentalAddon[];
-  vehicleRentals?: VehicleRental[];
-  shopProducts?: ShopProduct[];
   lastAvailabilityUpdate?: string;
 }
 
@@ -233,7 +187,7 @@ export interface PendingPayment {
   tier: string;
   timestamp: string;
   status: "pending";
-  paymentType?: "membership" | "event" | "shop_announcement";
+  paymentType?: "membership" | "event";
   eventTitle?: string;
 }
 

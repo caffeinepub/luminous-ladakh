@@ -8,7 +8,6 @@ import type {
   PermissionRequest,
   Post,
   Review,
-  ShopAnnouncement,
   Violation,
   WalletTransaction,
 } from "../types";
@@ -374,78 +373,6 @@ export function useData() {
     [],
   );
 
-  // User Activity Tracking
-  const logUserLogin = useCallback((userId: string) => {
-    const accounts = getLS<Account>("lc_accounts");
-    const idx = accounts.findIndex((a) => a.id === userId);
-    if (idx >= 0) {
-      accounts[idx] = {
-        ...accounts[idx],
-        lastLoginAt: new Date().toISOString(),
-      };
-      setLS("lc_accounts", accounts);
-    }
-  }, []);
-
-  const logUserLogout = useCallback((userId: string) => {
-    const accounts = getLS<Account>("lc_accounts");
-    const idx = accounts.findIndex((a) => a.id === userId);
-    if (idx >= 0) {
-      accounts[idx] = {
-        ...accounts[idx],
-        lastLogoutAt: new Date().toISOString(),
-      };
-      setLS("lc_accounts", accounts);
-    }
-  }, []);
-
-  const getUserActivity = useCallback(
-    (
-      userId: string,
-    ): {
-      lastLoginAt?: string;
-      lastLogoutAt?: string;
-      daysInactive: number;
-    } => {
-      const accounts = getLS<Account>("lc_accounts");
-      const account = accounts.find((a) => a.id === userId);
-      if (!account) return { daysInactive: 0 };
-      let daysInactive = 0;
-      if (account.lastLoginAt) {
-        const lastLogin = new Date(account.lastLoginAt);
-        const now = new Date();
-        daysInactive = Math.floor(
-          (now.getTime() - lastLogin.getTime()) / (1000 * 60 * 60 * 24),
-        );
-      }
-      return {
-        lastLoginAt: account.lastLoginAt,
-        lastLogoutAt: account.lastLogoutAt,
-        daysInactive,
-      };
-    },
-    [],
-  );
-
-  // Shop Announcements
-  const addShopAnnouncement = useCallback(
-    (a: Omit<ShopAnnouncement, "id" | "timestamp">) => {
-      const announcements = getLS<ShopAnnouncement>("lc_shopAnnouncements");
-      announcements.unshift({
-        ...a,
-        id: generateId(),
-        timestamp: new Date().toISOString(),
-      });
-      setLS("lc_shopAnnouncements", announcements);
-    },
-    [],
-  );
-
-  const getShopAnnouncements = useCallback(
-    (): ShopAnnouncement[] => getLS<ShopAnnouncement>("lc_shopAnnouncements"),
-    [],
-  );
-
   return {
     refresh,
     getAccounts,
@@ -482,10 +409,5 @@ export function useData() {
     getFlagReports,
     addFlagReport,
     updateFlagReport,
-    logUserLogin,
-    logUserLogout,
-    getUserActivity,
-    addShopAnnouncement,
-    getShopAnnouncements,
   };
 }
