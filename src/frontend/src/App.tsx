@@ -381,6 +381,17 @@ export default function App() {
                       `lc_memberPayments_${currentUser.id}`,
                     ) || "[]",
                   )}
+                  onAddPendingPayment={data.addPendingPayment}
+                  onUpgrade={(tier) => {
+                    data.updateAccount(currentUser.id, {
+                      membershipTier: tier,
+                      membershipStatus: "active",
+                    });
+                    updateCurrentUser({
+                      membershipTier: tier,
+                      membershipStatus: "active",
+                    });
+                  }}
                 />
               </ErrorBoundary>
             )}

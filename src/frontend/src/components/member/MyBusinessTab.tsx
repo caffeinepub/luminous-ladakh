@@ -525,6 +525,24 @@ export function MemberBusinessTab({
   const isPremier = currentUser.membershipTier === "Premier";
   const maxBusinesses = isPremier ? 3 : 1;
 
+  // Main membership trial gate (2-hour free trial for all members)
+  const memberTrialStart = currentUser.trialStartDate
+    ? new Date(currentUser.trialStartDate)
+    : null;
+  const memberTrialEnd = memberTrialStart
+    ? new Date(memberTrialStart.getTime() + 2 * 60 * 60 * 1000)
+    : null;
+  const memberTrialActive = memberTrialEnd
+    ? new Date() < memberTrialEnd
+    : false;
+  const memberTrialExpired =
+    currentUser.membershipStatus === "trial" &&
+    memberTrialStart !== null &&
+    !memberTrialActive;
+  const memberIsPaid = currentUser.membershipStatus === "active";
+  // Block business access if trial expired and not paid
+  const membershipLocked = memberTrialExpired && !memberIsPaid;
+
   // Hotel 2-hour trial (for non-Premier members)
   const hotelTrialStart = currentUser.hotelTrialStartDate
     ? new Date(currentUser.hotelTrialStartDate)
@@ -766,6 +784,72 @@ export function MemberBusinessTab({
   const isRestaurantForm = formBizType === "restaurant";
   const isRentalForm = formBizType === "rental";
   const needsContact = isHotelForm || isRestaurantForm || isRentalForm;
+
+  // Show locked gate if trial expired and not paid
+  if (membershipLocked) {
+    return (
+      <div className="fade-in space-y-4 py-6">
+        <div className="text-center mb-6">
+          <span className="material-symbols-outlined text-5xl text-red-400 block mb-3">
+            lock
+          </span>
+          <h2 className="text-xl font-bold text-white mb-1">Trial Expired</h2>
+          <p className="text-sm text-zinc-400">
+            Your 2-hour free trial has ended. Choose a membership plan to
+            continue promoting your business on Ladakh Connect.
+          </p>
+        </div>
+        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center gap-3">
+          <span className="material-symbols-outlined text-red-400 text-2xl">
+            hourglass_disabled
+          </span>
+          <div>
+            <p className="text-sm text-red-400 font-semibold">
+              Free trial ended
+            </p>
+            <p className="text-xs text-zinc-400 mt-0.5">
+              Pay for a Common (₹1,000/mo) or Premier (₹1,500/mo) plan to unlock
+              full business features.
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-3">
+          <div className="bg-card border border-border rounded-xl p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <p className="font-semibold text-white">Common Plan</p>
+                <p className="text-xs text-zinc-400">
+                  1 business listing · 300 MB storage
+                </p>
+              </div>
+              <span className="text-lg font-bold text-white">
+                ₹1,000
+                <span className="text-xs font-normal text-zinc-400">/mo</span>
+              </span>
+            </div>
+          </div>
+          <div className="bg-primary/10 border border-primary/30 rounded-xl p-4 gold-glow">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <p className="font-semibold text-primary">Premier Plan</p>
+                <p className="text-xs text-zinc-400">
+                  3 businesses · Hotels · 1 GB storage
+                </p>
+              </div>
+              <span className="text-lg font-bold text-primary">
+                ₹1,500
+                <span className="text-xs font-normal text-zinc-400">/mo</span>
+              </span>
+            </div>
+          </div>
+        </div>
+        <p className="text-center text-xs text-zinc-500">
+          Go to the <strong className="text-amber-400">Membership</strong> tab
+          to pay and activate your plan.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div>
