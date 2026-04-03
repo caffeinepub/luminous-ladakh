@@ -1,29 +1,53 @@
-# Ladakh Connect
+# Ladakh Connect — Version 32 (Stability + Full Feature Build)
 
 ## Current State
-- Hotels module is live (Premier-only), with room types, availability, food menu, rental add-ons, and direct contact.
-- Events tab exists with full calendar grouped by month, showing ALL approved events including past ones.
-- Restaurant and Rental Agency business types exist as form options in MyBusinessTab but have no dedicated public-facing discovery/browse section yet.
-- Members can pick business type (Hotel/Restaurant/Rental/Other) when adding a listing.
+- Version 31 is live with: Hotels (Premier), Restaurants, Events, SOS+Pharmacy, Language system, Creator wallet, Special Accounts, Error boundaries
+- App crashes intermittently due to accumulated technical debt
+- Missing: Vehicle Rentals tab, Shop/Selling category, event fee update, user activity tracking
+- All buttons need to be verified functional for all roles
 
 ## Requested Changes (Diff)
 
 ### Add
-- **Restaurants public discovery tab/section**: A browsable list of all restaurant listings submitted by Common and Premier members. Shows restaurant card with name, category (veg/non-veg indicator), price range, photos, rating, and a Call button. Tapping a card opens a full detail panel with the complete menu (grouped by category: Starters, Main Course, Desserts, Beverages), each dish showing name, price, veg/non-veg badge, description, and star rating. Users can rate individual dishes. Filters: price range (low/high), veg-only toggle.
-- **Restaurant dish ratings**: Users can tap a star rating on any menu item. Rating is saved to localStorage. Average rating shown on dish card.
+- **Vehicle Rentals section** (Common + Premier): standalone tab visible to all roles for browsing; members can list any rental (car, bike, scooter, bicycle, e-bike, etc.) under their business
+- **Shop/Selling Category** (new business type): members list products for sale (dealerships, shops, etc.); up to 20 photos (Common), up to 50 photos (Premier); unlimited products per shop; members can add/edit/delete products
+- **Shop Product Announcements**: ₹200 fee per announcement; shows "New Arrival" badge; same payment flow as events
+- **Event fee update**: posting fee ₹500 (was ₹650); first 7 days free; day 8+ = ₹10/day; after 2nd week = ₹70/2 days; non-payment = event removed
+- **User Activity Tracking** (Creator dashboard only): last login, last logout, days inactive per account; auto-cleanup of test/demo accounts on version update; Special Accounts are PERMANENT and never auto-cleaned
+- **VehicleRentalsTab** component: browsable by all roles, with filters (vehicle type, price), reviews, contact info
+- **ShopTab** component: browsable by all roles, product cards with photos, price, contact
+- `lc_userActivity` localStorage key to track per-user login/logout timestamps
+- Account activity data in Creator dashboard new "Activity" section
 
 ### Modify
-- **Events tab**: Filter approved events to only show **upcoming** events (date >= today). Past events are hidden from the public calendar view. Group by month as before, but only future months. Show a friendly empty state if there are no upcoming events. Creator's pending approval panel is unchanged.
-- **Events form date input**: Set minimum date to today so users cannot post events in the past.
-- **Explore tab**: Add a "Restaurants" filter pill / category so users can discover restaurant listings from the Explore screen (optional integration — show restaurant cards inline).
+- **types/index.ts**: add `ShopProduct`, `ShopAnnouncement`, `VehicleRental` types; add `shop` to BusinessType; add `lastLoginAt`, `lastLogoutAt` fields to Account
+- **useData.ts**: add `logUserActivity`, `getUserActivity`, `getActivityLog` methods; add `addShopAnnouncement`, `getShopAnnouncements` methods
+- **seed.ts**: bump seed version to v13 to trigger auto-cleanup of test accounts while preserving real accounts and special accounts
+- **App.tsx**: add VehicleRentals and Shop tabs to all role nav arrays; wire new tab renders; add LanguageProvider wrapper if missing; fix main.tsx to ensure LanguageProvider wraps everything
+- **main.tsx**: ensure LanguageProvider is always present
+- **MyBusinessTab.tsx**: add 'shop' to BusinessType options; add product management (add/edit/delete products with up to 50 photos for Premier, 20 for Common); add rental business type with extended vehicle fields
+- **MembershipTab.tsx**: update photo limits (Common: 20, Premier: 50); mention 2 promo videos for Premier
+- **EventsTab.tsx**: update posting fee to ₹500; add extension fee logic display (₹10/day after week 1, ₹70/2 days after week 2)
+- **CreatorDashboard**: add User Activity section showing last login, last logout, days inactive per user
+- **DashboardTab.tsx**: add activity tracking panel
+- **types/index.ts**: add rental-specific fields to Business type
 
 ### Remove
-- Nothing removed.
+- Dead/unused imports across all files
+- `pollsData.ts` usage if unused anywhere
+- Any cheat codes or hardcoded test bypasses
+- External redirects except Google Maps URLs (which are user-provided data)
 
 ## Implementation Plan
-1. Update `EventsTab.tsx`: filter `approvedEvents` to only those with `date >= today` before grouping. Add `min={today}` to the date input in the post form.
-2. Create `src/frontend/src/data/restaurantsData.ts`: localStorage-backed store for dish ratings (keyed by businessId + itemId).
-3. Update `EventsTab.tsx` with upcoming-only filtering.
-4. Update `ExploreTab.tsx` or create a `RestaurantsTab.tsx` component: public-facing restaurant discovery, with filters and detail panel showing full menu with dish ratings.
-5. Wire `RestaurantsTab` into `App.tsx` navigation for User, Member, Community Member, and Creator roles (similar to how Hotels are shown in Explore).
-6. Validate and deploy.
+1. Update `types/index.ts` — add ShopProduct, VehicleRental, ShopAnnouncement types; extend Account with activity fields
+2. Update `useData.ts` — add activity tracking, shop announcements, cleanup logic
+3. Update `seed.ts` — bump to v13 for auto-cleanup
+4. Update `main.tsx` — ensure LanguageProvider is rock-solid
+5. Create `VehicleRentalsTab.tsx` — standalone browse tab for all roles
+6. Create `ShopTab.tsx` — standalone browse tab for all roles
+7. Update `MyBusinessTab.tsx` — add shop + rental business types with proper photo limits
+8. Update `MembershipTab.tsx` — update photo limit text
+9. Update `EventsTab.tsx` — ₹500 fee, extension fee display
+10. Update `DashboardTab.tsx` — add User Activity panel
+11. Update `App.tsx` — wire all new tabs for all roles, ensure every button has a handler
+12. Validate and fix all TypeScript errors

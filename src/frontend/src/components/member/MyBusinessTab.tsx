@@ -6,8 +6,10 @@ import type {
   Business,
   BusinessType,
   MenuItem,
+  PendingPayment,
   RentalAddon,
   RoomType,
+  ShopProduct,
   Violation,
 } from "../../types";
 
@@ -63,12 +65,24 @@ const ROOM_AMENITIES = [
 
 const ROOM_TYPES = ["Suite", "Deluxe", "Standard", "Family"] as const;
 const MENU_CATEGORIES = ["Starters", "Main Course", "Desserts", "Beverages"];
-const VEHICLE_TYPES = ["Bike", "Car", "Bicycle", "Scooter"];
+const VEHICLE_TYPES = ["Bike", "Car", "Bicycle", "Scooter", "E-Bike", "Other"];
+
+const SHOP_PRODUCT_CATEGORIES = [
+  "Clothing & Fashion",
+  "Electronics",
+  "Handicrafts",
+  "Jewellery",
+  "Food & Groceries",
+  "Vehicles",
+  "Tools & Equipment",
+  "Other",
+];
 
 const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = {
   hotel: "🏨 Hotel",
   restaurant: "🍽️ Restaurant",
   rental: "🚗 Rental Agency",
+  shop: "🛍️ Shop / Store",
   other: "🏦 Other Business",
 };
 
@@ -82,6 +96,7 @@ interface Props {
   }[];
   onUpdate: (updates: Partial<Account>) => void;
   onIssueViolation?: (v: Omit<Violation, "id" | "timestamp">) => void;
+  onAddPendingPayment?: (p: Omit<PendingPayment, "id" | "timestamp">) => void;
 }
 
 function StorageBar({ usedMB, limitMB }: { usedMB: number; limitMB: number }) {
@@ -324,15 +339,15 @@ function MenuItemForm({
             onChange={(e) => setPrice(e.target.value)}
           />
         </div>
-      </div>
-      <div>
-        <p className="block text-xs text-zinc-400 mb-1">Description</p>
-        <input
-          className={inputCls}
-          placeholder="Optional description..."
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
+        <div className="col-span-2">
+          <p className="block text-xs text-zinc-400 mb-1">Description</p>
+          <input
+            className={inputCls}
+            placeholder="Optional short description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </div>
       </div>
       <div className="flex items-center gap-3">
         <span className="text-xs text-zinc-400">Type:</span>
@@ -345,7 +360,7 @@ function MenuItemForm({
               : "bg-zinc-800 border-zinc-700 text-zinc-400"
           }`}
         >
-          🟢 Vegetarian
+          🟢 Veg
         </button>
         <button
           type="button"
@@ -516,14 +531,213 @@ function RentalAddonForm({
   );
 }
 
+// ----- Shop Product Form -----
+function ShopProductForm({
+  onSave,
+  onCancel,
+  initial,
+  maxPhotos,
+}: {
+  onSave: (p: ShopProduct) => void;
+  onCancel: () => void;
+  initial?: ShopProduct;
+  maxPhotos: number;
+}) {
+  const [name, setName] = useState(initial?.name ?? "");
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [price, setPrice] = useState(String(initial?.price ?? ""));
+  const [category, setCategory] = useState(
+    initial?.category ?? SHOP_PRODUCT_CATEGORIES[0],
+  );
+  const [inStock, setInStock] = useState(initial?.inStock ?? true);
+  const [photos, setPhotos] = useState<string[]>(initial?.photos ?? []);
+  const photoRef = useRef<HTMLInputElement>(null);
+
+  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files || []);
+    const toAdd: string[] = [];
+    for (const file of files) {
+      const b64 = await fileToBase64(file);
+      toAdd.push(b64);
+    }
+    setPhotos((prev) => [...prev, ...toAdd].slice(0, maxPhotos));
+    if (e.target) e.target.value = "";
+  }
+
+  function handleSave() {
+    if (!name.trim()) {
+      toast.error("Product name required");
+      return;
+    }
+    const priceNum = Number(price);
+    if (!price || Number.isNaN(priceNum) || priceNum < 0) {
+      toast.error("Enter a valid price");
+      return;
+    }
+    onSave({
+      id: initial?.id ?? generateId(),
+      name: name.trim(),
+      description: description.trim(),
+      price: priceNum,
+      category,
+      inStock,
+      photos,
+      isAnnouncement: initial?.isAnnouncement,
+      announcementPaid: initial?.announcementPaid,
+    });
+  }
+
+  return (
+    <div className="bg-zinc-800/60 border border-amber-500/20 rounded-xl p-4 space-y-3">
+      <div>
+        <p className="block text-xs text-zinc-400 mb-1">Product Name *</p>
+        <input
+          className={inputCls}
+          placeholder="e.g. Pashmina Shawl"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <p className="block text-xs text-zinc-400 mb-1">Category</p>
+          <select
+            className={inputCls}
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+          >
+            {SHOP_PRODUCT_CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <p className="block text-xs text-zinc-400 mb-1">Price (₹)</p>
+          <input
+            className={inputCls}
+            type="number"
+            min="0"
+            placeholder="500"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+          />
+        </div>
+      </div>
+      <div>
+        <p className="block text-xs text-zinc-400 mb-1">Description</p>
+        <textarea
+          className={`${inputCls} resize-none`}
+          rows={2}
+          placeholder="Describe the product..."
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
+      </div>
+      <div className="flex items-center gap-3">
+        <span className="text-xs text-zinc-400">Stock:</span>
+        <button
+          type="button"
+          onClick={() => setInStock(true)}
+          className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+            inStock
+              ? "bg-green-600/20 border-green-500/60 text-green-400"
+              : "bg-zinc-800 border-zinc-700 text-zinc-400"
+          }`}
+        >
+          In Stock
+        </button>
+        <button
+          type="button"
+          onClick={() => setInStock(false)}
+          className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+            !inStock
+              ? "bg-red-600/20 border-red-500/60 text-red-400"
+              : "bg-zinc-800 border-zinc-700 text-zinc-400"
+          }`}
+        >
+          Out of Stock
+        </button>
+      </div>
+
+      {/* Photos */}
+      <div>
+        <p className="block text-xs text-zinc-400 mb-1">
+          Photos (max {maxPhotos})
+        </p>
+        <div className="flex gap-2 flex-wrap mb-2">
+          {photos.map((p, i) => (
+            <div key={String(i)} className="relative">
+              <img
+                src={p}
+                alt=""
+                className="w-16 h-16 object-cover rounded-lg"
+              />
+              <button
+                type="button"
+                onClick={() =>
+                  setPhotos((prev) => prev.filter((_, j) => j !== i))
+                }
+                className="absolute -top-1 -right-1 bg-red-500 rounded-full w-4 h-4 flex items-center justify-center text-white text-xs"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+        <input
+          ref={photoRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={handlePhotoUpload}
+        />
+        <button
+          type="button"
+          onClick={() => photoRef.current?.click()}
+          disabled={photos.length >= maxPhotos}
+          className="px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-sm text-zinc-300 transition-colors disabled:opacity-50"
+          data-ocid="business.upload_button"
+        >
+          <span className="material-symbols-outlined text-sm mr-1">
+            add_photo_alternate
+          </span>
+          Add Photos
+        </button>
+      </div>
+
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="flex-1 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-sm transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={handleSave}
+          className="flex-1 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-sm transition-colors"
+        >
+          Save Product
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function MemberBusinessTab({
   currentUser,
   reviews,
   onUpdate,
   onIssueViolation,
+  onAddPendingPayment,
 }: Props) {
   const isPremier = currentUser.membershipTier === "Premier";
   const maxBusinesses = isPremier ? 3 : 1;
+  const maxPhotos = isPremier ? 50 : 20;
 
   // Main membership trial gate (2-hour free trial for all members)
   const memberTrialStart = currentUser.trialStartDate
@@ -540,11 +754,8 @@ export function MemberBusinessTab({
     memberTrialStart !== null &&
     !memberTrialActive;
   const memberIsPaid = currentUser.membershipStatus === "active";
-  // Block business access if trial expired and not paid
   const membershipLocked = memberTrialExpired && !memberIsPaid;
 
-  // Hotel requires Premier (after trial). During trial, all types are accessible.
-  // canUseHotel: Premier member OR main trial is still active
   const canUseHotel = isPremier || (memberTrialActive && !memberIsPaid);
   const hotelLockedForCommon = !isPremier && memberIsPaid;
   const storageLimitMB = isPremier ? 1024 : 300;
@@ -578,6 +789,7 @@ export function MemberBusinessTab({
   const [formRoomTypes, setFormRoomTypes] = useState<RoomType[]>([]);
   const [formMenuItems, setFormMenuItems] = useState<MenuItem[]>([]);
   const [formRentalAddons, setFormRentalAddons] = useState<RentalAddon[]>([]);
+  const [formShopProducts, setFormShopProducts] = useState<ShopProduct[]>([]);
 
   // Sub-form visibility
   const [addingRoom, setAddingRoom] = useState(false);
@@ -586,6 +798,10 @@ export function MemberBusinessTab({
   const [editingMenuItem, setEditingMenuItem] = useState<MenuItem | null>(null);
   const [addingRental, setAddingRental] = useState(false);
   const [editingRental, setEditingRental] = useState<RentalAddon | null>(null);
+  const [addingProduct, setAddingProduct] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<ShopProduct | null>(
+    null,
+  );
 
   function getBizTypeLabel(biz: Business): string {
     if (biz.businessType) return BUSINESS_TYPE_LABELS[biz.businessType];
@@ -607,12 +823,15 @@ export function MemberBusinessTab({
     setFormRoomTypes([]);
     setFormMenuItems([]);
     setFormRentalAddons([]);
+    setFormShopProducts([]);
     setAddingRoom(false);
     setEditingRoom(null);
     setAddingMenuItem(false);
     setEditingMenuItem(null);
     setAddingRental(false);
     setEditingRental(null);
+    setAddingProduct(false);
+    setEditingProduct(null);
   }
 
   function openEdit(biz: Business) {
@@ -630,12 +849,15 @@ export function MemberBusinessTab({
     setFormRoomTypes(biz.roomTypes ?? []);
     setFormMenuItems(biz.menuItems ?? []);
     setFormRentalAddons(biz.rentalAddons ?? []);
+    setFormShopProducts(biz.shopProducts ?? []);
     setAddingRoom(false);
     setEditingRoom(null);
     setAddingMenuItem(false);
     setEditingMenuItem(null);
     setAddingRental(false);
     setEditingRental(null);
+    setAddingProduct(false);
+    setEditingProduct(null);
   }
 
   function validateMapsUrl(url: string): boolean {
@@ -670,7 +892,7 @@ export function MemberBusinessTab({
       const b64 = await fileToBase64(file);
       toAdd.push(b64);
     }
-    setFormPhotos((prev) => [...prev, ...toAdd].slice(0, 5));
+    setFormPhotos((prev) => [...prev, ...toAdd].slice(0, maxPhotos));
     if (e.target) e.target.value = "";
   }
 
@@ -701,31 +923,36 @@ export function MemberBusinessTab({
       toast.error("Content blocked: military-related content detected.");
       return;
     }
-    // Hotel: Premier only OR active trial
     if (formBizType === "hotel" && !canUseHotel) {
       toast.error("Hotel promotion requires a Premier Plan. Please upgrade.");
       return;
     }
-    // Hotel: require phone
     if (formBizType === "hotel" && !formPhone.trim()) {
       toast.error("Hotel listings require a contact phone number.");
       return;
     }
-    // Restaurant: require phone
     if (formBizType === "restaurant" && !formPhone.trim()) {
       toast.error("Restaurant listings require a contact phone number.");
       return;
     }
-    // Rental: require phone
     if (formBizType === "rental" && !formPhone.trim()) {
       toast.error("Rental listings require a contact phone number.");
+      return;
+    }
+    if (formBizType === "shop" && !formPhone.trim()) {
+      toast.error("Shop listings require a contact phone number.");
       return;
     }
 
     const biz: Business = {
       id: editing?.id || generateId(),
       name: formName.trim(),
-      category: formBizType === "hotel" ? "Hotels" : formCategory,
+      category:
+        formBizType === "hotel"
+          ? "Hotels"
+          : formBizType === "shop"
+            ? "Shopping"
+            : formCategory,
       description: formDesc.trim(),
       mapsUrl: formMaps.trim(),
       photos: formPhotos,
@@ -743,6 +970,7 @@ export function MemberBusinessTab({
         formBizType === "rental" || formBizType === "hotel"
           ? formRentalAddons
           : undefined,
+      shopProducts: formBizType === "shop" ? formShopProducts : undefined,
       lastAvailabilityUpdate:
         formBizType === "hotel" ? new Date().toISOString() : undefined,
     };
@@ -765,14 +993,40 @@ export function MemberBusinessTab({
     toast.success("Business removed");
   }
 
+  function handleAnnounceProduct(product: ShopProduct) {
+    if (!onAddPendingPayment) {
+      toast.error("Payment system unavailable.");
+      return;
+    }
+    onAddPendingPayment({
+      memberId: currentUser.id,
+      memberUsername: currentUser.username,
+      memberEmail: currentUser.email,
+      amount: 200,
+      tier: "Shop Announcement",
+      status: "pending",
+      paymentType: "shop_announcement",
+      eventTitle: product.name,
+    });
+    // Mark as announcement paid in local state
+    const updatedProducts = formShopProducts.map((p) =>
+      p.id === product.id ? { ...p, announcementPaid: true } : p,
+    );
+    setFormShopProducts(updatedProducts);
+    toast.success(
+      "Announcement submitted! ₹200 payment pending Creator confirmation.",
+    );
+  }
+
   const showForm = isNew || editing !== null;
 
   const isHotelForm = formBizType === "hotel" && canUseHotel;
   const isRestaurantForm = formBizType === "restaurant";
   const isRentalForm = formBizType === "rental";
-  const needsContact = isHotelForm || isRestaurantForm || isRentalForm;
+  const isShopForm = formBizType === "shop";
+  const needsContact =
+    isHotelForm || isRestaurantForm || isRentalForm || isShopForm;
 
-  // Show locked gate if trial expired and not paid
   if (membershipLocked) {
     return (
       <div className="fade-in space-y-4 py-6">
@@ -845,8 +1099,8 @@ export function MemberBusinessTab({
           <h2 className="text-xl font-bold text-white">My Business</h2>
           <p className="text-xs text-zinc-500">
             {isPremier
-              ? "Premier: up to 3 businesses + video"
-              : "Common: 1 business, multiple photos"}
+              ? "Premier: up to 3 businesses + video + 50 photos"
+              : "Common: 1 business, up to 20 photos"}
           </p>
         </div>
         {!showForm && businesses.length < maxBusinesses && (
@@ -854,6 +1108,7 @@ export function MemberBusinessTab({
             type="button"
             onClick={openNew}
             className="flex items-center gap-1 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-sm transition-colors"
+            data-ocid="business.open_modal_button"
           >
             <span className="material-symbols-outlined text-sm">add</span>
             Add Business
@@ -869,7 +1124,6 @@ export function MemberBusinessTab({
 
       <StorageBar usedMB={usedMB} limitMB={storageLimitMB} />
 
-      {/* Trial active info banner */}
       {memberTrialActive && (
         <div className="mb-4 p-3 rounded-xl bg-yellow-500/10 border border-yellow-500/30">
           <p className="text-xs text-yellow-300 font-semibold mb-1">
@@ -886,7 +1140,8 @@ export function MemberBusinessTab({
         <div className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30">
           <p className="text-xs text-amber-300">
             <strong>Upgrade to Premier</strong> for ₹1,500/mo to list up to 3
-            businesses, add video, and customize your page.
+            businesses, add video, 50 photos per listing, and customize your
+            page.
           </p>
         </div>
       )}
@@ -1000,6 +1255,13 @@ export function MemberBusinessTab({
                       ))}
                     </div>
                   )}
+                {/* Shop product count */}
+                {biz.businessType === "shop" && (
+                  <p className="text-xs text-zinc-500 mt-2">
+                    {(biz.shopProducts ?? []).length} product
+                    {(biz.shopProducts ?? []).length !== 1 ? "s" : ""} listed
+                  </p>
+                )}
                 {(biz.photos ?? []).length > 0 && (
                   <div className="mt-3 flex gap-2 overflow-x-auto">
                     {(biz.photos ?? []).map((p, i) => (
@@ -1018,7 +1280,10 @@ export function MemberBusinessTab({
         })}
 
       {!showForm && businesses.length === 0 && (
-        <div className="text-center py-12 text-zinc-500">
+        <div
+          className="text-center py-12 text-zinc-500"
+          data-ocid="business.empty_state"
+        >
           <span className="material-symbols-outlined text-4xl block mb-2">
             store
           </span>
@@ -1040,6 +1305,7 @@ export function MemberBusinessTab({
                 setIsNew(false);
               }}
               className="text-zinc-500 hover:text-white"
+              data-ocid="business.close_button"
             >
               <span className="material-symbols-outlined">close</span>
             </button>
@@ -1057,6 +1323,7 @@ export function MemberBusinessTab({
                     ["hotel", "🏨", "Hotel"],
                     ["restaurant", "🍽️", "Restaurant"],
                     ["rental", "🚗", "Rental Agency"],
+                    ["shop", "🛍️", "Shop / Store"],
                     ["other", "🏦", "Other"],
                   ] as const
                 ).map(([type, emoji, label]) => {
@@ -1070,6 +1337,7 @@ export function MemberBusinessTab({
                           ? "bg-amber-500/20 border-amber-500/60 text-amber-300"
                           : "bg-zinc-800 border-zinc-700 text-zinc-300 hover:border-zinc-500"
                       }`}
+                      data-ocid={`business.${type}.button`}
                     >
                       <span>{emoji}</span>
                       {label}
@@ -1112,9 +1380,9 @@ export function MemberBusinessTab({
                     type="button"
                     onClick={() => setFormBizType("other")}
                     className="mt-2 w-full py-2 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 text-sm font-semibold hover:bg-amber-500/30 transition-all"
-                    data-ocid="hotel.upgrade.button"
+                    data-ocid="business.upgrade.button"
                   >
-                    👑 Upgrade to Premier
+                    👑 Go back to select another type
                   </button>
                 </div>
               )}
@@ -1134,8 +1402,8 @@ export function MemberBusinessTab({
               />
             </div>
 
-            {/* Category: only show for non-hotel */}
-            {formBizType !== "hotel" && (
+            {/* Category: only show for non-hotel, non-shop */}
+            {formBizType !== "hotel" && formBizType !== "shop" && (
               <div>
                 <p className="block text-xs text-zinc-400 mb-1">Category</p>
                 <select
@@ -1196,10 +1464,12 @@ export function MemberBusinessTab({
                     onChange={(e) => setFormPhone(e.target.value)}
                   />
                   <p className="text-xs text-zinc-600 mt-1">
-                    Users will call this number to book / enquire
+                    Users will call this number to enquire / book
                   </p>
                 </div>
-                {(formBizType === "hotel" || formBizType === "restaurant") && (
+                {(formBizType === "hotel" ||
+                  formBizType === "restaurant" ||
+                  formBizType === "shop") && (
                   <div>
                     <p className="block text-xs text-zinc-400 mb-1">
                       Email Address
@@ -1207,7 +1477,7 @@ export function MemberBusinessTab({
                     <input
                       className={inputCls}
                       type="email"
-                      placeholder="hotel@example.com"
+                      placeholder="shop@example.com"
                       value={formEmail}
                       onChange={(e) => setFormEmail(e.target.value)}
                     />
@@ -1218,7 +1488,9 @@ export function MemberBusinessTab({
 
             {/* Photos */}
             <div>
-              <p className="block text-xs text-zinc-400 mb-1">Photos (max 5)</p>
+              <p className="block text-xs text-zinc-400 mb-1">
+                Photos (max {maxPhotos})
+              </p>
               <div className="flex gap-2 flex-wrap mb-2">
                 {formPhotos.map((p, i) => (
                   <div key={String(i)} className="relative">
@@ -1250,7 +1522,7 @@ export function MemberBusinessTab({
               <button
                 type="button"
                 onClick={() => photoRef.current?.click()}
-                disabled={formPhotos.length >= 5}
+                disabled={formPhotos.length >= maxPhotos}
                 className="px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-sm text-zinc-300 transition-colors disabled:opacity-50"
                 data-ocid="business.upload_button"
               >
@@ -1264,7 +1536,7 @@ export function MemberBusinessTab({
             {isPremier && (
               <div>
                 <p className="block text-xs text-zinc-400 mb-1">
-                  Video (Premier only)
+                  Videos (Premier — up to 2)
                 </p>
                 {formVideo && (
                   <div className="flex items-center gap-2 mb-2">
@@ -1291,6 +1563,7 @@ export function MemberBusinessTab({
                   type="button"
                   onClick={() => videoRef.current?.click()}
                   className="px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-sm text-zinc-300 transition-colors"
+                  data-ocid="business.upload_button"
                 >
                   <span className="material-symbols-outlined text-sm mr-1">
                     videocam
@@ -1317,6 +1590,7 @@ export function MemberBusinessTab({
                       type="button"
                       onClick={() => setAddingRoom(true)}
                       className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1"
+                      data-ocid="business.open_modal_button"
                     >
                       <span className="material-symbols-outlined text-sm">
                         add
@@ -1406,6 +1680,7 @@ export function MemberBusinessTab({
                       type="button"
                       onClick={() => setAddingMenuItem(true)}
                       className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1"
+                      data-ocid="business.open_modal_button"
                     >
                       <span className="material-symbols-outlined text-sm">
                         add
@@ -1497,12 +1772,12 @@ export function MemberBusinessTab({
                   <div>
                     <h4 className="text-sm font-bold text-white">
                       {isRentalForm
-                        ? "🚗 Vehicles"
+                        ? "🚗 Vehicles for Rent"
                         : "🚗 Rental Add-ons (Optional)"}
                     </h4>
                     <p className="text-xs text-zinc-500">
                       {isRentalForm
-                        ? "List your vehicles"
+                        ? "List all available vehicles"
                         : "Offer car/bike rentals to your guests"}
                     </p>
                   </div>
@@ -1511,6 +1786,7 @@ export function MemberBusinessTab({
                       type="button"
                       onClick={() => setAddingRental(true)}
                       className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1"
+                      data-ocid="business.open_modal_button"
                     >
                       <span className="material-symbols-outlined text-sm">
                         add
@@ -1591,6 +1867,131 @@ export function MemberBusinessTab({
                       setAddingRental(false);
                     }}
                     onCancel={() => setAddingRental(false)}
+                  />
+                )}
+              </div>
+            )}
+
+            {/* ---- Shop Products ---- */}
+            {isShopForm && (
+              <div className="border-t border-zinc-700 pt-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h4 className="text-sm font-bold text-white">🛍️ Products</h4>
+                    <p className="text-xs text-zinc-500">
+                      Add unlimited products · max {maxPhotos} photos each
+                    </p>
+                  </div>
+                  {!addingProduct && !editingProduct && (
+                    <button
+                      type="button"
+                      onClick={() => setAddingProduct(true)}
+                      className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1"
+                      data-ocid="business.open_modal_button"
+                    >
+                      <span className="material-symbols-outlined text-sm">
+                        add
+                      </span>
+                      Add Product
+                    </button>
+                  )}
+                </div>
+
+                {formShopProducts.map((product) => (
+                  <div key={product.id}>
+                    {editingProduct?.id === product.id ? (
+                      <ShopProductForm
+                        initial={editingProduct}
+                        maxPhotos={maxPhotos}
+                        onSave={(p) => {
+                          setFormShopProducts((prev) =>
+                            prev.map((x) => (x.id === p.id ? p : x)),
+                          );
+                          setEditingProduct(null);
+                        }}
+                        onCancel={() => setEditingProduct(null)}
+                      />
+                    ) : (
+                      <div className="bg-zinc-800/60 border border-zinc-700 rounded-xl p-3 mb-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="text-sm font-semibold text-white truncate">
+                                {product.name}
+                              </p>
+                              {product.announcementPaid && (
+                                <span className="text-xs bg-amber-500/20 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded-full flex-shrink-0">
+                                  🆕 New
+                                </span>
+                              )}
+                              <span
+                                className={`text-xs px-1.5 py-0.5 rounded-full flex-shrink-0 ${
+                                  product.inStock
+                                    ? "text-green-400 bg-green-600/10"
+                                    : "text-red-400 bg-red-600/10"
+                                }`}
+                              >
+                                {product.inStock ? "In Stock" : "Out of Stock"}
+                              </span>
+                            </div>
+                            <p className="text-xs text-zinc-500">
+                              {product.category} · ₹
+                              {product.price.toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="flex gap-1.5 flex-shrink-0">
+                            {product.inStock && !product.announcementPaid && (
+                              <button
+                                type="button"
+                                onClick={() => handleAnnounceProduct(product)}
+                                className="p-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 text-xs"
+                                title="Announce New Arrival (₹200)"
+                                data-ocid="business.button"
+                              >
+                                <span className="material-symbols-outlined text-sm">
+                                  campaign
+                                </span>
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setEditingProduct(product)}
+                              className="p-1.5 rounded-lg bg-zinc-700 hover:bg-zinc-600 text-zinc-300"
+                              data-ocid="business.edit_button"
+                            >
+                              <span className="material-symbols-outlined text-sm">
+                                edit
+                              </span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setFormShopProducts((prev) =>
+                                  prev.filter((x) => x.id !== product.id),
+                                )
+                              }
+                              className="p-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-400"
+                              data-ocid="business.delete_button"
+                            >
+                              <span className="material-symbols-outlined text-sm">
+                                delete
+                              </span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {addingProduct && (
+                  <ShopProductForm
+                    maxPhotos={maxPhotos}
+                    onSave={(p) => {
+                      setFormShopProducts((prev) => [...prev, p]);
+                      setAddingProduct(false);
+                    }}
+                    onCancel={() => setAddingProduct(false)}
                   />
                 )}
               </div>

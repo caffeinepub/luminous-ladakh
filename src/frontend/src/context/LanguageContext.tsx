@@ -13,7 +13,19 @@ interface LanguageContextType {
   setLanguageSelected: (v: boolean) => void;
 }
 
-const LanguageContext = createContext<LanguageContextType | null>(null);
+// Safe default so useLanguage() never throws outside provider
+const defaultContext: LanguageContextType = {
+  language: "en",
+  setLanguage: () => {},
+  t: (key: string, fallback?: string) => fallback || key,
+  isPWA: false,
+  downloadedLanguages: [],
+  downloadLanguage: () => {},
+  languageSelected: false,
+  setLanguageSelected: () => {},
+};
+
+const LanguageContext = createContext<LanguageContextType>(defaultContext);
 
 const MAIN_LANGS: LangCode[] = ["en", "hi", "lad-tibt", "lad-rom"];
 
@@ -85,7 +97,5 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useLanguage() {
-  const ctx = useContext(LanguageContext);
-  if (!ctx) throw new Error("useLanguage must be used within LanguageProvider");
-  return ctx;
+  return useContext(LanguageContext);
 }

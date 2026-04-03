@@ -28,7 +28,7 @@ const COMMON_FEATURES = [
   "Customer reviews visible",
   "Edit business profile anytime",
   "Google Maps directions link",
-  "Multiple photos per business",
+  "Up to 20 photos per listing",
   "300 MB cloud storage",
   "Restaurant & Rental promotion",
   "Violation monitoring dashboard",
@@ -40,7 +40,9 @@ const PREMIER_FEATURES = [
   "Hotel promotion (Premier only)",
   "Premier badge on all listings",
   "Priority placement in Explore",
-  "Video upload support",
+  "2 promotional videos per business",
+  "Up to 50 photos per listing",
+  "Shop / Selling category access (50 photos)",
   "1 GB cloud storage",
   "Webpage editing (coming soon)",
 ];
@@ -74,7 +76,6 @@ export function MembershipTab({
   const isTrial = currentUser.membershipStatus === "trial";
   const currentTier = currentUser.membershipTier;
 
-  // Already paid — show current plan
   const isPaid = isActive && currentTier;
 
   function handlePayNow(tier: "Common" | "Premier") {
@@ -139,7 +140,7 @@ export function MembershipTab({
               <strong className="text-amber-400">
                 Hotel promotion requires Premier Plan (₹1,500/mo).
               </strong>{" "}
-              Restaurant &amp; Rental are available on any paid plan.
+              Restaurant &amp; Rental &amp; Shop are available on any paid plan.
             </p>
           </div>
         </div>
@@ -245,6 +246,7 @@ export function MembershipTab({
               type="button"
               onClick={() => handlePayNow("Common")}
               className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold text-sm transition-colors shadow-lg"
+              data-ocid="membership.primary_button"
             >
               Pay ₹1,000 — Choose Common
             </button>
@@ -262,7 +264,7 @@ export function MembershipTab({
           <div className="flex items-start justify-between mb-3">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-lg">✦</span>
+                <span className="text-lg">❆</span>
                 <h3 className="font-heading font-bold text-lg text-primary">
                   Premier Plan
                 </h3>
@@ -298,13 +300,14 @@ export function MembershipTab({
 
           {currentTier === "Premier" && isPaid ? (
             <div className="w-full text-center py-2.5 rounded-xl bg-primary/10 text-primary text-sm font-semibold border border-primary/20">
-              ✦ Active Premier — Renew Monthly
+              ❆ Active Premier — Renew Monthly
             </div>
           ) : (
             <button
               type="button"
               onClick={() => handlePayNow("Premier")}
               className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-black font-bold text-sm transition-colors shadow-lg"
+              data-ocid="membership.primary_button"
             >
               {currentTier === "Common" && isPaid
                 ? "Upgrade to Premier — ₹1,500"
@@ -361,6 +364,7 @@ export function MembershipTab({
             className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 max-w-sm w-full shadow-2xl"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
+            data-ocid="membership.dialog"
           >
             <div className="flex items-center gap-3 mb-4">
               <span className="material-symbols-outlined text-amber-400 text-3xl">
@@ -412,6 +416,7 @@ export function MembershipTab({
                 onClick={() => setConfirmPlan(null)}
                 disabled={paying}
                 className="flex-1 py-3 rounded-xl border border-zinc-600 text-zinc-300 text-sm font-semibold hover:bg-zinc-800 transition-colors disabled:opacity-50"
+                data-ocid="membership.cancel_button"
               >
                 Cancel
               </button>
@@ -420,6 +425,7 @@ export function MembershipTab({
                 onClick={handleConfirmPayment}
                 disabled={paying}
                 className="flex-1 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-black font-bold text-sm transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+                data-ocid="membership.confirm_button"
               >
                 {paying ? (
                   <>

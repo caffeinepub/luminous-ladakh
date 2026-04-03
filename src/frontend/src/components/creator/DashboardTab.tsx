@@ -43,6 +43,21 @@ interface Props {
   walletBalance: number;
 }
 
+function timeAgo(iso: string): string {
+  try {
+    const diff = Date.now() - new Date(iso).getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+    if (minutes < 1) return "Just now";
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    return `${days}d ago`;
+  } catch {
+    return "Unknown";
+  }
+}
+
 function EventApprovalsPanel() {
   const [events, setEvents] = useState<LCEvent[]>(loadEvents);
   const pending = events.filter((e) => e.status === "pending");
@@ -90,13 +105,14 @@ function EventApprovalsPanel() {
                 {ev.date} &middot; {ev.location}
               </p>
               <p className="text-xs text-muted-foreground">
-                by @{ev.postedByUsername} &middot; &#8377;650 payment pending
+                by @{ev.postedByUsername} &middot; &#8377;500 payment pending
               </p>
               <div className="flex gap-2 mt-2">
                 <button
                   type="button"
                   onClick={() => approve(ev.id)}
                   className="flex-1 py-1.5 rounded-lg bg-green-600 hover:bg-green-500 text-white text-xs font-semibold"
+                  data-ocid="dashboard.confirm_button"
                 >
                   Approve
                 </button>
@@ -104,6 +120,7 @@ function EventApprovalsPanel() {
                   type="button"
                   onClick={() => reject(ev.id)}
                   className="flex-1 py-1.5 rounded-lg bg-red-700 hover:bg-red-600 text-white text-xs font-semibold"
+                  data-ocid="dashboard.cancel_button"
                 >
                   Reject
                 </button>
@@ -120,13 +137,10 @@ function PhotoApprovalsPanel() {
   const [pending, setPending] = useState<PendingPhoto[]>(loadPendingPhotos);
 
   function approvePhoto(photo: PendingPhoto) {
-    // Add to location photos
     const locationPhotos = loadLocationPhotos();
     const existing = locationPhotos[photo.locationId] || [];
     locationPhotos[photo.locationId] = [...existing, photo.dataUrl];
     saveLocationPhotos(locationPhotos);
-
-    // Remove from pending
     const next = pending.filter((p) => p.id !== photo.id);
     setPending(next);
     savePendingPhotos(next);
@@ -200,6 +214,7 @@ function PhotoApprovalsPanel() {
                   type="button"
                   onClick={() => approvePhoto(photo)}
                   className="flex-1 py-2 rounded-lg bg-green-600 hover:bg-green-500 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-1"
+                  data-ocid="dashboard.confirm_button"
                 >
                   Approve
                 </button>
@@ -207,12 +222,144 @@ function PhotoApprovalsPanel() {
                   type="button"
                   onClick={() => rejectPhoto(photo.id)}
                   className="flex-1 py-2 rounded-lg bg-red-700 hover:bg-red-600 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-1"
+                  data-ocid="dashboard.cancel_button"
                 >
                   Reject
                 </button>
               </div>
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function UserActivityPanel({ accounts }: { accounts: Account[] }) {
+  const [expanded, setExpanded] = useState(false);
+
+  const nonCreatorAccounts = accounts
+    .filter((a) => a.role !== "creator")
+    .sort((a, b) => {
+      // Sort: most recently active first, never-logged-in at bottom
+      if (a.lastLoginAt && b.lastLoginAt) {
+        return (
+          new Date(b.lastLoginAt).getTime() - new Date(a.lastLoginAt).getTime()
+        );
+      }
+      if (a.lastLoginAt) return -1;
+      if (b.lastLoginAt) return 1;
+      return 0;
+    });
+
+  const roleColors: Record<string, string> = {
+    member: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+    community: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+    user: "bg-zinc-800 text-zinc-400 border-zinc-700",
+  };
+
+  const statusColors: Record<string, string> = {
+    active: "text-green-400",
+    suspended: "text-yellow-400",
+    banned: "text-red-400",
+  };
+
+  function getDaysInactive(account: Account): number {
+    if (!account.lastLoginAt) return 0;
+    const diff = Date.now() - new Date(account.lastLoginAt).getTime();
+    return Math.floor(diff / (1000 * 60 * 60 * 24));
+  }
+
+  return (
+    <div className="bg-card border border-border rounded-xl p-4">
+      <button
+        type="button"
+        onClick={() => setExpanded((p) => !p)}
+        className="w-full flex items-center justify-between"
+        data-ocid="dashboard.toggle"
+      >
+        <h2 className="font-heading font-semibold flex items-center gap-2">
+          <span className="material-symbols-outlined text-cyan-400 text-lg">
+            analytics
+          </span>
+          User Activity
+          <span className="ml-1 bg-cyan-500/20 text-cyan-400 text-xs font-bold px-2 py-0.5 rounded-full border border-cyan-500/30">
+            {nonCreatorAccounts.length}
+          </span>
+        </h2>
+        <span className="material-symbols-outlined text-zinc-500">
+          {expanded ? "expand_less" : "expand_more"}
+        </span>
+      </button>
+
+      {expanded && (
+        <div className="mt-4 space-y-2">
+          {nonCreatorAccounts.length === 0 ? (
+            <p
+              className="text-sm text-muted-foreground text-center py-4"
+              data-ocid="dashboard.empty_state"
+            >
+              No user accounts yet.
+            </p>
+          ) : (
+            nonCreatorAccounts.map((account, i) => (
+              <div
+                key={account.id}
+                className="bg-zinc-800/60 border border-zinc-700 rounded-xl p-3"
+                data-ocid={`dashboard.item.${i + 1}`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    {account.profilePhoto ? (
+                      <img
+                        src={account.profilePhoto}
+                        alt={account.username}
+                        className="w-7 h-7 rounded-full object-cover flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-7 h-7 rounded-full bg-zinc-700 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                        {account.username[0].toUpperCase()}
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-white truncate">
+                        @{account.username}
+                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={`text-xs px-1.5 py-0.5 rounded-full border capitalize ${
+                            roleColors[account.role] || roleColors.user
+                          }`}
+                        >
+                          {account.role}
+                        </span>
+                        <span
+                          className={`text-xs ${
+                            statusColors[account.status || "active"] ||
+                            statusColors.active
+                          }`}
+                        >
+                          {account.status || "active"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-xs text-zinc-400">
+                      {account.lastLoginAt
+                        ? timeAgo(account.lastLoginAt)
+                        : "Never logged in"}
+                    </p>
+                    {account.lastLoginAt && (
+                      <p className="text-xs text-zinc-600">
+                        {getDaysInactive(account)}d inactive
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       )}
     </div>
@@ -311,6 +458,9 @@ export function CreatorDashboard({
 
       {/* Event Approvals */}
       <EventApprovalsPanel />
+
+      {/* User Activity */}
+      <UserActivityPanel accounts={accounts} />
 
       {/* Recent Activity */}
       <div className="bg-card border border-border rounded-xl p-4">

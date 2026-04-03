@@ -142,7 +142,7 @@ export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
       memberId: currentUser.id,
       memberUsername: currentUser.username,
       memberEmail: currentUser.email,
-      amount: 650,
+      amount: 500,
       tier: "Event Post",
       status: "pending",
       paymentType: "event",
@@ -154,7 +154,7 @@ export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
     toast.success(
       t(
         "submitted",
-        "Event submitted! ₹650 payment pending Creator confirmation.",
+        "Event submitted! ₹500 payment pending Creator confirmation.",
       ),
     );
   }
@@ -200,7 +200,7 @@ export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
                   {formatDate(ev.date)} · {ev.location}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  by @{ev.postedByUsername} · ₹650{" "}
+                  by @{ev.postedByUsername} · ₹500{" "}
                   {t("pending", "payment pending")}
                 </p>
                 <div className="flex gap-2 mt-2">
@@ -336,12 +336,38 @@ export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
               </button>
             </div>
 
+            {/* Fee breakdown info */}
             <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 mb-4">
-              <p className="text-xs text-amber-300 flex items-center gap-1">
+              <p className="text-xs text-amber-300 font-semibold mb-2 flex items-center gap-1">
                 <span className="material-symbols-outlined text-sm">info</span>
-                {t("eventFee", "Posting an event costs ₹650")}.{" "}
-                {t("pending", "Payment is held pending Creator confirmation.")}
+                {t("eventFee", "Event Posting Fee: ₹500")}
               </p>
+              <div className="space-y-1">
+                <div className="flex justify-between text-xs">
+                  <span className="text-zinc-400">Posting fee</span>
+                  <span className="text-white font-semibold">₹500</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-zinc-400">First 7 days</span>
+                  <span className="text-green-400 font-semibold">FREE</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-zinc-400">Day 8+ (daily)</span>
+                  <span className="text-white">₹10/day</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-zinc-400">
+                    After 2 weeks (2-day pack)
+                  </span>
+                  <span className="text-white">₹70 per 2 days</span>
+                </div>
+                <p className="text-xs text-zinc-500 mt-1.5 pt-1.5 border-t border-zinc-700">
+                  {t(
+                    "eventExtensionNote",
+                    "If extension fee is not paid, event is removed.",
+                  )}
+                </p>
+              </div>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-3">
@@ -407,30 +433,48 @@ export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
                   htmlFor="evt-desc"
                   className="text-xs text-muted-foreground"
                 >
-                  {t("eventDescription", "Description")}
+                  {t("eventDesc", "Description")}
                 </label>
                 <textarea
                   id="evt-desc"
+                  rows={3}
                   placeholder="Describe the event..."
                   value={form.description}
                   onChange={(e) =>
                     setForm((p) => ({ ...p, description: e.target.value }))
                   }
-                  rows={3}
                   className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-primary resize-none"
                   data-ocid="events.textarea"
                 />
               </div>
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full bg-primary text-primary-foreground font-semibold py-2.5 rounded-xl text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
-                data-ocid="events.submit_button"
-              >
-                {submitting
-                  ? t("loading", "Submitting...")
-                  : t("payAndSubmit", "Submit Event (₹650)")}
-              </button>
+
+              <div className="flex gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowForm(false)}
+                  className="flex-1 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-semibold transition-colors"
+                  data-ocid="events.cancel_button"
+                >
+                  {t("cancel", "Cancel")}
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex-1 py-3 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+                  data-ocid="events.submit_button"
+                >
+                  {submitting ? (
+                    <>
+                      <span className="material-symbols-outlined text-base animate-spin">
+                        progress_activity
+                      </span>
+                      Submitting...
+                    </>
+                  ) : (
+                    <>{t("pay", "Pay")} ₹500 &amp; Post</>
+                  )}
+                </button>
+              </div>
             </form>
           </div>
         </div>

@@ -1,13 +1,13 @@
 export type Role = "user" | "member" | "community" | "creator";
 
-export type BusinessType = "hotel" | "restaurant" | "rental" | "other";
+export type BusinessType = "hotel" | "restaurant" | "rental" | "shop" | "other";
 
 export interface RoomType {
   id: string;
   type: "Suite" | "Deluxe" | "Standard" | "Family";
   pricePerNight: number;
   maxGuests: number;
-  amenities: string[]; // e.g. ["WiFi", "AC", "Hot Water", "Parking"]
+  amenities: string[];
   availableCount: number;
   photos: string[];
 }
@@ -15,7 +15,7 @@ export interface RoomType {
 export interface MenuItem {
   id: string;
   name: string;
-  category: string; // "Starters" | "Main Course" | "Desserts" | "Beverages"
+  category: string;
   price: number;
   description?: string;
   photo?: string;
@@ -35,12 +35,56 @@ export interface MenuItemReview {
 
 export interface RentalAddon {
   id: string;
-  vehicleType: string; // "Bike", "Car", "Bicycle", "Scooter"
+  vehicleType: string;
   model: string;
   pricePerDay: number;
   pricePerMonth?: number;
   photo?: string;
   available: boolean;
+}
+
+export interface VehicleRental {
+  id: string;
+  vehicleType: string;
+  model: string;
+  pricePerDay: number;
+  pricePerMonth?: number;
+  photos: string[];
+  description?: string;
+  available: boolean;
+  reviews?: {
+    userId: string;
+    username: string;
+    rating: number;
+    comment: string;
+    timestamp: string;
+  }[];
+}
+
+export interface ShopProduct {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  photos: string[];
+  category: string;
+  inStock: boolean;
+  isAnnouncement?: boolean;
+  announcementPaid?: boolean;
+}
+
+export interface ShopAnnouncement {
+  id: string;
+  businessId: string;
+  memberId: string;
+  memberUsername: string;
+  productName: string;
+  description: string;
+  photo?: string;
+  paymentId: string;
+  status: "pending" | "active" | "expired";
+  timestamp: string;
+  expiresAt?: string;
 }
 
 export interface PharmacyEntry {
@@ -58,14 +102,15 @@ export interface Business {
   mapsUrl: string;
   photos: string[];
   videoUrl?: string;
-  // Extended fields
   businessType?: BusinessType;
   phone?: string;
   email?: string;
   roomTypes?: RoomType[];
   menuItems?: MenuItem[];
   rentalAddons?: RentalAddon[];
-  lastAvailabilityUpdate?: string; // ISO date
+  vehicleRentals?: VehicleRental[];
+  shopProducts?: ShopProduct[];
+  lastAvailabilityUpdate?: string;
 }
 
 export interface LocationReview {
@@ -94,11 +139,9 @@ export interface Account {
   themePhoto?: string;
   fontColor?: "default" | "gold" | "sky" | "mint" | "rose" | "lavender";
   authProvider?: "email" | "google" | "facebook";
-  // Security
-  securityWord?: string; // hashed security word for password recovery
+  securityWord?: string;
   failedLoginAttempts?: number;
-  lockoutUntil?: string; // ISO timestamp
-  // member-only (legacy single business)
+  lockoutUntil?: string;
   businessName?: string;
   businessCategory?: string;
   businessLocation?: string;
@@ -107,10 +150,10 @@ export interface Account {
   businessDescription?: string;
   trialStartDate?: string;
   hotelTrialStartDate?: string;
-  // multi-business array
   businesses?: Business[];
-  // community-only
   editPermissionStatus?: "none" | "pending" | "approved" | "denied";
+  lastLoginAt?: string;
+  lastLogoutAt?: string;
 }
 
 export interface Post {
@@ -190,14 +233,14 @@ export interface PendingPayment {
   tier: string;
   timestamp: string;
   status: "pending";
-  paymentType?: "membership" | "event";
+  paymentType?: "membership" | "event" | "shop_announcement";
   eventTitle?: string;
 }
 
 export interface LCEvent {
   id: string;
   title: string;
-  date: string; // ISO date
+  date: string;
   location: string;
   description: string;
   postedBy: string;

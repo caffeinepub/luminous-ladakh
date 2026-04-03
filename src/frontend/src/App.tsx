@@ -8,6 +8,8 @@ import { ExploreTab } from "./components/ExploreTab";
 import { LanguageSelectScreen } from "./components/LanguageSelectScreen";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
 import { RestaurantsTab } from "./components/RestaurantsTab";
+import { ShopTab } from "./components/ShopTab";
+import { VehicleRentalsTab } from "./components/VehicleRentalsTab";
 import { CommunityBusinessTab } from "./components/community/CommunityBusinessTab";
 import { CommunityPermissionsTab } from "./components/community/PermissionsTab";
 import { CreatorProfileTab } from "./components/creator/CreatorProfileTab";
@@ -56,6 +58,7 @@ export default function App() {
     return () => window.removeEventListener("lc_data_changed", handler);
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: logUserLogin is stable, run only on user change
   useEffect(() => {
     if (currentUser) {
       const defaults: Record<string, string> = {
@@ -65,8 +68,17 @@ export default function App() {
         creator: "dashboard",
       };
       setActiveTab(defaults[currentUser.role] || "explore");
+      data.logUserLogin(currentUser.id);
     }
   }, [currentUser]);
+
+  // Wrap logout to also log activity
+  const handleLogout = useCallback(() => {
+    if (currentUser) {
+      data.logUserLogout(currentUser.id);
+    }
+    logout();
+  }, [currentUser, logout, data]);
 
   const handleTabSelect = useCallback((tabId: string) => {
     if (tabId === "post") {
@@ -81,13 +93,10 @@ export default function App() {
     (input: string): boolean => {
       if (!currentUser || currentUser.role !== "creator") return false;
       const normalized = input.trim().toLowerCase();
-      // If Creator has a stored security word, verify against it
       if (currentUser.securityWord) {
         if (verifyPassword(normalized, currentUser.securityWord)) return true;
-        // Also accept any valid card name as fallback if hash doesn't match
         return isValidCreatorSecurityWord(normalized);
       }
-      // No security word set yet: accept any valid card name
       return isValidCreatorSecurityWord(normalized);
     },
     [currentUser],
@@ -137,6 +146,8 @@ export default function App() {
       icon: "restaurant",
       label: t("restaurants", "Restaurants"),
     },
+    { id: "rentals", icon: "directions_car", label: t("rentals", "Rentals") },
+    { id: "shop", icon: "storefront", label: t("shop", "Shop") },
     { id: "search", icon: "search", label: t("search") },
     { id: "post", icon: "add_circle", label: t("post") },
     { id: "profile", icon: "person", label: t("profile") },
@@ -150,6 +161,8 @@ export default function App() {
       icon: "restaurant",
       label: t("restaurants", "Restaurants"),
     },
+    { id: "rentals", icon: "directions_car", label: t("rentals", "Rentals") },
+    { id: "shop", icon: "storefront", label: t("shop", "Shop") },
     { id: "search", icon: "search", label: t("search") },
     { id: "business", icon: "store", label: t("business") },
     { id: "membership", icon: "card_membership", label: t("membership") },
@@ -164,6 +177,8 @@ export default function App() {
       icon: "restaurant",
       label: t("restaurants", "Restaurants"),
     },
+    { id: "rentals", icon: "directions_car", label: t("rentals", "Rentals") },
+    { id: "shop", icon: "storefront", label: t("shop", "Shop") },
     { id: "search", icon: "search", label: t("search") },
     { id: "business", icon: "store", label: t("business") },
     { id: "permissions", icon: "key", label: t("permissions") },
@@ -180,6 +195,8 @@ export default function App() {
       icon: "restaurant",
       label: t("restaurants", "Restaurants"),
     },
+    { id: "rentals", icon: "directions_car", label: t("rentals", "Rentals") },
+    { id: "shop", icon: "storefront", label: t("shop", "Shop") },
     { id: "vault", icon: "inventory_2", label: t("vault") },
     { id: "wallet", icon: "account_balance_wallet", label: t("wallet") },
     { id: "moderation", icon: "shield", label: t("moderation") },
@@ -259,6 +276,7 @@ export default function App() {
                     : "text-muted-foreground border-transparent hover:text-foreground"
                 }`}
                 type="button"
+                data-ocid={`creator.${item.id}.tab`}
               >
                 <span className="material-symbols-outlined text-[18px]">
                   {item.icon}
@@ -321,6 +339,23 @@ export default function App() {
                 <RestaurantsTab accounts={accounts} currentUser={currentUser} />
               </ErrorBoundary>
             )}
+            {activeTab === "rentals" && (
+              <ErrorBoundary minimal>
+                <VehicleRentalsTab
+                  accounts={accounts}
+                  currentUser={currentUser}
+                />
+              </ErrorBoundary>
+            )}
+            {activeTab === "shop" && (
+              <ErrorBoundary minimal>
+                <ShopTab
+                  accounts={accounts}
+                  currentUser={currentUser}
+                  onAddPendingPayment={data.addPendingPayment}
+                />
+              </ErrorBoundary>
+            )}
             {activeTab === "search" && (
               <ErrorBoundary minimal>
                 <SearchTab
@@ -341,7 +376,7 @@ export default function App() {
                   violations={violations}
                   onUpdateBio={(bio) => updateCurrentUser({ bio })}
                   onUpdateUser={updateCurrentUser}
-                  onLogout={logout}
+                  onLogout={handleLogout}
                 />
               </ErrorBoundary>
             )}
@@ -378,6 +413,23 @@ export default function App() {
                 <RestaurantsTab accounts={accounts} currentUser={currentUser} />
               </ErrorBoundary>
             )}
+            {activeTab === "rentals" && (
+              <ErrorBoundary minimal>
+                <VehicleRentalsTab
+                  accounts={accounts}
+                  currentUser={currentUser}
+                />
+              </ErrorBoundary>
+            )}
+            {activeTab === "shop" && (
+              <ErrorBoundary minimal>
+                <ShopTab
+                  accounts={accounts}
+                  currentUser={currentUser}
+                  onAddPendingPayment={data.addPendingPayment}
+                />
+              </ErrorBoundary>
+            )}
             {activeTab === "search" && (
               <ErrorBoundary minimal>
                 <SearchTab
@@ -400,6 +452,7 @@ export default function App() {
                     updateCurrentUser(updates);
                   }}
                   onIssueViolation={data.addViolation}
+                  onAddPendingPayment={data.addPendingPayment}
                 />
               </ErrorBoundary>
             )}
@@ -433,7 +486,7 @@ export default function App() {
                   violations={violations}
                   onUpdateBio={(bio) => updateCurrentUser({ bio })}
                   onUpdateUser={updateCurrentUser}
-                  onLogout={logout}
+                  onLogout={handleLogout}
                 />
               </ErrorBoundary>
             )}
@@ -468,6 +521,23 @@ export default function App() {
             {activeTab === "restaurants" && (
               <ErrorBoundary minimal>
                 <RestaurantsTab accounts={accounts} currentUser={currentUser} />
+              </ErrorBoundary>
+            )}
+            {activeTab === "rentals" && (
+              <ErrorBoundary minimal>
+                <VehicleRentalsTab
+                  accounts={accounts}
+                  currentUser={currentUser}
+                />
+              </ErrorBoundary>
+            )}
+            {activeTab === "shop" && (
+              <ErrorBoundary minimal>
+                <ShopTab
+                  accounts={accounts}
+                  currentUser={currentUser}
+                  onAddPendingPayment={data.addPendingPayment}
+                />
               </ErrorBoundary>
             )}
             {activeTab === "search" && (
@@ -509,7 +579,7 @@ export default function App() {
                     data.updateAccount(currentUser.id, updates);
                     updateCurrentUser(updates);
                   }}
-                  onLogout={logout}
+                  onLogout={handleLogout}
                 />
               </ErrorBoundary>
             )}
@@ -520,7 +590,7 @@ export default function App() {
                   violations={violations}
                   onUpdateBio={(bio) => updateCurrentUser({ bio })}
                   onUpdateUser={updateCurrentUser}
-                  onLogout={logout}
+                  onLogout={handleLogout}
                 />
               </ErrorBoundary>
             )}
@@ -589,6 +659,23 @@ export default function App() {
                 <RestaurantsTab accounts={accounts} currentUser={currentUser} />
               </ErrorBoundary>
             )}
+            {activeTab === "rentals" && (
+              <ErrorBoundary minimal>
+                <VehicleRentalsTab
+                  accounts={accounts}
+                  currentUser={currentUser}
+                />
+              </ErrorBoundary>
+            )}
+            {activeTab === "shop" && (
+              <ErrorBoundary minimal>
+                <ShopTab
+                  accounts={accounts}
+                  currentUser={currentUser}
+                  onAddPendingPayment={data.addPendingPayment}
+                />
+              </ErrorBoundary>
+            )}
             {activeTab === "vault" && (
               <ErrorBoundary minimal>
                 <VaultTab />
@@ -618,7 +705,9 @@ export default function App() {
                       const note =
                         p.paymentType === "event"
                           ? `Event Post: ${p.eventTitle || "Event"} from @${p.memberUsername}`
-                          : `${p.tier} Membership from @${p.memberUsername}`;
+                          : p.paymentType === "shop_announcement"
+                            ? `Shop Announcement: ${p.eventTitle || "Product"} from @${p.memberUsername}`
+                            : `${p.tier} Membership from @${p.memberUsername}`;
                       data.addWalletTransaction({
                         type: "payment",
                         amount: p.amount,
@@ -668,7 +757,7 @@ export default function App() {
                   reviews={reviews}
                   violations={violations}
                   walletBalance={walletBalance}
-                  onLogout={logout}
+                  onLogout={handleLogout}
                   onUpdateUser={updateCurrentUser}
                   onSetCommunityCode={data.setCommunityCode}
                   specialAccounts={data.getSpecialAccountsList()}

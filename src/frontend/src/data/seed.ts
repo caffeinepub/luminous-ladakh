@@ -4,17 +4,56 @@ function hashPassword(p: string): string {
   return btoa(`${p}_lc_salt`);
 }
 
+function generateId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+export { generateId };
+
 export function initSeedData() {
-  // Clear fake wallet balance and transactions from old seeds
-  if (localStorage.getItem("lc_seeded") !== "v12") {
+  // Version check: bump to v13 triggers test-account cleanup
+  const currentVersion = "v13";
+
+  if (localStorage.getItem("lc_seeded") !== currentVersion) {
+    // Clean wallet state on version upgrade
     localStorage.removeItem("lc_walletBalance");
     localStorage.removeItem("lc_walletTransactions");
     localStorage.setItem("lc_walletBalance", "0");
     localStorage.setItem("lc_walletTransactions", JSON.stringify([]));
     localStorage.removeItem("lc_pendingPayments");
+
+    // Auto-cleanup: remove test/demo accounts but PRESERVE:
+    // - creator_1 (always kept)
+    // - any account in lc_specialAccounts
+    // - any account that has actual activity (lastLoginAt set)
+    try {
+      const specialList: { usernameOrEmail: string }[] = JSON.parse(
+        localStorage.getItem("lc_specialAccounts") || "[]",
+      );
+      const specialIds = new Set(
+        specialList.map((s) => s.usernameOrEmail?.toLowerCase()),
+      );
+      const rawAccounts = localStorage.getItem("lc_accounts");
+      if (rawAccounts) {
+        const accounts: Account[] = JSON.parse(rawAccounts);
+        const cleaned = accounts.filter(
+          (a) =>
+            a.id === "creator_1" ||
+            specialIds.has(a.username?.toLowerCase()) ||
+            specialIds.has(a.email?.toLowerCase()) ||
+            !!a.lastLoginAt, // keep accounts with real activity
+        );
+        // Only apply cleanup if it actually removes some accounts
+        if (cleaned.length < accounts.length) {
+          localStorage.setItem("lc_accounts", JSON.stringify(cleaned));
+        }
+      }
+    } catch {
+      // Ignore cleanup errors — safer to keep data than lose it
+    }
   }
 
-  if (localStorage.getItem("lc_seeded") === "v12") return;
+  if (localStorage.getItem("lc_seeded") === currentVersion) return;
 
   const existingRaw = localStorage.getItem("lc_accounts");
   const existingAccounts: Account[] = existingRaw
@@ -87,12 +126,15 @@ export function initSeedData() {
     localStorage.setItem("lc_communityCode", "blackjack");
   }
 
-  // Ensure pending payments list exists
   if (!localStorage.getItem("lc_pendingPayments")) {
     localStorage.setItem("lc_pendingPayments", JSON.stringify([]));
   }
 
-  localStorage.setItem("lc_seeded", "v12");
+  if (!localStorage.getItem("lc_shopAnnouncements")) {
+    localStorage.setItem("lc_shopAnnouncements", JSON.stringify([]));
+  }
+
+  localStorage.setItem("lc_seeded", currentVersion);
 }
 
 export function verifyPassword(plain: string, hash: string): boolean {
@@ -106,10 +148,6 @@ export function generateElectronicId(): string {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return result;
-}
-
-export function generateId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
 
 export function hashPw(p: string): string {
