@@ -174,6 +174,67 @@ export function useData() {
     localStorage.setItem("lc_communityCode", code);
     notify();
   }, []);
+  // Special Accounts
+  type SpecialEntry = {
+    id: string;
+    usernameOrEmail: string;
+    addedAt: string;
+    greetingShown?: boolean;
+  };
+  const getSpecialAccounts = (): SpecialEntry[] => {
+    try {
+      return JSON.parse(localStorage.getItem("lc_specialAccounts") || "[]");
+    } catch {
+      return [];
+    }
+  };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: getSpecialAccounts reads localStorage, not React state
+  const addSpecialAccount = useCallback((usernameOrEmail: string) => {
+    const list = getSpecialAccounts();
+    if (
+      list.find(
+        (e: SpecialEntry) =>
+          e.usernameOrEmail.toLowerCase() === usernameOrEmail.toLowerCase(),
+      )
+    )
+      return;
+    const entry: SpecialEntry = {
+      id: Math.random().toString(36).slice(2),
+      usernameOrEmail,
+      addedAt: new Date().toISOString(),
+    };
+    list.push(entry);
+    localStorage.setItem("lc_specialAccounts", JSON.stringify(list));
+    // Grant Premier access to the matched account
+    const accs = getLS<Account>("lc_accounts");
+    const idx = accs.findIndex(
+      (a: Account) =>
+        a.username.toLowerCase() === usernameOrEmail.toLowerCase() ||
+        a.email.toLowerCase() === usernameOrEmail.toLowerCase(),
+    );
+    if (idx >= 0) {
+      accs[idx] = {
+        ...accs[idx],
+        membershipTier: "Premier",
+        membershipStatus: "active",
+      };
+      setLS("lc_accounts", accs);
+    }
+    notify();
+  }, []);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: getSpecialAccounts reads localStorage, not React state
+  const removeSpecialAccount = useCallback((entryId: string) => {
+    const list = getSpecialAccounts().filter(
+      (e: SpecialEntry) => e.id !== entryId,
+    );
+    localStorage.setItem("lc_specialAccounts", JSON.stringify(list));
+    notify();
+  }, []);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: getSpecialAccounts reads localStorage, not React state
+  const getSpecialAccountsList = useCallback(
+    (): SpecialEntry[] => getSpecialAccounts(),
+    [],
+  );
 
   // Violations
   const getViolations = useCallback(
@@ -330,6 +391,9 @@ export function useData() {
     updateStorageUsed,
     getCommunityCode,
     setCommunityCode,
+    addSpecialAccount,
+    removeSpecialAccount,
+    getSpecialAccountsList,
     getViolations,
     addViolation,
     resolveViolation,

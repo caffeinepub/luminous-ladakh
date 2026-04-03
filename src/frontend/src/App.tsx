@@ -619,6 +619,9 @@ export default function App() {
                   onLogout={logout}
                   onUpdateUser={updateCurrentUser}
                   onSetCommunityCode={data.setCommunityCode}
+                  specialAccounts={data.getSpecialAccountsList()}
+                  onAddSpecialAccount={data.addSpecialAccount}
+                  onRemoveSpecialAccount={data.removeSpecialAccount}
                 />
               </ErrorBoundary>
             )}

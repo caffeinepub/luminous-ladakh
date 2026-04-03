@@ -7,6 +7,12 @@ import { LANGUAGES } from "../../i18n/translations";
 import type { Account, Post, Review, Violation } from "../../types";
 import { WorldLanguageDownloader } from "../WorldLanguageDownloader";
 
+interface SpecialEntry {
+  id: string;
+  usernameOrEmail: string;
+  addedAt: string;
+}
+
 interface Props {
   currentUser: Account;
   accounts: Account[];
@@ -17,6 +23,9 @@ interface Props {
   onLogout: () => void;
   onUpdateUser?: (updates: Partial<Account>) => void;
   onSetCommunityCode?: (code: string) => void;
+  specialAccounts?: SpecialEntry[];
+  onAddSpecialAccount?: (usernameOrEmail: string) => void;
+  onRemoveSpecialAccount?: (entryId: string) => void;
 }
 
 const THEMES = [
@@ -50,6 +59,9 @@ export function CreatorProfileTab({
   onLogout,
   onUpdateUser,
   onSetCommunityCode,
+  specialAccounts = [],
+  onAddSpecialAccount,
+  onRemoveSpecialAccount,
 }: Props) {
   const users = accounts.filter((a) => a.role === "user");
   const members = accounts.filter((a) => a.role === "member");
@@ -62,6 +74,7 @@ export function CreatorProfileTab({
 
   const [newCode, setNewCode] = useState("");
   const [showCode, setShowCode] = useState(false);
+  const [newSpecialEntry, setNewSpecialEntry] = useState("");
   const currentCode = localStorage.getItem("lc_communityCode") || "blackjack";
   const { language, setLanguage, isPWA } = useLanguage();
 
@@ -239,6 +252,84 @@ export function CreatorProfileTab({
         <p className="text-xs text-zinc-600 mt-2">
           Community members must enter this code when signing up.
         </p>
+      </div>
+
+      {/* Special Accounts */}
+      <div className="bg-zinc-900 border border-amber-500/30 rounded-xl p-4">
+        <h3 className="font-semibold text-white mb-1 flex items-center gap-2">
+          <span className="material-symbols-outlined text-amber-400 text-lg">
+            star
+          </span>
+          Special Accounts
+        </h3>
+        <p className="text-xs text-zinc-500 mb-3">
+          Members added here get Lifetime Premier access at no cost. Users get
+          unique creation access. Both receive a one-time welcome greeting.
+        </p>
+        <div className="flex gap-2 mb-3">
+          <input
+            className="flex-1 bg-zinc-900 text-white border border-zinc-700 rounded-lg px-3 py-2 text-sm placeholder:text-zinc-500 focus:outline-none focus:border-amber-500"
+            placeholder="Username or email..."
+            value={newSpecialEntry}
+            onChange={(e) => setNewSpecialEntry(e.target.value)}
+          />
+          <button
+            type="button"
+            onClick={() => {
+              if (!newSpecialEntry.trim()) {
+                toast.error("Enter a username or email");
+                return;
+              }
+              onAddSpecialAccount?.(newSpecialEntry.trim());
+              setNewSpecialEntry("");
+              toast.success(
+                "Special account added — Lifetime Premier granted!",
+              );
+            }}
+            className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-sm whitespace-nowrap"
+          >
+            Add
+          </button>
+        </div>
+        {specialAccounts.length === 0 ? (
+          <p className="text-xs text-zinc-600 text-center py-2">
+            No special accounts yet.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {specialAccounts.map((entry) => (
+              <div
+                key={entry.id}
+                className="flex items-center justify-between bg-zinc-800 rounded-lg px-3 py-2"
+              >
+                <div>
+                  <p className="text-sm text-white font-medium">
+                    {entry.usernameOrEmail}
+                  </p>
+                  <p className="text-[10px] text-zinc-500">
+                    Added {new Date(entry.addedAt).toLocaleDateString()} ·
+                    Lifetime Premier
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onRemoveSpecialAccount?.(entry.id);
+                    toast.success(
+                      "Removed from Special Accounts — access revoked.",
+                    );
+                  }}
+                  className="p-1.5 rounded-lg bg-red-500/15 hover:bg-red-500/30 text-red-400"
+                  title="Remove"
+                >
+                  <span className="material-symbols-outlined text-sm">
+                    person_remove
+                  </span>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Theme Switcher */}
