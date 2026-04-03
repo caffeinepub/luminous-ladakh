@@ -4,6 +4,8 @@ import { loadRoadStatus, saveRoadStatus } from "../data/roadStatusData";
 import type { RoadStatus } from "../types";
 import type { Account, LocationReview, Post, Review } from "../types";
 import { EmergencySOS } from "./EmergencySOS";
+import { ErrorBoundary } from "./ErrorBoundary";
+import { HotelDetailPanel } from "./HotelDetailPanel";
 import { RoadStatusWidget } from "./RoadStatusWidget";
 import { WeatherWidget } from "./WeatherWidget";
 
@@ -1266,6 +1268,171 @@ function LocationCard({
   );
 }
 
+function HotelCard({
+  account,
+  currentUserId,
+  currentUserRole,
+  currentUsername,
+}: {
+  account: Account;
+  currentUserId: string;
+  currentUserRole: string;
+  currentUsername: string;
+}) {
+  const [showDetail, setShowDetail] = useState(false);
+  const closeDetail = () => setShowDetail(false);
+  useOverlayHistory(showDetail, closeDetail);
+
+  const businesses = account.businesses ?? [];
+  const hotel =
+    businesses.find((b) => b.businessType === "hotel") ?? businesses[0];
+  if (!hotel) return null;
+
+  const photos = hotel.photos ?? [];
+  const roomTypes = hotel.roomTypes ?? [];
+  const totalRooms = roomTypes.reduce((s, r) => s + (r.availableCount ?? 0), 0);
+  const availabilityBadge =
+    roomTypes.length === 0
+      ? null
+      : totalRooms === 0
+        ? { label: "Full", cls: "bg-red-600/20 text-red-400 border-red-500/30" }
+        : totalRooms <= 3
+          ? {
+              label: "Limited",
+              cls: "bg-amber-500/20 text-amber-400 border-amber-500/30",
+            }
+          : {
+              label: "Available",
+              cls: "bg-green-600/20 text-green-400 border-green-500/30",
+            };
+
+  const minPrice =
+    roomTypes.length > 0
+      ? Math.min(...roomTypes.map((r) => r.pricePerNight))
+      : null;
+
+  return (
+    <>
+      <div className="rounded-2xl overflow-hidden bg-zinc-900/80 border border-zinc-800 hover:border-amber-500/30 transition-all duration-300 hover:scale-[1.01]">
+        <div className="relative h-44 overflow-hidden bg-zinc-800">
+          {photos.length > 0 ? (
+            <img
+              src={photos[0]}
+              alt={hotel.name}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = "none";
+              }}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <span className="material-symbols-outlined text-5xl text-zinc-600">
+                hotel
+              </span>
+            </div>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+          <div className="absolute bottom-2 left-3">
+            <span className="text-xs bg-amber-600/90 text-white px-2 py-0.5 rounded-full font-semibold">
+              🏨 Hotel
+            </span>
+          </div>
+          {availabilityBadge && (
+            <div
+              className={`absolute top-2 right-2 text-xs px-2.5 py-1 rounded-full border font-semibold ${availabilityBadge.cls}`}
+            >
+              {availabilityBadge.label}
+            </div>
+          )}
+          <div className="absolute top-2 left-2 bg-amber-500/20 border border-amber-500/40 px-2 py-0.5 rounded-full text-xs text-amber-300">
+            ⭐ Premier
+          </div>
+        </div>
+        <div className="p-4">
+          <h3 className="font-bold text-white text-base mb-0.5">
+            {hotel.name}
+          </h3>
+          <p className="text-zinc-500 text-xs mb-1">by @{account.username}</p>
+          {minPrice !== null && (
+            <p className="text-amber-400 text-xs font-semibold mb-1">
+              From ₹{minPrice.toLocaleString()}/night
+            </p>
+          )}
+          {roomTypes.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {roomTypes.slice(0, 3).map((r) => (
+                <span
+                  key={r.id}
+                  className="text-xs bg-zinc-800 border border-zinc-700 px-2 py-0.5 rounded-full text-zinc-400"
+                >
+                  {r.type}
+                </span>
+              ))}
+            </div>
+          )}
+          <p className="text-zinc-400 text-xs line-clamp-2 mb-3">
+            {hotel.description}
+          </p>
+          <div className="flex gap-2">
+            {hotel.mapsUrl ? (
+              <a
+                href={hotel.mapsUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-zinc-200 transition-colors"
+              >
+                <span className="material-symbols-outlined text-sm">
+                  directions
+                </span>
+                Directions
+              </a>
+            ) : (
+              <button
+                type="button"
+                disabled
+                className="flex-1 py-2 rounded-lg bg-zinc-800/50 text-xs text-zinc-600"
+              >
+                No Map
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowDetail(true)}
+              className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-zinc-200 transition-colors"
+              data-ocid="hotel.details_button"
+            >
+              <span className="material-symbols-outlined text-sm">info</span>
+              Details
+            </button>
+            {hotel.phone && (
+              <a
+                href={`tel:${hotel.phone}`}
+                className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg bg-green-700/40 hover:bg-green-700/60 text-xs font-semibold text-green-300 transition-colors"
+              >
+                <span className="material-symbols-outlined text-sm">call</span>
+                Call
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {showDetail && (
+        <Overlay onClose={closeDetail} title={hotel.name}>
+          <ErrorBoundary minimal>
+            <HotelDetailPanel
+              account={account}
+              currentUserId={currentUserId}
+              currentUserRole={currentUserRole}
+              currentUsername={currentUsername}
+            />
+          </ErrorBoundary>
+        </Overlay>
+      )}
+    </>
+  );
+}
+
 function BusinessCard({
   account,
   reviews,
@@ -1554,7 +1721,11 @@ export function ExploreTab({
       ? memberBusinesses
       : isBusinessCategory
         ? memberBusinesses.filter((a) => {
-            const biz = (a.businesses || [])[0];
+            const bizList = a.businesses ?? [];
+            if (activeCategory === "Hotels") {
+              return bizList.some((b) => b.businessType === "hotel");
+            }
+            const biz = bizList[0];
             const cat = biz?.category || a.businessCategory || "";
             return cat.toLowerCase() === activeCategory.toLowerCase();
           })
@@ -1585,7 +1756,7 @@ export function ExploreTab({
           saveRoadStatus(updated);
         }}
       />
-      <EmergencySOS />
+      <EmergencySOS currentUser={currentAccount ?? null} />
 
       <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide">
         {ALL_CATEGORIES.map((cat) => (
@@ -1671,17 +1842,43 @@ export function ExploreTab({
               🏪 Member Businesses
             </h3>
           )}
+          {activeCategory === "Hotels" && (
+            <h3 className="text-sm font-bold text-zinc-400 mb-3">
+              🏨 Hotels in Ladakh
+            </h3>
+          )}
           <div className="grid grid-cols-1 gap-4">
-            {filteredBusinesses.map((acc) => (
-              <BusinessCard
-                key={acc.id}
-                account={acc}
-                reviews={reviews}
-                currentUserId={currentUserId}
-                currentUserRole={currentUserRole}
-                onAddReview={onAddReview}
-              />
-            ))}
+            {filteredBusinesses.map((acc) => {
+              const isHotelAccount = (acc.businesses ?? []).some(
+                (b) => b.businessType === "hotel",
+              );
+              if (
+                isHotelAccount &&
+                (activeCategory === "Hotels" || activeCategory === "All")
+              ) {
+                return (
+                  <ErrorBoundary key={acc.id} minimal>
+                    <HotelCard
+                      account={acc}
+                      currentUserId={currentUserId}
+                      currentUserRole={currentUserRole}
+                      currentUsername={currentUsername}
+                    />
+                  </ErrorBoundary>
+                );
+              }
+              return (
+                <ErrorBoundary key={acc.id} minimal>
+                  <BusinessCard
+                    account={acc}
+                    reviews={reviews}
+                    currentUserId={currentUserId}
+                    currentUserRole={currentUserRole}
+                    onAddReview={onAddReview}
+                  />
+                </ErrorBoundary>
+              );
+            })}
           </div>
         </div>
       )}

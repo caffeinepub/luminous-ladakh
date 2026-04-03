@@ -1,5 +1,55 @@
 export type Role = "user" | "member" | "community" | "creator";
 
+export type BusinessType = "hotel" | "restaurant" | "rental" | "other";
+
+export interface RoomType {
+  id: string;
+  type: "Suite" | "Deluxe" | "Standard" | "Family";
+  pricePerNight: number;
+  maxGuests: number;
+  amenities: string[]; // e.g. ["WiFi", "AC", "Hot Water", "Parking"]
+  availableCount: number;
+  photos: string[];
+}
+
+export interface MenuItem {
+  id: string;
+  name: string;
+  category: string; // "Starters" | "Main Course" | "Desserts" | "Beverages"
+  price: number;
+  description?: string;
+  photo?: string;
+  isVeg: boolean;
+}
+
+export interface MenuItemReview {
+  id: string;
+  menuItemId: string;
+  businessId: string;
+  reviewerUserId: string;
+  reviewerUsername: string;
+  rating: number;
+  comment: string;
+  timestamp: string;
+}
+
+export interface RentalAddon {
+  id: string;
+  vehicleType: string; // "Bike", "Car", "Bicycle", "Scooter"
+  model: string;
+  pricePerDay: number;
+  pricePerMonth?: number;
+  photo?: string;
+  available: boolean;
+}
+
+export interface PharmacyEntry {
+  id: string;
+  name: string;
+  address: string;
+  phone: string;
+}
+
 export interface Business {
   id: string;
   name: string;
@@ -8,6 +58,14 @@ export interface Business {
   mapsUrl: string;
   photos: string[];
   videoUrl?: string;
+  // Extended fields
+  businessType?: BusinessType;
+  phone?: string;
+  email?: string;
+  roomTypes?: RoomType[];
+  menuItems?: MenuItem[];
+  rentalAddons?: RentalAddon[];
+  lastAvailabilityUpdate?: string; // ISO date
 }
 
 export interface LocationReview {
