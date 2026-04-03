@@ -138,9 +138,14 @@ export default function App() {
   const members = accounts.filter((a) => a.role === "member");
 
   const USER_NAV = [
+    // Primary 5 (bottom bar)
     { id: "explore", icon: "explore", label: t("explore") },
-    { id: "discover", icon: "travel_explore", label: t("discover") },
     { id: "events", icon: "event", label: t("events") },
+    { id: "post", icon: "add_circle", label: t("post") },
+    { id: "search", icon: "search", label: t("search") },
+    { id: "profile", icon: "person", label: t("profile") },
+    // Secondary (scrollable row above bottom bar)
+    { id: "discover", icon: "travel_explore", label: t("discover") },
     {
       id: "restaurants",
       icon: "restaurant",
@@ -148,13 +153,16 @@ export default function App() {
     },
     { id: "rentals", icon: "directions_car", label: t("rentals", "Rentals") },
     { id: "shop", icon: "storefront", label: t("shop", "Shop") },
-    { id: "search", icon: "search", label: t("search") },
-    { id: "post", icon: "add_circle", label: t("post") },
-    { id: "profile", icon: "person", label: t("profile") },
   ];
 
   const MEMBER_NAV = [
+    // Primary 5 (bottom bar)
     { id: "explore", icon: "explore", label: t("explore") },
+    { id: "business", icon: "store", label: t("business") },
+    { id: "membership", icon: "card_membership", label: t("membership") },
+    { id: "search", icon: "search", label: t("search") },
+    { id: "profile", icon: "person", label: t("profile") },
+    // Secondary (scrollable row above bottom bar)
     { id: "events", icon: "event", label: t("events") },
     {
       id: "restaurants",
@@ -163,14 +171,16 @@ export default function App() {
     },
     { id: "rentals", icon: "directions_car", label: t("rentals", "Rentals") },
     { id: "shop", icon: "storefront", label: t("shop", "Shop") },
-    { id: "search", icon: "search", label: t("search") },
-    { id: "business", icon: "store", label: t("business") },
-    { id: "membership", icon: "card_membership", label: t("membership") },
-    { id: "profile", icon: "person", label: t("profile") },
   ];
 
   const COMMUNITY_NAV = [
+    // Primary 5 (bottom bar)
     { id: "explore", icon: "explore", label: t("explore") },
+    { id: "business", icon: "store", label: t("business") },
+    { id: "permissions", icon: "key", label: t("permissions") },
+    { id: "search", icon: "search", label: t("search") },
+    { id: "profile", icon: "person", label: t("profile") },
+    // Secondary (scrollable row above bottom bar)
     { id: "events", icon: "event", label: t("events") },
     {
       id: "restaurants",
@@ -179,10 +189,6 @@ export default function App() {
     },
     { id: "rentals", icon: "directions_car", label: t("rentals", "Rentals") },
     { id: "shop", icon: "storefront", label: t("shop", "Shop") },
-    { id: "search", icon: "search", label: t("search") },
-    { id: "business", icon: "store", label: t("business") },
-    { id: "permissions", icon: "key", label: t("permissions") },
-    { id: "profile", icon: "person", label: t("profile") },
   ];
 
   const CREATOR_NAV = [
@@ -290,7 +296,7 @@ export default function App() {
 
       {/* Main content */}
       <main
-        className={`max-w-lg mx-auto px-4 pb-24 ${isCreator ? "pt-28" : "pt-20"}`}
+        className={`max-w-lg mx-auto px-4 pb-32 ${isCreator ? "pt-28" : "pt-20"}`}
       >
         {isSuspended && (
           <div className="mb-4 bg-yellow-500/15 border border-yellow-500/40 rounded-xl p-3 flex items-center gap-2">
