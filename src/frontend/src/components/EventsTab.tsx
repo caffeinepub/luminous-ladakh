@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
+import { useLanguage } from "../context/LanguageContext";
 import { loadEvents, saveEvents } from "../data/eventsData";
 import type { Account, LCEvent, PendingPayment } from "../types";
 
@@ -38,6 +39,7 @@ function formatDate(iso: string) {
 }
 
 export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
+  const { t } = useLanguage();
   const [events, setEvents] = useState<LCEvent[]>(loadEvents);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
@@ -65,14 +67,14 @@ export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
     );
     setEvents(updated);
     saveEvents(updated);
-    toast.success("Event approved and published!");
+    toast.success(t("approved", "Event approved and published!"));
   }
 
   function handleReject(id: string) {
     const updated = events.filter((e) => e.id !== id);
     setEvents(updated);
     saveEvents(updated);
-    toast.info("Event rejected and removed.");
+    toast.info(t("rejected", "Event rejected and removed."));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -119,7 +121,10 @@ export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
     setShowForm(false);
     setSubmitting(false);
     toast.success(
-      "Event submitted! ₹650 payment pending Creator confirmation.",
+      t(
+        "submitted",
+        "Event submitted! ₹650 payment pending Creator confirmation.",
+      ),
     );
   }
 
@@ -128,7 +133,7 @@ export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-white">
-            Events &amp; Festivals
+            {t("eventsTitle", "Events & Festivals")}
           </h2>
           <p className="text-xs text-muted-foreground">
             Ladakh cultural events calendar
@@ -141,7 +146,7 @@ export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
           data-ocid="events.open_modal_button"
         >
           <span className="material-symbols-outlined text-sm">add</span>
-          Post Event
+          {t("postEvent", "Post Event")}
         </button>
       </div>
 
@@ -149,7 +154,8 @@ export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
         <div className="bg-card border border-amber-500/30 rounded-xl p-4">
           <h3 className="font-semibold text-amber-400 text-sm mb-3 flex items-center gap-2">
             <span className="material-symbols-outlined text-sm">pending</span>
-            Pending Events ({pendingEvents.length})
+            {t("pendingEventApproval", "Pending Events")} (
+            {pendingEvents.length})
           </h3>
           <div className="space-y-3">
             {pendingEvents.map((ev, i) => (
@@ -163,7 +169,8 @@ export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
                   {formatDate(ev.date)} · {ev.location}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  by @{ev.postedByUsername} · ₹650 payment pending
+                  by @{ev.postedByUsername} · ₹650{" "}
+                  {t("pending", "payment pending")}
                 </p>
                 <div className="flex gap-2 mt-2">
                   <button
@@ -172,7 +179,7 @@ export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
                     className="flex-1 bg-green-600 hover:bg-green-500 text-white text-xs py-1.5 rounded-lg font-semibold"
                     data-ocid={`events.confirm_button.${i + 1}`}
                   >
-                    Approve
+                    {t("approveEvent", "Approve")}
                   </button>
                   <button
                     type="button"
@@ -180,7 +187,7 @@ export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
                     className="flex-1 bg-red-700 hover:bg-red-600 text-white text-xs py-1.5 rounded-lg font-semibold"
                     data-ocid={`events.cancel_button.${i + 1}`}
                   >
-                    Reject
+                    {t("rejectEvent", "Reject")}
                   </button>
                 </div>
               </div>
@@ -195,7 +202,7 @@ export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
             event
           </span>
           <p className="text-zinc-500 text-sm">
-            No events yet. Be the first to post one!
+            {t("noEventsYet", "No events yet. Be the first to post one!")}
           </p>
         </div>
       ) : (
@@ -215,7 +222,7 @@ export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
                     <div className="flex items-start justify-between gap-2">
                       <h4 className="font-bold text-sm">{ev.title}</h4>
                       <span className="flex-shrink-0 text-xs bg-primary/20 text-primary border border-primary/30 px-2 py-0.5 rounded-full">
-                        Free
+                        {t("free", "Free")}
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
@@ -264,7 +271,9 @@ export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
             data-ocid="events.dialog"
           >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-bold text-lg">Post an Event</h2>
+              <h2 className="font-bold text-lg">
+                {t("postEvent", "Post an Event")}
+              </h2>
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
@@ -279,8 +288,8 @@ export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
             <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 mb-4">
               <p className="text-xs text-amber-300 flex items-center gap-1">
                 <span className="material-symbols-outlined text-sm">info</span>
-                Posting an event costs <strong>₹650</strong>. Payment is held
-                pending Creator confirmation.
+                {t("eventFee", "Posting an event costs ₹650")}.{" "}
+                {t("pending", "Payment is held pending Creator confirmation.")}
               </p>
             </div>
 
@@ -290,7 +299,7 @@ export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
                   htmlFor="evt-title"
                   className="text-xs text-muted-foreground"
                 >
-                  Event Title
+                  {t("eventName", "Event Title")}
                 </label>
                 <input
                   id="evt-title"
@@ -309,7 +318,7 @@ export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
                   htmlFor="evt-date"
                   className="text-xs text-muted-foreground"
                 >
-                  Date
+                  {t("eventDate", "Date")}
                 </label>
                 <input
                   id="evt-date"
@@ -327,7 +336,7 @@ export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
                   htmlFor="evt-loc"
                   className="text-xs text-muted-foreground"
                 >
-                  Location
+                  {t("eventLocation", "Location")}
                 </label>
                 <input
                   id="evt-loc"
@@ -346,7 +355,7 @@ export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
                   htmlFor="evt-desc"
                   className="text-xs text-muted-foreground"
                 >
-                  Description
+                  {t("eventDescription", "Description")}
                 </label>
                 <textarea
                   id="evt-desc"
@@ -366,7 +375,9 @@ export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
                 className="w-full bg-primary text-primary-foreground font-semibold py-2.5 rounded-xl text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
                 data-ocid="events.submit_button"
               >
-                {submitting ? "Submitting..." : "Submit Event (₹650)"}
+                {submitting
+                  ? t("loading", "Submitting...")
+                  : t("payAndSubmit", "Submit Event (₹650)")}
               </button>
             </form>
           </div>

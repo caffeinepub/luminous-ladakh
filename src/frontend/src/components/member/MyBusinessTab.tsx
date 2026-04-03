@@ -524,6 +524,19 @@ export function MemberBusinessTab({
 }: Props) {
   const isPremier = currentUser.membershipTier === "Premier";
   const maxBusinesses = isPremier ? 3 : 1;
+
+  // Hotel 2-hour trial (for non-Premier members)
+  const hotelTrialStart = currentUser.hotelTrialStartDate
+    ? new Date(currentUser.hotelTrialStartDate)
+    : null;
+  const hotelTrialEnd = hotelTrialStart
+    ? new Date(hotelTrialStart.getTime() + 2 * 60 * 60 * 1000)
+    : null;
+  const hotelTrialActive = hotelTrialEnd ? new Date() < hotelTrialEnd : false;
+  const hotelTrialExpired = hotelTrialStart !== null && !hotelTrialActive;
+  const hotelTrialMinutesLeft = hotelTrialEnd
+    ? Math.max(0, Math.round((hotelTrialEnd.getTime() - Date.now()) / 60000))
+    : 0;
   const storageLimitMB = isPremier ? 1024 : 300;
 
   const businesses: Business[] = Array.isArray(currentUser.businesses)
@@ -678,10 +691,10 @@ export function MemberBusinessTab({
       toast.error("Content blocked: military-related content detected.");
       return;
     }
-    // Hotel: Premier only
-    if (formBizType === "hotel" && !isPremier) {
+    // Hotel: Premier only OR active trial
+    if (formBizType === "hotel" && !isPremier && !hotelTrialActive) {
       toast.error(
-        "Hotels can only be promoted by Premier members. Upgrade to Premier first.",
+        "Hotels require Premier membership or an active 2-hour trial.",
       );
       return;
     }
@@ -713,7 +726,9 @@ export function MemberBusinessTab({
       phone: formPhone.trim() || undefined,
       email: formEmail.trim() || undefined,
       roomTypes:
-        formBizType === "hotel" && isPremier ? formRoomTypes : undefined,
+        formBizType === "hotel" && (isPremier || hotelTrialActive)
+          ? formRoomTypes
+          : undefined,
       menuItems:
         formBizType === "hotel" || formBizType === "restaurant"
           ? formMenuItems
@@ -746,7 +761,8 @@ export function MemberBusinessTab({
 
   const showForm = isNew || editing !== null;
 
-  const isHotelForm = formBizType === "hotel" && isPremier;
+  const isHotelForm =
+    formBizType === "hotel" && (isPremier || hotelTrialActive);
   const isRestaurantForm = formBizType === "restaurant";
   const isRentalForm = formBizType === "rental";
   const needsContact = isHotelForm || isRestaurantForm || isRentalForm;
@@ -959,25 +975,34 @@ export function MemberBusinessTab({
                     ["other", "🏦", "Other"],
                   ] as const
                 ).map(([type, emoji, label]) => {
-                  const isDisabledHotel = type === "hotel" && !isPremier;
                   return (
                     <button
                       key={type}
                       type="button"
-                      disabled={isDisabledHotel}
                       onClick={() => setFormBizType(type)}
                       className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-semibold transition-all ${
                         formBizType === type
                           ? "bg-amber-500/20 border-amber-500/60 text-amber-300"
-                          : isDisabledHotel
-                            ? "bg-zinc-800/40 border-zinc-700/40 text-zinc-600 cursor-not-allowed"
-                            : "bg-zinc-800 border-zinc-700 text-zinc-300 hover:border-zinc-500"
+                          : "bg-zinc-800 border-zinc-700 text-zinc-300 hover:border-zinc-500"
                       }`}
                     >
                       <span>{emoji}</span>
                       {label}
-                      {type === "hotel" && !isPremier && (
-                        <span className="ml-auto text-xs text-zinc-600">
+                      {type === "hotel" &&
+                        !isPremier &&
+                        !hotelTrialActive &&
+                        !hotelTrialExpired && (
+                          <span className="ml-auto text-xs text-cyan-400">
+                            ⏱ 2hr Trial
+                          </span>
+                        )}
+                      {type === "hotel" && !isPremier && hotelTrialActive && (
+                        <span className="ml-auto text-xs text-green-400">
+                          ✓ Trial
+                        </span>
+                      )}
+                      {type === "hotel" && !isPremier && hotelTrialExpired && (
+                        <span className="ml-auto text-xs text-zinc-500">
                           ⭐ Premier
                         </span>
                       )}
@@ -985,11 +1010,59 @@ export function MemberBusinessTab({
                   );
                 })}
               </div>
-              {formBizType === "hotel" && !isPremier && (
-                <p className="text-xs text-amber-400 mt-2 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
-                  Hotels can only be promoted by Premier members. Upgrade to
-                  Premier (₹1,500/mo) to list a hotel.
-                </p>
+              {formBizType === "hotel" &&
+                !isPremier &&
+                !hotelTrialActive &&
+                !hotelTrialExpired && (
+                  <div className="mt-2 bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3">
+                    <p className="text-sm font-semibold text-amber-300 mb-1">
+                      🏨 Hotels are for Premier members
+                    </p>
+                    <p className="text-xs text-zinc-400 mb-3">
+                      Upgrade to Premier (₹1,500/mo) to list your hotel
+                      permanently, or start a{" "}
+                      <span className="text-cyan-300 font-semibold">
+                        2-hour free trial
+                      </span>{" "}
+                      to explore the hotel section.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onUpdate({
+                          hotelTrialStartDate: new Date().toISOString(),
+                        })
+                      }
+                      className="w-full py-2 rounded-lg bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 text-sm font-semibold hover:bg-cyan-500/30 transition-all"
+                      data-ocid="hotel.trial.button"
+                    >
+                      ⏱ Start 2-Hour Free Trial
+                    </button>
+                  </div>
+                )}
+              {formBizType === "hotel" && !isPremier && hotelTrialActive && (
+                <div className="mt-2 bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3">
+                  <p className="text-sm font-semibold text-green-300">
+                    ✅ Hotel Trial Active — {hotelTrialMinutesLeft} minutes
+                    remaining
+                  </p>
+                  <p className="text-xs text-zinc-400 mt-1">
+                    Your listing will be saved during the trial. Upgrade to
+                    Premier (₹1,500/mo) to keep your listing after the trial
+                    ends.
+                  </p>
+                </div>
+              )}
+              {formBizType === "hotel" && !isPremier && hotelTrialExpired && (
+                <div className="mt-2 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3">
+                  <p className="text-sm font-semibold text-red-400">
+                    ⛔ Your 2-hour hotel trial has ended
+                  </p>
+                  <p className="text-xs text-zinc-400 mt-1">
+                    Upgrade to Premier (₹1,500/mo) to continue promoting your
+                    hotel on Ladakh Connect.
+                  </p>
+                </div>
               )}
             </div>
 

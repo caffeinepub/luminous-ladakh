@@ -19,18 +19,28 @@ interface Props {
 }
 
 const THEMES = [
-  { id: "dark", label: "Dark", desc: "Deep black" },
-  { id: "slate", label: "Slate", desc: "Cool blue-grey" },
-  { id: "warm", label: "Warm", desc: "Amber tones" },
+  { id: "dark", labelKey: "darkTheme", label: "Dark", desc: "Deep black" },
+  {
+    id: "slate",
+    labelKey: "slateTheme",
+    label: "Slate",
+    desc: "Cool blue-grey",
+  },
+  { id: "warm", labelKey: "warmTheme", label: "Warm", desc: "Amber tones" },
 ] as const;
 
 const FONT_COLORS = [
-  { id: "default", label: "White", hex: "#f0e8d8" },
-  { id: "gold", label: "Gold", hex: "#e8c55a" },
-  { id: "sky", label: "Sky", hex: "#7dd3fc" },
-  { id: "mint", label: "Mint", hex: "#6ee7b7" },
-  { id: "rose", label: "Rose", hex: "#fda4af" },
-  { id: "lavender", label: "Lavender", hex: "#c4b5fd" },
+  { id: "default", labelKey: "colorWhite", label: "White", hex: "#f0e8d8" },
+  { id: "gold", labelKey: "colorGold", label: "Gold", hex: "#e8c55a" },
+  { id: "sky", labelKey: "colorSky", label: "Sky", hex: "#7dd3fc" },
+  { id: "mint", labelKey: "colorMint", label: "Mint", hex: "#6ee7b7" },
+  { id: "rose", labelKey: "colorRose", label: "Rose", hex: "#fda4af" },
+  {
+    id: "lavender",
+    labelKey: "colorLavender",
+    label: "Lavender",
+    hex: "#c4b5fd",
+  },
 ] as const;
 
 function applyFontColor(colorId: string) {
@@ -46,10 +56,10 @@ export function MemberProfileTab({
   onUpdateUser,
   onLogout,
 }: Props) {
+  const { t, language, setLanguage, isPWA } = useLanguage();
   const [editingBio, setEditingBio] = useState(false);
   const [bio, setBio] = useState(currentUser.bio || "");
   const photoRef = useRef<HTMLInputElement>(null);
-  const { language, setLanguage, isPWA } = useLanguage();
 
   const isPremier = currentUser.membershipTier === "Premier";
 
@@ -65,13 +75,13 @@ export function MemberProfileTab({
   const saveBio = () => {
     onUpdateBio(bio);
     setEditingBio(false);
-    toast.success("Bio updated!");
+    toast.success(t("updated", "Bio updated!"));
   };
 
   const handleThemeChange = (theme: string) => {
     onUpdateUser({ theme: theme as Account["theme"] });
     applyTheme(theme);
-    toast.success(`Theme changed to ${theme}`);
+    toast.success(`${t("theme", "Theme")} → ${theme}`);
   };
 
   const handlePhotoTheme = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -81,7 +91,7 @@ export function MemberProfileTab({
     reader.onload = (evt) => {
       const dataUrl = evt.target?.result as string;
       onUpdateUser({ themePhoto: dataUrl });
-      toast.success("Custom photo theme applied!");
+      toast.success(t("updated", "Custom photo theme applied!"));
     };
     reader.readAsDataURL(file);
   };
@@ -89,7 +99,7 @@ export function MemberProfileTab({
   const handleFontColor = (colorId: string) => {
     onUpdateUser({ fontColor: colorId as Account["fontColor"] });
     applyFontColor(colorId);
-    toast.success("Font color updated!");
+    toast.success(t("updated", "Font color updated!"));
   };
 
   const handleProfilePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -98,7 +108,7 @@ export function MemberProfileTab({
     const reader = new FileReader();
     reader.onload = () => {
       onUpdateUser({ profilePhoto: reader.result as string });
-      toast.success("Profile photo updated!");
+      toast.success(t("updated", "Profile photo updated!"));
     };
     reader.readAsDataURL(file);
   };
@@ -145,7 +155,7 @@ export function MemberProfileTab({
             <p className="text-xs text-muted-foreground">{currentUser.email}</p>
             <div className="flex gap-2 mt-1">
               <span className="text-xs bg-secondary text-muted-foreground px-2 py-0.5 rounded-full">
-                Member
+                {t("member", "Member")}
               </span>
               {currentUser.membershipTier && (
                 <span
@@ -155,7 +165,9 @@ export function MemberProfileTab({
                       : "bg-secondary text-muted-foreground"
                   }`}
                 >
-                  {currentUser.membershipTier}
+                  {isPremier
+                    ? t("tierPremier", "Premier")
+                    : t("tierCommon", "Common")}
                 </span>
               )}
             </div>
@@ -164,7 +176,7 @@ export function MemberProfileTab({
 
         <div className="mb-4">
           <div className="flex justify-between text-xs text-zinc-400 mb-1">
-            <span>Storage</span>
+            <span>{t("storageUsed", "Storage")}</span>
             <span>
               {usedMB.toFixed(1)} MB / {isPremier ? "1 GB" : "300 MB"}
             </span>
@@ -187,7 +199,9 @@ export function MemberProfileTab({
         <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 flex items-center gap-3 mb-4">
           <span className="material-symbols-outlined text-primary">badge</span>
           <div>
-            <p className="text-xs text-muted-foreground">Electronic ID</p>
+            <p className="text-xs text-muted-foreground">
+              {t("electronicId", "Electronic ID")}
+            </p>
             <p className="font-heading font-bold text-primary">
               {currentUser.electronicId}
             </p>
@@ -207,7 +221,7 @@ export function MemberProfileTab({
                 className="bg-primary text-primary-foreground"
                 onClick={saveBio}
               >
-                Save
+                {t("saveBio", "Save Bio")}
               </Button>
               <Button
                 size="sm"
@@ -215,21 +229,21 @@ export function MemberProfileTab({
                 className="border-border"
                 onClick={() => setEditingBio(false)}
               >
-                Cancel
+                {t("cancel", "Cancel")}
               </Button>
             </div>
           </div>
         ) : (
           <div className="flex items-start justify-between">
             <p className="text-sm text-muted-foreground flex-1">
-              {currentUser.bio || "No bio yet."}
+              {currentUser.bio || t("yourBio", "No bio yet.")}
             </p>
             <button
               type="button"
               onClick={() => setEditingBio(true)}
               className="text-primary text-xs ml-2"
             >
-              Edit
+              {t("editBio", "Edit")}
             </button>
           </div>
         )}
@@ -244,7 +258,7 @@ export function MemberProfileTab({
           <span className="material-symbols-outlined text-primary text-lg">
             language
           </span>
-          Language
+          {t("language", "Language")}
         </h3>
         <div className="grid grid-cols-2 gap-2 mb-3">
           {LANGUAGES.map((lang) => (
@@ -280,23 +294,25 @@ export function MemberProfileTab({
           <span className="material-symbols-outlined text-primary text-lg">
             palette
           </span>
-          App Theme
+          {t("theme", "App Theme")}
         </h3>
         <div className="grid grid-cols-3 gap-2 mb-3">
-          {THEMES.map((t) => (
+          {THEMES.map((thm) => (
             <button
-              key={t.id}
+              key={thm.id}
               type="button"
-              onClick={() => handleThemeChange(t.id)}
+              onClick={() => handleThemeChange(thm.id)}
               className={`rounded-xl p-3 text-center border transition-all ${
-                (currentUser.theme || "dark") === t.id
+                (currentUser.theme || "dark") === thm.id
                   ? "border-primary bg-primary/15"
                   : "border-border bg-secondary hover:border-primary/40"
               }`}
             >
-              <p className="text-xs font-semibold">{t.label}</p>
+              <p className="text-xs font-semibold">
+                {t(thm.labelKey, thm.label)}
+              </p>
               <p className="text-[10px] text-muted-foreground mt-0.5">
-                {t.desc}
+                {thm.desc}
               </p>
             </button>
           ))}
@@ -304,8 +320,9 @@ export function MemberProfileTab({
         {isPremier && (
           <div className="border-t border-border pt-3">
             <p className="text-xs font-semibold mb-2 flex items-center gap-1">
-              <span className="text-primary">★</span> Premier: Custom Photo
-              Theme
+              <span className="text-primary">★</span>{" "}
+              {t("tierPremier", "Premier")}:{" "}
+              {t("customBackground", "Custom Photo Theme")}
             </p>
             {currentUser.themePhoto && (
               <img
@@ -325,7 +342,9 @@ export function MemberProfileTab({
                 <span className="material-symbols-outlined text-sm">
                   upload
                 </span>
-                {currentUser.themePhoto ? "Change Photo" : "Set Theme Photo"}
+                {currentUser.themePhoto
+                  ? t("update", "Change Photo")
+                  : t("upload", "Set Theme Photo")}
               </span>
             </label>
           </div>
@@ -338,7 +357,7 @@ export function MemberProfileTab({
           <span className="material-symbols-outlined text-primary text-lg">
             format_color_text
           </span>
-          Font Color
+          {t("fontColor", "Font Color")}
         </h3>
         <div className="grid grid-cols-6 gap-2">
           {FONT_COLORS.map((c) => (
@@ -346,7 +365,7 @@ export function MemberProfileTab({
               key={c.id}
               type="button"
               onClick={() => handleFontColor(c.id)}
-              title={c.label}
+              title={t(c.labelKey, c.label)}
               className={`h-9 rounded-lg border-2 transition-all ${
                 (currentUser.fontColor || "default") === c.id
                   ? "border-white scale-110"
@@ -363,9 +382,10 @@ export function MemberProfileTab({
         variant="outline"
         className="w-full border-border text-muted-foreground"
         onClick={onLogout}
+        data-ocid="profile.sign_out_button"
       >
         <span className="material-symbols-outlined text-lg mr-2">logout</span>
-        Sign Out
+        {t("signOut", "Sign Out")}
       </Button>
     </div>
   );

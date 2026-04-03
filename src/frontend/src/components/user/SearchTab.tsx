@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLanguage } from "../../context/LanguageContext";
 import type { Account, Post, Review } from "../../types";
 
 const PRELOADED_NAMES = [
@@ -46,6 +47,7 @@ export function SearchTab({
   currentUserRole: _currentUserRole,
   onAddReview: _onAddReview,
 }: Props) {
+  const { t } = useLanguage();
   const [query, setQuery] = useState("");
 
   const q = query.toLowerCase().trim();
@@ -91,14 +93,19 @@ export function SearchTab({
 
   return (
     <div>
-      <h2 className="text-xl font-bold text-white mb-4">Search</h2>
+      <h2 className="text-xl font-bold text-white mb-4">
+        {t("searchTitle", "Search")}
+      </h2>
       <div className="relative mb-6">
         <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-lg">
           search
         </span>
         <input
           className={inputCls}
-          placeholder="Search locations, businesses, places..."
+          placeholder={t(
+            "searchPlaceholder",
+            "Search locations, businesses, places...",
+          )}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
@@ -118,9 +125,12 @@ export function SearchTab({
           <span className="material-symbols-outlined text-5xl block mb-3">
             travel_explore
           </span>
-          <p className="font-semibold">Search Ladakh</p>
+          <p className="font-semibold">{t("searchTitle", "Search Ladakh")}</p>
           <p className="text-xs mt-1">
-            Locations, businesses, and community discoveries
+            {t(
+              "searchPlaceholder",
+              "Locations, businesses, and community discoveries",
+            )}
           </p>
         </div>
       )}
@@ -130,14 +140,16 @@ export function SearchTab({
           <span className="material-symbols-outlined text-5xl block mb-3">
             search_off
           </span>
-          <p className="font-semibold">No results for "{query}"</p>
+          <p className="font-semibold">
+            {t("noResults", "No results for")} "{query}"
+          </p>
         </div>
       )}
 
       {matchedLocations.length > 0 && (
         <section className="mb-5">
           <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wide mb-3">
-            Locations ({matchedLocations.length})
+            {t("explore", "Locations")} ({matchedLocations.length})
           </h3>
           <div className="space-y-2">
             {matchedLocations.map((name) => (
@@ -158,7 +170,7 @@ export function SearchTab({
       {matchedBusinesses.length > 0 && (
         <section className="mb-5">
           <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wide mb-3">
-            Businesses ({matchedBusinesses.length})
+            {t("myBusinesses", "Businesses")} ({matchedBusinesses.length})
           </h3>
           <div className="space-y-2">
             {matchedBusinesses.map((m) => {
@@ -210,7 +222,7 @@ export function SearchTab({
       {matchedPosts.length > 0 && (
         <section className="mb-5">
           <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wide mb-3">
-            Discoveries ({matchedPosts.length})
+            {t("discover", "Discoveries")} ({matchedPosts.length})
           </h3>
           <div className="space-y-2">
             {matchedPosts.map((p) => (

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLanguage } from "../context/LanguageContext";
 import { generateId } from "../data/seed";
 import type { Account, PharmacyEntry } from "../types";
 
@@ -95,6 +96,7 @@ interface Props {
 }
 
 export function EmergencySOS({ currentUser }: Props) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [pharmacies, setPharmacies] = useState<PharmacyEntry[]>(loadPharmacies);
   const [managing, setManaging] = useState(false);
@@ -155,7 +157,9 @@ export function EmergencySOS({ currentUser }: Props) {
         data-ocid="sos.button"
       >
         <span className="material-symbols-outlined text-xl">sos</span>
-        <span className="text-[9px] font-bold tracking-wider">SOS</span>
+        <span className="text-[9px] font-bold tracking-wider">
+          {t("sosButton", "SOS")}
+        </span>
       </button>
 
       {/* SOS Modal */}
@@ -191,7 +195,9 @@ export function EmergencySOS({ currentUser }: Props) {
                   </span>
                 </div>
                 <div>
-                  <h2 className="font-bold text-lg">Emergency Contacts</h2>
+                  <h2 className="font-bold text-lg">
+                    {t("sosTitle", "Emergency SOS")}
+                  </h2>
                   <p className="text-xs text-muted-foreground">Leh, Ladakh</p>
                 </div>
               </div>
@@ -243,7 +249,7 @@ export function EmergencySOS({ currentUser }: Props) {
                     <span className="material-symbols-outlined text-sm">
                       call
                     </span>
-                    Call
+                    {t("callEmergency", "Call")}
                   </div>
                 </a>
               ))}
@@ -259,7 +265,7 @@ export function EmergencySOS({ currentUser }: Props) {
                     </span>
                   </div>
                   <h3 className="font-semibold text-sm text-white">
-                    Nearby Pharmacies
+                    {t("nearbyPharmacy", "Nearby Pharmacies")}
                   </h3>
                 </div>
                 {isCreator && (
@@ -275,7 +281,7 @@ export function EmergencySOS({ currentUser }: Props) {
                     <span className="material-symbols-outlined text-sm">
                       {managing ? "close" : "manage_accounts"}
                     </span>
-                    {managing ? "Done" : "Manage"}
+                    {managing ? t("done", "Done") : "Manage"}
                   </button>
                 )}
               </div>
@@ -324,14 +330,14 @@ export function EmergencySOS({ currentUser }: Props) {
                             onClick={handleEditSave}
                             className="flex-1 py-1.5 rounded-lg bg-green-600 hover:bg-green-500 text-white text-xs font-bold transition-colors"
                           >
-                            Save
+                            {t("save", "Save")}
                           </button>
                           <button
                             type="button"
                             onClick={() => setEditPharmacy(null)}
                             className="flex-1 py-1.5 rounded-lg bg-zinc-700 hover:bg-zinc-600 text-white text-xs transition-colors"
                           >
-                            Cancel
+                            {t("cancel", "Cancel")}
                           </button>
                         </div>
                       </div>
@@ -385,7 +391,7 @@ export function EmergencySOS({ currentUser }: Props) {
                             <span className="material-symbols-outlined text-sm">
                               call
                             </span>
-                            Call
+                            {t("callEmergency", "Call")}
                           </a>
                         </div>
                       </div>
@@ -398,7 +404,7 @@ export function EmergencySOS({ currentUser }: Props) {
               {managing && (
                 <div className="mt-3 bg-zinc-800/60 border border-dashed border-zinc-600 rounded-xl p-3 space-y-2">
                   <p className="text-xs text-zinc-400 font-semibold">
-                    Add New Pharmacy
+                    {t("addPharmacy", "Add New Pharmacy")}
                   </p>
                   <input
                     className={inputCls}
@@ -424,7 +430,7 @@ export function EmergencySOS({ currentUser }: Props) {
                     disabled={!newName.trim() || !newPhone.trim()}
                     className="w-full py-2 rounded-lg bg-green-600 hover:bg-green-500 text-white text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    + Add Pharmacy
+                    + {t("addPharmacy", "Add Pharmacy")}
                   </button>
                 </div>
               )}

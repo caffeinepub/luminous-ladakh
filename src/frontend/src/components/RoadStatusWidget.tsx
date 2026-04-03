@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLanguage } from "../context/LanguageContext";
 import type { RoadStatus } from "../types";
 
 interface Props {
@@ -11,30 +12,31 @@ interface Props {
   ) => void;
 }
 
-const STATUS_CONFIG = {
-  open: {
-    label: "Open",
-    color: "bg-green-500/20 text-green-400 border-green-500/30",
-    dot: "bg-green-400",
-  },
-  closed: {
-    label: "Closed",
-    color: "bg-red-500/20 text-red-400 border-red-500/30",
-    dot: "bg-red-400",
-  },
-  caution: {
-    label: "Caution",
-    color: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
-    dot: "bg-yellow-400",
-  },
-};
-
 export function RoadStatusWidget({ roads, canEdit, onUpdateStatus }: Props) {
+  const { t } = useLanguage();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<{
     status: RoadStatus["status"];
     note: string;
   }>({ status: "open", note: "" });
+
+  const STATUS_CONFIG = {
+    open: {
+      label: t("roadOpen", "Open"),
+      color: "bg-green-500/20 text-green-400 border-green-500/30",
+      dot: "bg-green-400",
+    },
+    closed: {
+      label: t("roadClosed", "Closed"),
+      color: "bg-red-500/20 text-red-400 border-red-500/30",
+      dot: "bg-red-400",
+    },
+    caution: {
+      label: t("roadRestricted", "Caution"),
+      color: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+      dot: "bg-yellow-400",
+    },
+  };
 
   function startEdit(road: RoadStatus) {
     setEditingId(road.id);
@@ -52,7 +54,9 @@ export function RoadStatusWidget({ roads, canEdit, onUpdateStatus }: Props) {
         <span className="material-symbols-outlined text-blue-400 text-lg">
           route
         </span>
-        <h3 className="text-sm font-semibold">Road &amp; Pass Status</h3>
+        <h3 className="text-sm font-semibold">
+          {t("roadStatusTitle", "Road & Pass Status")}
+        </h3>
       </div>
       <div className="space-y-2">
         {roads.map((road) => {
@@ -95,14 +99,14 @@ export function RoadStatusWidget({ roads, canEdit, onUpdateStatus }: Props) {
                       onClick={() => saveEdit(road.id)}
                       className="flex-1 bg-primary text-primary-foreground text-xs py-1.5 rounded-lg font-semibold"
                     >
-                      Save
+                      {t("save", "Save")}
                     </button>
                     <button
                       type="button"
                       onClick={() => setEditingId(null)}
                       className="flex-1 bg-zinc-700 text-white text-xs py-1.5 rounded-lg"
                     >
-                      Cancel
+                      {t("cancel", "Cancel")}
                     </button>
                   </div>
                 </div>

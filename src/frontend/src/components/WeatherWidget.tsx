@@ -1,3 +1,5 @@
+import { useLanguage } from "../context/LanguageContext";
+
 const WEATHER_DATA = [
   {
     name: "Leh",
@@ -26,6 +28,7 @@ const WEATHER_DATA = [
 ];
 
 export function WeatherWidget() {
+  const { t } = useLanguage();
   return (
     <div className="mb-4">
       <div className="flex items-center gap-2 mb-2">
@@ -33,7 +36,7 @@ export function WeatherWidget() {
           wb_sunny
         </span>
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          Live Weather
+          {t("weatherTitle", "Live Weather")}
         </span>
       </div>
       <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">

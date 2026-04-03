@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { toast } from "sonner";
+import { useLanguage } from "../../context/LanguageContext";
 import { loadDiscoveries, saveDiscoveries } from "../../data/discoveryData";
 import type { Account, DiscoveryPost } from "../../types";
 
@@ -38,6 +39,7 @@ export function DiscoverTab({
   onPromoteToExplore,
   isCreator,
 }: Props) {
+  const { t } = useLanguage();
   const [posts, setPosts] = useState<DiscoveryPost[]>(() =>
     [...loadDiscoveries()].sort((a, b) => b.upvotes.length - a.upvotes.length),
   );
@@ -83,7 +85,10 @@ export function DiscoverTab({
     }
     if (hasMilitaryContent(`${form.title} ${form.description}`)) {
       toast.error(
-        "⚠️ Military/Army content is strictly prohibited. Your post has been blocked. This counts as a warning.",
+        t(
+          "militaryWarning",
+          "⚠️ Military/Army content is strictly prohibited. Your post has been blocked.",
+        ),
         { duration: 6000 },
       );
       return;
@@ -108,7 +113,7 @@ export function DiscoverTab({
     setForm({ title: "", area: "", description: "", imageUrl: "" });
     setShowForm(false);
     setSubmitting(false);
-    toast.success("Discovery submitted! Thanks for sharing.");
+    toast.success(t("submitted", "Discovery submitted! Thanks for sharing."));
   }
 
   function formatDate(iso: string) {
@@ -127,9 +132,11 @@ export function DiscoverTab({
     <div className="fade-in space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-white">Discover</h2>
+          <h2 className="text-xl font-bold text-white">
+            {t("discoverTitle", "Discover")}
+          </h2>
           <p className="text-xs text-muted-foreground">
-            Undiscovered places in Ladakh
+            {t("noUndiscoveredPlaces", "Undiscovered places in Ladakh")}
           </p>
         </div>
         <button
@@ -141,7 +148,7 @@ export function DiscoverTab({
           <span className="material-symbols-outlined text-sm">
             add_location
           </span>
-          Submit
+          {t("submit", "Submit")}
         </button>
       </div>
 
@@ -150,9 +157,14 @@ export function DiscoverTab({
           <span className="material-symbols-outlined text-5xl text-zinc-600 block mb-3">
             travel_explore
           </span>
-          <p className="text-zinc-400 font-semibold mb-1">No discoveries yet</p>
+          <p className="text-zinc-400 font-semibold mb-1">
+            {t("noUndiscoveredPlaces", "No discoveries yet")}
+          </p>
           <p className="text-xs text-zinc-500">
-            Be the first to share a hidden gem in Ladakh!
+            {t(
+              "beFirstToPost",
+              "Be the first to share a hidden gem in Ladakh!",
+            )}
           </p>
         </div>
       ) : (
@@ -175,7 +187,7 @@ export function DiscoverTab({
                   <h3 className="font-bold text-base">{post.title}</h3>
                   {post.promoted && (
                     <span className="flex-shrink-0 text-xs bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full">
-                      Promoted
+                      {t("promoted", "Promoted")}
                     </span>
                   )}
                 </div>
@@ -225,12 +237,14 @@ export function DiscoverTab({
                           ),
                         );
                         onPromoteToExplore?.(post);
-                        toast.success(`"${post.title}" promoted to Explore!`);
+                        toast.success(
+                          `"${post.title}" ${t("promoteToExplore", "promoted to Explore!")}`,
+                        );
                       }}
                       className="text-xs bg-amber-500/15 text-amber-400 border border-amber-500/30 px-3 py-1.5 rounded-lg hover:bg-amber-500/25 transition-colors"
                       data-ocid={`discover.primary_button.${i + 1}`}
                     >
-                      Promote to Explore
+                      {t("promoteToExplore", "Promote to Explore")}
                     </button>
                   )}
                 </div>
@@ -258,7 +272,9 @@ export function DiscoverTab({
             data-ocid="discover.dialog"
           >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-bold text-lg">Submit a Discovery</h2>
+              <h2 className="font-bold text-lg">
+                {t("submitPlace", "Submit a Discovery")}
+              </h2>
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
@@ -275,8 +291,10 @@ export function DiscoverTab({
                 <span className="material-symbols-outlined text-sm flex-shrink-0">
                   shield
                 </span>
-                Military or army-related content is strictly prohibited and will
-                be auto-blocked.
+                {t(
+                  "militaryWarning",
+                  "Military or army-related content is strictly prohibited and will be auto-blocked.",
+                )}
               </p>
             </div>
 
@@ -286,7 +304,7 @@ export function DiscoverTab({
                   htmlFor="disc-title"
                   className="text-xs text-muted-foreground"
                 >
-                  Place Name *
+                  {t("placeName", "Place Name")} *
                 </label>
                 <input
                   type="text"
@@ -305,7 +323,7 @@ export function DiscoverTab({
                   htmlFor="disc-area"
                   className="text-xs text-muted-foreground"
                 >
-                  Area / Region *
+                  {t("placeLocation", "Area / Region")} *
                 </label>
                 <input
                   type="text"
@@ -324,7 +342,7 @@ export function DiscoverTab({
                   htmlFor="disc-desc"
                   className="text-xs text-muted-foreground"
                 >
-                  Description *
+                  {t("placeDescription", "Description")} *
                 </label>
                 <textarea
                   id="disc-desc"
@@ -340,7 +358,7 @@ export function DiscoverTab({
               </div>
               <div className="space-y-1">
                 <p className="text-xs text-muted-foreground">
-                  Photo (optional)
+                  {t("placePhotos", "Photo")} ({t("optional", "optional")})
                 </p>
                 <input
                   ref={photoRef}
@@ -376,7 +394,7 @@ export function DiscoverTab({
                     <span className="material-symbols-outlined text-sm">
                       add_photo_alternate
                     </span>
-                    Add Photo
+                    {t("addPhoto", "Add Photo")}
                   </button>
                 )}
               </div>
@@ -386,7 +404,9 @@ export function DiscoverTab({
                 className="w-full bg-primary text-primary-foreground font-semibold py-2.5 rounded-xl text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
                 data-ocid="discover.submit_button"
               >
-                {submitting ? "Submitting..." : "Submit Discovery"}
+                {submitting
+                  ? t("loading", "Submitting...")
+                  : t("submitPlace2", "Submit Discovery")}
               </button>
             </form>
           </div>

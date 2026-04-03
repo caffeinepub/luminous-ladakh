@@ -1,3 +1,4 @@
+import { useLanguage } from "../../context/LanguageContext";
 import type { Violation } from "../../types";
 
 interface Props {
@@ -16,6 +17,7 @@ const levelColors: Record<number, string> = {
 };
 
 export function ViolationCard({ violations, userId }: Props) {
+  const { t } = useLanguage();
   const myViolations = violations.filter((v) => v.targetUserId === userId);
   const activeViolations = myViolations.filter((v) => !v.resolved);
 
@@ -27,10 +29,10 @@ export function ViolationCard({ violations, userId }: Props) {
         </span>
         <div>
           <p className="font-semibold text-green-400 text-sm">
-            Account in Good Standing
+            {t("noViolations", "Account in Good Standing")}
           </p>
           <p className="text-xs text-muted-foreground">
-            No violations on record
+            {t("noViolations", "No violations on record")}
           </p>
         </div>
       </div>
@@ -40,10 +42,12 @@ export function ViolationCard({ violations, userId }: Props) {
   return (
     <div className="bg-card border border-border rounded-xl p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="font-heading font-semibold text-sm">Violation Status</h3>
+        <h3 className="font-heading font-semibold text-sm">
+          {t("myViolations", "Violation Status")}
+        </h3>
         {activeViolations.length > 0 && (
           <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full">
-            {activeViolations.length} active
+            {activeViolations.length} {t("active", "active")}
           </span>
         )}
       </div>
@@ -53,9 +57,13 @@ export function ViolationCard({ violations, userId }: Props) {
           className={`rounded-lg p-3 ${levelColors[v.level] || levelColors[1]}`}
         >
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-bold">Level {v.level} Violation</span>
+            <span className="text-xs font-bold">
+              {t("violationLevel", "Level")} {v.level}
+            </span>
             {v.resolved && (
-              <span className="text-xs text-green-400">✓ Resolved</span>
+              <span className="text-xs text-green-400">
+                ✓ {t("approved", "Resolved")}
+              </span>
             )}
           </div>
           <p className="text-xs opacity-80">{v.reason}</p>

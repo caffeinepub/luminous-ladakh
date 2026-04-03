@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { useLanguage } from "../../context/LanguageContext";
 import { applyTheme } from "../../hooks/useAuth";
@@ -19,18 +19,41 @@ interface Props {
 }
 
 const THEMES = [
-  { id: "dark", label: "Dark", desc: "Deep black" },
-  { id: "slate", label: "Slate", desc: "Cool blue-grey" },
-  { id: "warm", label: "Warm", desc: "Amber tones" },
+  {
+    id: "dark",
+    labelKey: "darkTheme",
+    descKey: "darkThemeDesc",
+    label: "Dark",
+    desc: "Deep black",
+  },
+  {
+    id: "slate",
+    labelKey: "slateTheme",
+    descKey: "slateThemeDesc",
+    label: "Slate",
+    desc: "Cool blue-grey",
+  },
+  {
+    id: "warm",
+    labelKey: "warmTheme",
+    descKey: "warmThemeDesc",
+    label: "Warm",
+    desc: "Amber tones",
+  },
 ] as const;
 
 const FONT_COLORS = [
-  { id: "default", label: "White", hex: "#f0e8d8" },
-  { id: "gold", label: "Gold", hex: "#e8c55a" },
-  { id: "sky", label: "Sky", hex: "#7dd3fc" },
-  { id: "mint", label: "Mint", hex: "#6ee7b7" },
-  { id: "rose", label: "Rose", hex: "#fda4af" },
-  { id: "lavender", label: "Lavender", hex: "#c4b5fd" },
+  { id: "default", labelKey: "colorWhite", label: "White", hex: "#f0e8d8" },
+  { id: "gold", labelKey: "colorGold", label: "Gold", hex: "#e8c55a" },
+  { id: "sky", labelKey: "colorSky", label: "Sky", hex: "#7dd3fc" },
+  { id: "mint", labelKey: "colorMint", label: "Mint", hex: "#6ee7b7" },
+  { id: "rose", labelKey: "colorRose", label: "Rose", hex: "#fda4af" },
+  {
+    id: "lavender",
+    labelKey: "colorLavender",
+    label: "Lavender",
+    hex: "#c4b5fd",
+  },
 ] as const;
 
 function applyFontColor(colorId: string) {
@@ -47,28 +70,28 @@ export function UserProfileTab({
   onUpdateUser,
   onLogout,
 }: Props) {
+  const { t, language, setLanguage, isPWA } = useLanguage();
   const [editingBio, setEditingBio] = useState(false);
   const [bio, setBio] = useState(currentUser.bio || "");
   const photoRef = useRef<HTMLInputElement>(null);
-  const { language, setLanguage, isPWA } = useLanguage();
   const myPosts = posts.filter((p) => p.submittedBy === currentUser.id);
 
   const saveBio = () => {
     onUpdateBio(bio);
     setEditingBio(false);
-    toast.success("Bio updated!");
+    toast.success(t("updated", "Bio updated!"));
   };
 
   const handleThemeChange = (theme: string) => {
     onUpdateUser({ theme: theme as Account["theme"] });
     applyTheme(theme);
-    toast.success(`Theme changed to ${theme}`);
+    toast.success(`${t("theme", "Theme")} → ${theme}`);
   };
 
   const handleFontColor = (colorId: string) => {
     onUpdateUser({ fontColor: colorId as Account["fontColor"] });
     applyFontColor(colorId);
-    toast.success("Font color updated!");
+    toast.success(t("updated", "Font color updated!"));
   };
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -77,7 +100,7 @@ export function UserProfileTab({
     const reader = new FileReader();
     reader.onload = () => {
       onUpdateUser({ profilePhoto: reader.result as string });
-      toast.success("Profile photo updated!");
+      toast.success(t("updated", "Profile photo updated!"));
     };
     reader.readAsDataURL(file);
   };
@@ -123,14 +146,16 @@ export function UserProfileTab({
             </h2>
             <p className="text-xs text-muted-foreground">{currentUser.email}</p>
             <span className="text-xs bg-secondary text-muted-foreground px-2 py-0.5 rounded-full mt-1 inline-block capitalize">
-              {currentUser.role}
+              {t(currentUser.role as string, currentUser.role)}
             </span>
           </div>
         </div>
         <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 flex items-center gap-3 mb-4">
           <span className="material-symbols-outlined text-primary">badge</span>
           <div>
-            <p className="text-xs text-muted-foreground">Electronic ID</p>
+            <p className="text-xs text-muted-foreground">
+              {t("electronicId", "Electronic ID")}
+            </p>
             <p className="font-heading font-bold text-primary">
               {currentUser.electronicId}
             </p>
@@ -150,7 +175,7 @@ export function UserProfileTab({
                 className="bg-primary text-primary-foreground"
                 onClick={saveBio}
               >
-                Save
+                {t("save", "Save")}
               </Button>
               <Button
                 size="sm"
@@ -158,21 +183,21 @@ export function UserProfileTab({
                 className="border-border"
                 onClick={() => setEditingBio(false)}
               >
-                Cancel
+                {t("cancel", "Cancel")}
               </Button>
             </div>
           </div>
         ) : (
           <div className="flex items-start justify-between">
             <p className="text-sm text-muted-foreground flex-1">
-              {currentUser.bio || "No bio yet."}
+              {currentUser.bio || t("yourBio", "No bio yet.")}
             </p>
             <button
               onClick={() => setEditingBio(true)}
               className="text-primary text-xs ml-2 shrink-0"
               type="button"
             >
-              Edit bio
+              {t("editBio", "Edit bio")}
             </button>
           </div>
         )}
@@ -187,7 +212,7 @@ export function UserProfileTab({
           <span className="material-symbols-outlined text-primary text-lg">
             language
           </span>
-          Language
+          {t("language", "Language")}
         </h3>
         <div className="grid grid-cols-2 gap-2 mb-3">
           {LANGUAGES.map((lang) => (
@@ -223,23 +248,25 @@ export function UserProfileTab({
           <span className="material-symbols-outlined text-primary text-lg">
             palette
           </span>
-          App Theme
+          {t("theme", "App Theme")}
         </h3>
         <div className="grid grid-cols-3 gap-2">
-          {THEMES.map((t) => (
+          {THEMES.map((theme) => (
             <button
-              key={t.id}
+              key={theme.id}
               type="button"
-              onClick={() => handleThemeChange(t.id)}
+              onClick={() => handleThemeChange(theme.id)}
               className={`rounded-xl p-3 text-center border transition-all ${
-                (currentUser.theme || "dark") === t.id
+                (currentUser.theme || "dark") === theme.id
                   ? "border-primary bg-primary/15"
                   : "border-border bg-secondary hover:border-primary/40"
               }`}
             >
-              <p className="text-xs font-semibold">{t.label}</p>
+              <p className="text-xs font-semibold">
+                {t(theme.labelKey, theme.label)}
+              </p>
               <p className="text-[10px] text-muted-foreground mt-0.5">
-                {t.desc}
+                {theme.desc}
               </p>
             </button>
           ))}
@@ -252,7 +279,7 @@ export function UserProfileTab({
           <span className="material-symbols-outlined text-primary text-lg">
             format_color_text
           </span>
-          Font Color
+          {t("fontColor", "Font Color")}
         </h3>
         <div className="grid grid-cols-6 gap-2">
           {FONT_COLORS.map((c) => (
@@ -260,7 +287,7 @@ export function UserProfileTab({
               key={c.id}
               type="button"
               onClick={() => handleFontColor(c.id)}
-              title={c.label}
+              title={t(c.labelKey, c.label)}
               className={`h-9 rounded-lg border-2 transition-all ${
                 (currentUser.fontColor || "default") === c.id
                   ? "border-white scale-110"
@@ -279,11 +306,11 @@ export function UserProfileTab({
           <span className="material-symbols-outlined text-primary text-lg">
             explore
           </span>
-          My Submitted Places ({myPosts.length})
+          {t("discover", "My Submitted Places")} ({myPosts.length})
         </h3>
         {myPosts.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            You haven&apos;t posted any places yet.
+            {t("noUndiscoveredPlaces", "You haven't posted any places yet.")}
           </p>
         ) : (
           <div className="space-y-2">
@@ -305,7 +332,7 @@ export function UserProfileTab({
                       : "bg-yellow-500/15 text-yellow-400"
                   }`}
                 >
-                  {p.status}
+                  {t(p.status as string, p.status)}
                 </span>
               </div>
             ))}
@@ -317,9 +344,10 @@ export function UserProfileTab({
         variant="outline"
         className="w-full border-border text-muted-foreground"
         onClick={onLogout}
+        data-ocid="profile.sign_out_button"
       >
         <span className="material-symbols-outlined text-lg mr-2">logout</span>
-        Sign Out
+        {t("signOut", "Sign Out")}
       </Button>
     </div>
   );

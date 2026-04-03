@@ -106,6 +106,7 @@ export interface Account {
   membershipStatus?: "active" | "trial" | "suspended";
   businessDescription?: string;
   trialStartDate?: string;
+  hotelTrialStartDate?: string;
   // multi-business array
   businesses?: Business[];
   // community-only

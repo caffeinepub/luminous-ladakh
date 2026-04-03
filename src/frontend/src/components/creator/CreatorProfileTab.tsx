@@ -29,18 +29,28 @@ interface Props {
 }
 
 const THEMES = [
-  { id: "dark", label: "Dark", desc: "Deep black" },
-  { id: "slate", label: "Slate", desc: "Cool blue-grey" },
-  { id: "warm", label: "Warm", desc: "Amber tones" },
+  { id: "dark", labelKey: "darkTheme", label: "Dark", desc: "Deep black" },
+  {
+    id: "slate",
+    labelKey: "slateTheme",
+    label: "Slate",
+    desc: "Cool blue-grey",
+  },
+  { id: "warm", labelKey: "warmTheme", label: "Warm", desc: "Amber tones" },
 ] as const;
 
 const FONT_COLORS = [
-  { id: "default", label: "White", hex: "#f0e8d8" },
-  { id: "gold", label: "Gold", hex: "#e8c55a" },
-  { id: "sky", label: "Sky", hex: "#7dd3fc" },
-  { id: "mint", label: "Mint", hex: "#6ee7b7" },
-  { id: "rose", label: "Rose", hex: "#fda4af" },
-  { id: "lavender", label: "Lavender", hex: "#c4b5fd" },
+  { id: "default", labelKey: "colorWhite", label: "White", hex: "#f0e8d8" },
+  { id: "gold", labelKey: "colorGold", label: "Gold", hex: "#e8c55a" },
+  { id: "sky", labelKey: "colorSky", label: "Sky", hex: "#7dd3fc" },
+  { id: "mint", labelKey: "colorMint", label: "Mint", hex: "#6ee7b7" },
+  { id: "rose", labelKey: "colorRose", label: "Rose", hex: "#fda4af" },
+  {
+    id: "lavender",
+    labelKey: "colorLavender",
+    label: "Lavender",
+    hex: "#c4b5fd",
+  },
 ] as const;
 
 function applyFontColor(colorId: string) {
@@ -63,6 +73,7 @@ export function CreatorProfileTab({
   onAddSpecialAccount,
   onRemoveSpecialAccount,
 }: Props) {
+  const { t, language, setLanguage, isPWA } = useLanguage();
   const users = accounts.filter((a) => a.role === "user");
   const members = accounts.filter((a) => a.role === "member");
   const community = accounts.filter((a) => a.role === "community");
@@ -76,7 +87,6 @@ export function CreatorProfileTab({
   const [showCode, setShowCode] = useState(false);
   const [newSpecialEntry, setNewSpecialEntry] = useState("");
   const currentCode = localStorage.getItem("lc_communityCode") || "blackjack";
-  const { language, setLanguage, isPWA } = useLanguage();
 
   const photoRef = useRef<HTMLInputElement>(null);
 
@@ -86,7 +96,7 @@ export function CreatorProfileTab({
     const reader = new FileReader();
     reader.onload = () => {
       onUpdateUser?.({ profilePhoto: reader.result as string });
-      toast.success("Profile photo updated!");
+      toast.success(t("updated", "Profile photo updated!"));
     };
     reader.readAsDataURL(file);
   }
@@ -94,14 +104,14 @@ export function CreatorProfileTab({
   const handleThemeChange = (theme: string) => {
     if (onUpdateUser) onUpdateUser({ theme: theme as Account["theme"] });
     applyTheme(theme);
-    toast.success(`Theme changed to ${theme}`);
+    toast.success(`${t("theme", "Theme")} → ${theme}`);
   };
 
   const handleFontColor = (colorId: string) => {
     if (onUpdateUser)
       onUpdateUser({ fontColor: colorId as Account["fontColor"] });
     applyFontColor(colorId);
-    toast.success("Font color updated!");
+    toast.success(t("updated", "Font color updated!"));
   };
 
   return (
@@ -146,7 +156,7 @@ export function CreatorProfileTab({
             </h2>
             <p className="text-xs text-zinc-400">{currentUser.email}</p>
             <span className="text-xs bg-amber-500/15 text-amber-400 px-2 py-0.5 rounded-full mt-1 inline-block">
-              Creator ❆
+              {t("creator", "Creator")} ❆
             </span>
           </div>
         </div>
@@ -155,7 +165,9 @@ export function CreatorProfileTab({
             badge
           </span>
           <div>
-            <p className="text-xs text-zinc-400">Electronic ID</p>
+            <p className="text-xs text-zinc-400">
+              {t("electronicId", "Electronic ID")}
+            </p>
             <p className="font-bold text-amber-400">
               {currentUser.electronicId}
             </p>
@@ -172,7 +184,7 @@ export function CreatorProfileTab({
           <span className="material-symbols-outlined text-amber-400 text-lg">
             language
           </span>
-          Language
+          {t("language", "Language")}
         </h3>
         <div className="grid grid-cols-2 gap-2 mb-3">
           {LANGUAGES.map((lang) => (
@@ -210,7 +222,7 @@ export function CreatorProfileTab({
           <span className="material-symbols-outlined text-amber-400 text-lg">
             key
           </span>
-          Community Access Code
+          {t("communityCode", "Community Access Code")}
         </h3>
         <div className="flex items-center gap-2 mb-3">
           <div className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-sm text-white font-mono">
@@ -229,7 +241,7 @@ export function CreatorProfileTab({
         <div className="flex gap-2">
           <input
             className="flex-1 bg-zinc-900 text-white border border-zinc-700 rounded-lg px-3 py-2 text-sm placeholder:text-zinc-500 focus:outline-none focus:border-amber-500"
-            placeholder="New code..."
+            placeholder={`${t("changeCode", "New code")}...`}
             value={newCode}
             onChange={(e) => setNewCode(e.target.value)}
           />
@@ -242,11 +254,11 @@ export function CreatorProfileTab({
               }
               onSetCommunityCode?.(newCode.trim());
               setNewCode("");
-              toast.success("Community code updated!");
+              toast.success(t("codeSaved", "Community code updated!"));
             }}
             className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-sm"
           >
-            Save
+            {t("save", "Save")}
           </button>
         </div>
         <p className="text-xs text-zinc-600 mt-2">
@@ -260,16 +272,18 @@ export function CreatorProfileTab({
           <span className="material-symbols-outlined text-amber-400 text-lg">
             star
           </span>
-          Special Accounts
+          {t("specialAccounts", "Special Accounts")}
         </h3>
         <p className="text-xs text-zinc-500 mb-3">
-          Members added here get Lifetime Premier access at no cost. Users get
-          unique creation access. Both receive a one-time welcome greeting.
+          {t(
+            "specialAccountHint",
+            "Members added here get Lifetime Premier access at no cost. Users get unique creation access. Both receive a one-time welcome greeting.",
+          )}
         </p>
         <div className="flex gap-2 mb-3">
           <input
             className="flex-1 bg-zinc-900 text-white border border-zinc-700 rounded-lg px-3 py-2 text-sm placeholder:text-zinc-500 focus:outline-none focus:border-amber-500"
-            placeholder="Username or email..."
+            placeholder={t("specialAccountUsername", "Username or email...")}
             value={newSpecialEntry}
             onChange={(e) => setNewSpecialEntry(e.target.value)}
           />
@@ -283,17 +297,20 @@ export function CreatorProfileTab({
               onAddSpecialAccount?.(newSpecialEntry.trim());
               setNewSpecialEntry("");
               toast.success(
-                "Special account added — Lifetime Premier granted!",
+                t(
+                  "addedToSpecial",
+                  "Special account added — Lifetime Premier granted!",
+                ),
               );
             }}
             className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-sm whitespace-nowrap"
           >
-            Add
+            {t("add", "Add")}
           </button>
         </div>
         {specialAccounts.length === 0 ? (
           <p className="text-xs text-zinc-600 text-center py-2">
-            No special accounts yet.
+            {t("noSpecialAccounts", "No special accounts yet.")}
           </p>
         ) : (
           <div className="space-y-2">
@@ -307,8 +324,8 @@ export function CreatorProfileTab({
                     {entry.usernameOrEmail}
                   </p>
                   <p className="text-[10px] text-zinc-500">
-                    Added {new Date(entry.addedAt).toLocaleDateString()} ·
-                    Lifetime Premier
+                    {new Date(entry.addedAt).toLocaleDateString()} ·
+                    {t("lifetimePremier", "Lifetime Premier")}
                   </p>
                 </div>
                 <button
@@ -316,11 +333,14 @@ export function CreatorProfileTab({
                   onClick={() => {
                     onRemoveSpecialAccount?.(entry.id);
                     toast.success(
-                      "Removed from Special Accounts — access revoked.",
+                      t(
+                        "removedFromSpecial",
+                        "Removed from Special Accounts — access revoked.",
+                      ),
                     );
                   }}
                   className="p-1.5 rounded-lg bg-red-500/15 hover:bg-red-500/30 text-red-400"
-                  title="Remove"
+                  title={t("remove", "Remove")}
                 >
                   <span className="material-symbols-outlined text-sm">
                     person_remove
@@ -338,22 +358,24 @@ export function CreatorProfileTab({
           <span className="material-symbols-outlined text-amber-400 text-lg">
             palette
           </span>
-          App Theme
+          {t("theme", "App Theme")}
         </h3>
         <div className="grid grid-cols-3 gap-2">
-          {THEMES.map((t) => (
+          {THEMES.map((thm) => (
             <button
-              key={t.id}
+              key={thm.id}
               type="button"
-              onClick={() => handleThemeChange(t.id)}
+              onClick={() => handleThemeChange(thm.id)}
               className={`rounded-xl p-3 text-center border transition-all ${
-                (currentUser.theme || "dark") === t.id
+                (currentUser.theme || "dark") === thm.id
                   ? "border-amber-500 bg-amber-500/15"
                   : "border-zinc-700 bg-zinc-800 hover:border-amber-500/40"
               }`}
             >
-              <p className="text-xs font-semibold text-white">{t.label}</p>
-              <p className="text-[10px] text-zinc-500 mt-0.5">{t.desc}</p>
+              <p className="text-xs font-semibold text-white">
+                {t(thm.labelKey, thm.label)}
+              </p>
+              <p className="text-[10px] text-zinc-500 mt-0.5">{thm.desc}</p>
             </button>
           ))}
         </div>
@@ -365,7 +387,7 @@ export function CreatorProfileTab({
           <span className="material-symbols-outlined text-amber-400 text-lg">
             format_color_text
           </span>
-          Font Color
+          {t("fontColor", "Font Color")}
         </h3>
         <div className="grid grid-cols-6 gap-2">
           {FONT_COLORS.map((c) => (
@@ -373,7 +395,7 @@ export function CreatorProfileTab({
               key={c.id}
               type="button"
               onClick={() => handleFontColor(c.id)}
-              title={c.label}
+              title={t(c.labelKey, c.label)}
               className={`h-9 rounded-lg border-2 transition-all ${
                 (currentUser.fontColor || "default") === c.id
                   ? "border-white scale-110"
@@ -387,20 +409,25 @@ export function CreatorProfileTab({
 
       {/* Stats */}
       <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-4">
-        <h2 className="font-semibold text-white mb-3">Platform Summary</h2>
+        <h2 className="font-semibold text-white mb-3">
+          {t("dashboardTitle", "Platform Summary")}
+        </h2>
         <div className="space-y-2">
           {[
-            ["Total Users", users.length],
-            ["Total Members", members.length],
+            [t("totalUsers", "Total Users"), users.length],
+            [t("totalMembers", "Total Members"), members.length],
             ["Community Partners", community.length],
-            ["Wallet Balance", `₹${walletBalance.toLocaleString()}`],
+            [
+              t("walletBalance", "Wallet Balance"),
+              `₹${walletBalance.toLocaleString()}`,
+            ],
             ["Monthly Revenue", `₹${monthlyRevenue.toLocaleString()}`],
             ["Active Violations", activeViolations.length],
             [
               "Community Discoveries",
               posts.filter((p) => p.status === "approved").length,
             ],
-            ["Total Reviews", reviews.length],
+            [t("reviews", "Total Reviews"), reviews.length],
           ].map(([label, value]) => (
             <div
               key={String(label)}
@@ -417,9 +444,10 @@ export function CreatorProfileTab({
         variant="outline"
         className="w-full border-zinc-700 text-zinc-400 hover:text-white"
         onClick={onLogout}
+        data-ocid="profile.sign_out_button"
       >
         <span className="material-symbols-outlined text-lg mr-2">logout</span>
-        Sign Out
+        {t("signOut", "Sign Out")}
       </Button>
     </div>
   );

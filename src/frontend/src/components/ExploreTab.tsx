@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useLanguage } from "../context/LanguageContext";
 import { loadRoadStatus, saveRoadStatus } from "../data/roadStatusData";
 import type { RoadStatus } from "../types";
 import type { Account, LocationReview, Post, Review } from "../types";
@@ -557,6 +558,7 @@ function Overlay({
   children,
   title,
 }: { onClose: () => void; children: React.ReactNode; title?: string }) {
+  const { t } = useLanguage();
   return (
     <div
       className="fixed inset-0 z-50 flex items-end"
@@ -597,7 +599,7 @@ function Overlay({
                 strokeLinejoin="round"
               />
             </svg>
-            Back
+            {t("back", "Back")}
           </button>
           {title && (
             <span className="text-xs text-zinc-500 font-medium">{title}</span>
@@ -650,6 +652,7 @@ function CreatorPhotoGallery({
   name: string;
   onPhotosChange: (photos: string[]) => void;
 }) {
+  const { t } = useLanguage();
   const [active, setActive] = useState(0);
   const addInputRef = useRef<HTMLInputElement>(null);
 
@@ -694,7 +697,7 @@ function CreatorPhotoGallery({
               onClick={() => deletePhoto(active)}
               className="absolute top-2 right-2 bg-red-600/90 hover:bg-red-500 text-white text-xs px-2 py-1 rounded-lg font-semibold flex items-center gap-1 transition-colors"
             >
-              🗑️ Delete
+              🗑️ {t("delete", "Delete")}
             </button>
             <div className="absolute bottom-2 right-2 flex gap-1">
               {photos.map((_, i) => (
@@ -747,7 +750,7 @@ function CreatorPhotoGallery({
         onClick={() => addInputRef.current?.click()}
         className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-amber-500/50 hover:border-amber-500 text-amber-400 hover:text-amber-300 text-sm font-semibold transition-colors"
       >
-        ➕ Add Photo
+        ➕ {t("addPhoto", "Add Photo")}
       </button>
       <input
         ref={addInputRef}
@@ -838,6 +841,7 @@ function LocationCard({
   locationPhotosMap: Record<string, string[]>;
   onLocationPhotosChange: (locationId: string, photos: string[]) => void;
 }) {
+  const { t } = useLanguage();
   const [sheet, setSheet] = useState<"" | "details" | "reviews" | "edit">("");
   const [newRating, setNewRating] = useState(5);
   const [newComment, setNewComment] = useState("");
@@ -876,7 +880,7 @@ function LocationCard({
     });
     setNewComment("");
     setNewRating(5);
-    toast.success("Review submitted!");
+    toast.success(t("reviewPosted", "Review submitted!"));
   }
 
   function deleteReview(reviewId: string) {
@@ -916,7 +920,7 @@ function LocationCard({
         dataUrl,
       };
       savePendingPhotos([...pending, newEntry]);
-      toast.success("Photo submitted for approval!");
+      toast.success(t("photoSubmitted", "Photo submitted for approval!"));
     };
     reader.readAsDataURL(file);
     e.target.value = "";
@@ -981,7 +985,7 @@ function LocationCard({
               <span className="material-symbols-outlined text-sm">
                 directions
               </span>
-              Directions
+              {t("directions", "Directions")}
             </a>
             <button
               type="button"
@@ -989,7 +993,7 @@ function LocationCard({
               className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-zinc-200 transition-colors"
             >
               <span className="material-symbols-outlined text-sm">info</span>
-              Details
+              {t("details", "Details")}
             </button>
             <button
               type="button"
@@ -997,7 +1001,7 @@ function LocationCard({
               className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-zinc-200 transition-colors"
             >
               <span className="material-symbols-outlined text-sm">star</span>
-              Reviews
+              {t("reviews", "Reviews")}
             </button>
           </div>
         </div>
@@ -1056,7 +1060,7 @@ function LocationCard({
                   onClick={() => contributeInputRef.current?.click()}
                   className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-zinc-700 hover:border-zinc-500 text-zinc-400 hover:text-zinc-200 text-sm transition-colors"
                 >
-                  📷 Contribute a Photo
+                  {t("contributePhoto", "Contribute a Photo")}
                 </button>
                 <p className="text-xs text-zinc-600 text-center mt-1">
                   Photos are reviewed by the creator before appearing
@@ -1080,7 +1084,7 @@ function LocationCard({
               <span className="material-symbols-outlined text-sm">
                 directions
               </span>
-              Open in Google Maps
+              {t("openInMaps", "Open in Google Maps")}
             </a>
           </div>
         </Overlay>
@@ -1112,7 +1116,7 @@ function LocationCard({
                 <textarea
                   className="mt-2 w-full bg-zinc-900 text-white border border-zinc-700 rounded-lg px-3 py-2 text-sm placeholder:text-zinc-500 focus:outline-none focus:border-amber-500 resize-none"
                   rows={2}
-                  placeholder="Share your experience..."
+                  placeholder={t("yourReview", "Share your experience...")}
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
                 />
@@ -1121,13 +1125,13 @@ function LocationCard({
                   onClick={submitReview}
                   className="mt-2 w-full py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-sm transition-colors"
                 >
-                  Submit Review
+                  {t("submitReview", "Submit Review")}
                 </button>
               </div>
             )}
             {myReviews.length === 0 && (
               <p className="text-zinc-500 text-sm text-center py-4">
-                No reviews yet. Be the first!
+                {t("noReviewsYet", "No reviews yet. Be the first!")}
               </p>
             )}
             {myReviews.map((r) => (
@@ -1279,6 +1283,7 @@ function HotelCard({
   currentUserRole: string;
   currentUsername: string;
 }) {
+  const { t } = useLanguage();
   const [showDetail, setShowDetail] = useState(false);
   const closeDetail = () => setShowDetail(false);
   useOverlayHistory(showDetail, closeDetail);
@@ -1384,7 +1389,7 @@ function HotelCard({
                 <span className="material-symbols-outlined text-sm">
                   directions
                 </span>
-                Directions
+                {t("directions", "Directions")}
               </a>
             ) : (
               <button
@@ -1402,7 +1407,7 @@ function HotelCard({
               data-ocid="hotel.details_button"
             >
               <span className="material-symbols-outlined text-sm">info</span>
-              Details
+              {t("details", "Details")}
             </button>
             {hotel.phone && (
               <a
@@ -1446,6 +1451,7 @@ function BusinessCard({
   currentUserRole: string;
   onAddReview: (r: Omit<Review, "id" | "timestamp">) => void;
 }) {
+  const { t } = useLanguage();
   const [sheet, setSheet] = useState<"" | "details" | "reviews">("");
   const [newRating, setNewRating] = useState(5);
   const [newComment, setNewComment] = useState("");
@@ -1479,7 +1485,7 @@ function BusinessCard({
     });
     setNewComment("");
     setNewRating(5);
-    toast.success("Review submitted!");
+    toast.success(t("reviewPosted", "Review submitted!"));
   }
 
   return (
@@ -1534,7 +1540,7 @@ function BusinessCard({
                 <span className="material-symbols-outlined text-sm">
                   directions
                 </span>
-                Directions
+                {t("directions", "Directions")}
               </a>
             ) : (
               <button
@@ -1553,7 +1559,7 @@ function BusinessCard({
               className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-zinc-200 transition-colors"
             >
               <span className="material-symbols-outlined text-sm">info</span>
-              Details
+              {t("details", "Details")}
             </button>
             <button
               type="button"
@@ -1561,7 +1567,7 @@ function BusinessCard({
               className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-zinc-200 transition-colors"
             >
               <span className="material-symbols-outlined text-sm">star</span>
-              Reviews
+              {t("reviews", "Reviews")}
             </button>
           </div>
         </div>
@@ -1590,7 +1596,7 @@ function BusinessCard({
                 <span className="material-symbols-outlined text-sm">
                   directions
                 </span>
-                Get Directions
+                {t("directions", "Get Directions")}
               </a>
             )}
           </div>
@@ -1617,13 +1623,13 @@ function BusinessCard({
             {currentUserRole === "user" && (
               <div className="bg-zinc-800 rounded-xl p-4 mb-4">
                 <p className="text-sm font-semibold text-zinc-300 mb-2">
-                  Write a Review
+                  {t("writeReview", "Write a Review")}
                 </p>
                 <StarRating rating={newRating} onChange={setNewRating} />
                 <textarea
                   className="mt-2 w-full bg-zinc-900 text-white border border-zinc-700 rounded-lg px-3 py-2 text-sm placeholder:text-zinc-500 focus:outline-none focus:border-amber-500 resize-none"
                   rows={2}
-                  placeholder="Share your experience..."
+                  placeholder={t("yourReview", "Share your experience...")}
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
                 />
@@ -1632,13 +1638,13 @@ function BusinessCard({
                   onClick={submitReview}
                   className="mt-2 w-full py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-sm transition-colors"
                 >
-                  Submit
+                  {t("submitReview", "Submit Review")}
                 </button>
               </div>
             )}
             {myReviews.length === 0 && (
               <p className="text-zinc-500 text-sm text-center py-4">
-                No reviews yet.
+                {t("noReviewsYet", "No reviews yet.")}
               </p>
             )}
             {myReviews.map((r) => (
@@ -1679,6 +1685,25 @@ export function ExploreTab({
   const [roadStatuses, setRoadStatuses] =
     useState<RoadStatus[]>(loadRoadStatus);
 
+  const { t } = useLanguage();
+  const CATEGORY_KEYS: Record<string, string> = {
+    All: t("allCategories", "All"),
+    Monasteries: t("monasteries", "Monasteries"),
+    Temples: t("temples", "Temples"),
+    Parks: t("parks", "Parks"),
+    Schools: t("schools", "Schools"),
+    Hospitals: t("hospitals", "Hospitals"),
+    Emergency: t("emergency", "Emergency"),
+    "Banks/ATMs": t("banks", "Banks/ATMs"),
+    Hotels: t("hotels", "Hotels"),
+    Food: t("food", "Food"),
+    Shopping: "Shopping",
+    Services: "Services",
+    Lakes: t("lakes", "Lakes"),
+    Valleys: t("valleys", "Valleys"),
+    Heritage: t("heritage", "Heritage"),
+    Passes: t("passes", "Passes"),
+  };
   const currentAccount = accounts.find((a) => a.id === currentUserId);
   const currentUsername = currentAccount?.username || "user";
 
@@ -1736,7 +1761,9 @@ export function ExploreTab({
   return (
     <div>
       <div className="mb-4">
-        <h2 className="text-xl font-bold text-white mb-1">Explore Ladakh</h2>
+        <h2 className="text-xl font-bold text-white mb-1">
+          {t("exploreTitle", "Explore Ladakh")}
+        </h2>
         <p className="text-zinc-500 text-sm">
           Discover monasteries, places, and local businesses
         </p>
@@ -1770,7 +1797,7 @@ export function ExploreTab({
                 : "bg-zinc-800 text-zinc-400 hover:text-white"
             }`}
           >
-            {cat}
+            {CATEGORY_KEYS[cat] ?? cat}
           </button>
         ))}
       </div>
@@ -1779,7 +1806,7 @@ export function ExploreTab({
         <div className="mb-6">
           <h3 className="text-sm font-bold text-amber-400 mb-3 flex items-center gap-2">
             <span className="material-symbols-outlined text-sm">pending</span>
-            Pending Posts ({pendingPosts.length})
+            {t("pendingApprovals", "Pending Posts")} ({pendingPosts.length})
           </h3>
           {pendingPosts.map((post) => (
             <div
@@ -1794,14 +1821,14 @@ export function ExploreTab({
                   onClick={() => onApprovePost?.(post.id)}
                   className="flex-1 py-2 rounded-lg bg-green-600 hover:bg-green-500 text-white text-xs font-semibold"
                 >
-                  Approve
+                  {t("approve", "Approve")}
                 </button>
                 <button
                   type="button"
                   onClick={() => onRejectPost?.(post.id)}
                   className="flex-1 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-semibold"
                 >
-                  Reject
+                  {t("reject", "Reject")}
                 </button>
               </div>
             </div>
@@ -1889,7 +1916,7 @@ export function ExploreTab({
             explore_off
           </span>
           <p className="text-zinc-500 text-sm">
-            No places found in this category yet.
+            {t("noLocationsFound", "No places found in this category yet.")}
           </p>
         </div>
       )}

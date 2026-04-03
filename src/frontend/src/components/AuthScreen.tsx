@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLanguage } from "../context/LanguageContext";
 import type { Role } from "../types";
 
 const inputCls =
@@ -40,44 +41,46 @@ type AuthMethod = "email" | "google" | "facebook";
 type RoleChoice = "user" | "member" | "community" | "creator";
 type RecoveryStep = "username" | "secword" | "newpassword";
 
-const ROLES: {
-  value: RoleChoice;
-  label: string;
-  icon: string;
-  desc: string;
-}[] = [
-  {
-    value: "user",
-    label: "User",
-    icon: "🧭",
-    desc: "Explore & discover Ladakh",
-  },
-  {
-    value: "member",
-    label: "Member",
-    icon: "🏪",
-    desc: "Promote your business",
-  },
-  {
-    value: "community",
-    label: "Community",
-    icon: "🤝",
-    desc: "Community access (code required)",
-  },
-  {
-    value: "creator",
-    label: "Creator",
-    icon: "👑",
-    desc: "Admin & platform management",
-  },
-];
-
 export function AuthScreen({
   onLogin,
   onSignup,
   onSocialLogin,
   onRecoverPassword,
 }: Props) {
+  const { t } = useLanguage();
+
+  const ROLES: {
+    value: RoleChoice;
+    label: string;
+    icon: string;
+    desc: string;
+  }[] = [
+    {
+      value: "user",
+      label: t("user", "User"),
+      icon: "🧭",
+      desc: t("userDesc", "Explore & discover Ladakh"),
+    },
+    {
+      value: "member",
+      label: t("member", "Member"),
+      icon: "🏪",
+      desc: t("memberDesc", "Promote your business"),
+    },
+    {
+      value: "community",
+      label: t("communityMember", "Community"),
+      icon: "🤝",
+      desc: t("communityDesc", "Community access (code required)"),
+    },
+    {
+      value: "creator",
+      label: t("creator", "Creator"),
+      icon: "👑",
+      desc: t("creatorDesc", "Admin & platform management"),
+    },
+  ];
+
   const [selectedRole, setSelectedRole] = useState<RoleChoice | null>(null);
   const [isLogin, setIsLogin] = useState(true);
   const [method, setMethod] = useState<AuthMethod>("email");
@@ -133,18 +136,19 @@ export function AuthScreen({
     e.preventDefault();
     setError("");
     const result = onLogin(loginUsername, loginPassword);
-    if (!result.success) setError(result.error || "Login failed");
+    if (!result.success)
+      setError(result.error || t("loginFailed", "Login failed"));
   }
 
   function handleEmailSignup(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     if (signupPassword !== signupConfirm) {
-      setError("Passwords do not match");
+      setError(t("passwordsNoMatch", "Passwords do not match"));
       return;
     }
     if (!termsAccepted) {
-      setError("Please accept the Terms & Conditions");
+      setError(t("acceptTerms", "Please accept the Terms & Conditions"));
       return;
     }
     const role = selectedRole as Exclude<Role, "creator">;
@@ -157,10 +161,10 @@ export function AuthScreen({
       securityWord: signupSecurityWord || undefined,
     });
     if (!result.success) {
-      setError(result.error || "Signup failed");
+      setError(result.error || t("signupFailed", "Signup failed"));
     } else if (result.electronicId) {
       setSuccessMsg(
-        `Welcome! Your Electronic ID is: ${result.electronicId} — save this for re-login.`,
+        `${t("welcomeElectronicId", "Welcome! Your Electronic ID is:")}: ${result.electronicId} — ${t("saveForRelogin", "save this for re-login.")}`,
       );
     }
   }
@@ -179,10 +183,10 @@ export function AuthScreen({
     );
     setLoading(false);
     if (!result.success) {
-      setError(result.error || "Login failed");
+      setError(result.error || t("loginFailed", "Login failed"));
     } else if (result.isNew && result.electronicId) {
       setSuccessMsg(
-        `Account created! Your Electronic ID: ${result.electronicId}`,
+        `${t("accountCreated", "Account created! Your Electronic ID:")}: ${result.electronicId}`,
       );
     }
   }
@@ -191,19 +195,19 @@ export function AuthScreen({
     setError("");
     if (recoveryStep === "username") {
       if (!recoveryUsername.trim()) {
-        setError("Please enter your username");
+        setError(t("enterUsername", "Please enter your username"));
         return;
       }
       setRecoveryStep("secword");
     } else if (recoveryStep === "secword") {
       if (!recoverySecWord.trim()) {
-        setError("Please enter your security word");
+        setError(t("enterSecurityWord", "Please enter your security word"));
         return;
       }
       setRecoveryStep("newpassword");
     } else if (recoveryStep === "newpassword") {
       if (recoveryNewPw !== recoveryConfirmPw) {
-        setError("Passwords do not match");
+        setError(t("passwordsNoMatch", "Passwords do not match"));
         return;
       }
       if (recoveryNewPw.length < 6) {
@@ -216,14 +220,17 @@ export function AuthScreen({
         recoveryNewPw,
       );
       if (!result.success) {
-        setError(result.error || "Recovery failed");
+        setError(result.error || t("recoveryFailed", "Recovery failed"));
         setRecoveryStep("secword");
         setRecoverySecWord("");
       } else {
         setShowForgotPassword(false);
         setRecoveryStep("username");
         setSuccessMsg(
-          "Password reset successfully! You can now log in with your new password.",
+          t(
+            "passwordResetSuccess",
+            "Password reset successfully! You can now log in with your new password.",
+          ),
         );
       }
     }
@@ -242,7 +249,7 @@ export function AuthScreen({
             onClick={resetRecovery}
             className="text-zinc-400 hover:text-white text-sm flex items-center gap-1 mb-6 transition-colors"
           >
-            ← Back to Login
+            {t("backToLogin", "← Back to Login")}
           </button>
 
           <div className="text-center mb-6">
@@ -251,11 +258,16 @@ export function AuthScreen({
                 lock_reset
               </span>
             </div>
-            <h2 className="text-xl font-bold text-white">Recover Password</h2>
+            <h2 className="text-xl font-bold text-white">
+              {t("recoverPassword", "Recover Password")}
+            </h2>
             <p className="text-zinc-500 text-sm mt-1">
-              {recoveryStep === "username" && "Enter your username"}
-              {recoveryStep === "secword" && "Enter your security word"}
-              {recoveryStep === "newpassword" && "Set a new password"}
+              {recoveryStep === "username" &&
+                t("enterUsername", "Enter your username")}
+              {recoveryStep === "secword" &&
+                t("enterSecurityWord", "Enter your security word")}
+              {recoveryStep === "newpassword" &&
+                t("setNewPassword", "Set a new password")}
             </p>
           </div>
 
@@ -287,12 +299,12 @@ export function AuthScreen({
             <div className="space-y-4">
               <div>
                 <label htmlFor="rec-username" className={labelCls}>
-                  Username
+                  {t("username", "Username")}
                 </label>
                 <input
                   id="rec-username"
                   className={inputCls}
-                  placeholder="Enter your username"
+                  placeholder={t("enterYourUsername", "Enter your username")}
                   value={recoveryUsername}
                   onChange={(e) => setRecoveryUsername(e.target.value)}
                 />
@@ -302,7 +314,7 @@ export function AuthScreen({
                 onClick={handleRecoveryNext}
                 className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold transition-colors"
               >
-                Next →
+                {t("next", "Next")} →
               </button>
             </div>
           )}
@@ -311,22 +323,31 @@ export function AuthScreen({
             <div className="space-y-4">
               <div>
                 <label htmlFor="rec-secword" className={labelCls}>
-                  Security Word
+                  {t("securityWord", "Security Word")}
                 </label>
                 <input
                   id="rec-secword"
                   className={inputCls}
                   placeholder={
                     isCreatorRole
-                      ? "e.g. King of Hearts, Ace of Spades"
-                      : "Your personal security word"
+                      ? t(
+                          "creatorSecurityHint",
+                          "e.g. King of Hearts, Ace of Spades",
+                        )
+                      : t(
+                          "securityWordPlaceholder",
+                          "Your personal security word",
+                        )
                   }
                   value={recoverySecWord}
                   onChange={(e) => setRecoverySecWord(e.target.value)}
                 />
                 {isCreatorRole && (
                   <p className="text-xs text-amber-400/70 mt-1">
-                    Enter a card from a 52-card deck, or "52 decks of cards"
+                    {t(
+                      "creatorSecurityHint",
+                      `Enter a card from a 52-card deck, or "52 decks of cards"`,
+                    )}
                   </p>
                 )}
               </div>
@@ -335,7 +356,7 @@ export function AuthScreen({
                 onClick={handleRecoveryNext}
                 className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold transition-colors"
               >
-                Next →
+                {t("next", "Next")} →
               </button>
             </div>
           )}
@@ -344,26 +365,29 @@ export function AuthScreen({
             <div className="space-y-4">
               <div>
                 <label htmlFor="rec-newpw" className={labelCls}>
-                  New Password
+                  {t("newPassword", "New Password")}
                 </label>
                 <input
                   id="rec-newpw"
                   type="password"
                   className={inputCls}
-                  placeholder="Create a new password"
+                  placeholder={t("createNewPassword", "Create a new password")}
                   value={recoveryNewPw}
                   onChange={(e) => setRecoveryNewPw(e.target.value)}
                 />
               </div>
               <div>
                 <label htmlFor="rec-confirmpw" className={labelCls}>
-                  Confirm New Password
+                  {t("confirmNewPassword", "Confirm New Password")}
                 </label>
                 <input
                   id="rec-confirmpw"
                   type="password"
                   className={inputCls}
-                  placeholder="Confirm your new password"
+                  placeholder={t(
+                    "confirmYourNewPassword",
+                    "Confirm your new password",
+                  )}
                   value={recoveryConfirmPw}
                   onChange={(e) => setRecoveryConfirmPw(e.target.value)}
                 />
@@ -373,7 +397,7 @@ export function AuthScreen({
                 onClick={handleRecoveryNext}
                 className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold transition-colors"
               >
-                Reset Password
+                {t("resetPassword", "Reset Password")}
               </button>
             </div>
           )}
@@ -403,13 +427,13 @@ export function AuthScreen({
             Ladakh Connect
           </h1>
           <p className="text-zinc-500 text-sm mt-1">
-            Building Ladakh in one app
+            {t("buildingLadakh", "Building Ladakh in one app")}
           </p>
         </div>
 
         <div className="w-full max-w-sm">
           <p className="text-center text-zinc-300 font-semibold mb-4 text-sm">
-            Who are you?
+            {t("whoAreYou", "Who are you?")}
           </p>
           <div className="space-y-3">
             {ROLES.map((r) => (
@@ -457,7 +481,9 @@ export function AuthScreen({
         >
           Ladakh Connect
         </h1>
-        <p className="text-zinc-500 text-sm mt-1">Building Ladakh in one app</p>
+        <p className="text-zinc-500 text-sm mt-1">
+          {t("buildingLadakh", "Building Ladakh in one app")}
+        </p>
       </div>
 
       <div className="w-full max-w-sm">
@@ -468,10 +494,11 @@ export function AuthScreen({
             onClick={() => setSelectedRole(null)}
             className="text-zinc-400 hover:text-white text-sm flex items-center gap-1 transition-colors"
           >
-            ← Back
+            ← {t("back", "Back")}
           </button>
           <span className="ml-auto px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-xs font-semibold capitalize">
-            {ROLES.find((r) => r.value === selectedRole)?.icon} {selectedRole}
+            {ROLES.find((r) => r.value === selectedRole)?.icon}{" "}
+            {ROLES.find((r) => r.value === selectedRole)?.label}
           </span>
         </div>
 
@@ -485,7 +512,10 @@ export function AuthScreen({
         {isCreatorRole ? (
           <div>
             <p className="text-zinc-400 text-xs mb-4 text-center">
-              Creator access is restricted. Enter your credentials.
+              {t(
+                "creatorRestricted",
+                "Creator access is restricted. Enter your credentials.",
+              )}
             </p>
             {error && (
               <div className="mb-4 p-3 rounded-lg bg-red-500/15 border border-red-500/30 text-red-400 text-sm">
@@ -494,13 +524,13 @@ export function AuthScreen({
             )}
             <form onSubmit={handleEmailLogin} className="space-y-4">
               <div>
-                <label htmlFor="rec-username" className={labelCls}>
-                  Username
+                <label htmlFor="creator-username" className={labelCls}>
+                  {t("username", "Username")}
                 </label>
                 <input
-                  id="rec-username"
+                  id="creator-username"
                   className={inputCls}
-                  placeholder="Enter your username"
+                  placeholder={t("enterYourUsername", "Enter your username")}
                   value={loginUsername}
                   onChange={(e) => setLoginUsername(e.target.value)}
                   autoComplete="username"
@@ -509,13 +539,13 @@ export function AuthScreen({
               </div>
               <div>
                 <label htmlFor="creator-password" className={labelCls}>
-                  Password
+                  {t("password", "Password")}
                 </label>
                 <input
                   id="creator-password"
                   type="password"
                   className={inputCls}
-                  placeholder="Enter your password"
+                  placeholder={t("enterYourPassword", "Enter your password")}
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   autoComplete="current-password"
@@ -526,7 +556,7 @@ export function AuthScreen({
                 type="submit"
                 className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold transition-colors"
               >
-                Sign In as Creator
+                {t("signInAsCreator", "Sign In as Creator")}
               </button>
               <button
                 type="button"
@@ -536,7 +566,7 @@ export function AuthScreen({
                 }}
                 className="w-full text-center text-xs text-amber-400/70 hover:text-amber-400 transition-colors"
               >
-                Forgot Password? (Creator recovery)
+                {t("creatorRecovery", "Forgot Password? (Creator recovery)")}
               </button>
             </form>
           </div>
@@ -557,7 +587,7 @@ export function AuthScreen({
                     : "bg-zinc-900 text-zinc-400 hover:text-white"
                 }`}
               >
-                Sign In
+                {t("signIn", "Sign In")}
               </button>
               <button
                 type="button"
@@ -572,7 +602,7 @@ export function AuthScreen({
                     : "bg-zinc-900 text-zinc-400 hover:text-white"
                 }`}
               >
-                Sign Up
+                {t("signup", "Sign Up")}
               </button>
             </div>
 
@@ -593,7 +623,7 @@ export function AuthScreen({
                   }`}
                 >
                   {m === "email"
-                    ? "📧 Email"
+                    ? `📧 ${t("email", "Email")}`
                     : m === "google"
                       ? "🔵 Google"
                       : "🔷 Facebook"}
@@ -613,12 +643,12 @@ export function AuthScreen({
               <form onSubmit={handleEmailLogin} className="space-y-4">
                 <div>
                   <label htmlFor="login-username" className={labelCls}>
-                    Username
+                    {t("username", "Username")}
                   </label>
                   <input
                     id="login-username"
                     className={inputCls}
-                    placeholder="Enter your username"
+                    placeholder={t("enterYourUsername", "Enter your username")}
                     value={loginUsername}
                     onChange={(e) => setLoginUsername(e.target.value)}
                     autoComplete="username"
@@ -627,13 +657,13 @@ export function AuthScreen({
                 </div>
                 <div>
                   <label htmlFor="login-password" className={labelCls}>
-                    Password
+                    {t("password", "Password")}
                   </label>
                   <input
                     id="login-password"
                     type="password"
                     className={inputCls}
-                    placeholder="Enter your password"
+                    placeholder={t("enterYourPassword", "Enter your password")}
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     autoComplete="current-password"
@@ -644,7 +674,7 @@ export function AuthScreen({
                   type="submit"
                   className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold transition-colors"
                 >
-                  Sign In
+                  {t("signIn", "Sign In")}
                 </button>
                 <button
                   type="button"
@@ -655,7 +685,7 @@ export function AuthScreen({
                   }}
                   className="w-full text-center text-xs text-amber-400/70 hover:text-amber-400 transition-colors"
                 >
-                  Forgot Password?
+                  {t("forgotPassword", "Forgot Password?")}
                 </button>
               </form>
             )}
@@ -665,12 +695,12 @@ export function AuthScreen({
               <form onSubmit={handleEmailSignup} className="space-y-4">
                 <div>
                   <label htmlFor="signup-username" className={labelCls}>
-                    Username
+                    {t("username", "Username")}
                   </label>
                   <input
                     id="signup-username"
                     className={inputCls}
-                    placeholder="Choose a username"
+                    placeholder={t("chooseUsername", "Choose a username")}
                     value={signupUsername}
                     onChange={(e) => setSignupUsername(e.target.value)}
                     autoComplete="username"
@@ -679,13 +709,13 @@ export function AuthScreen({
                 </div>
                 <div>
                   <label htmlFor="signup-email" className={labelCls}>
-                    Email
+                    {t("email", "Email")}
                   </label>
                   <input
                     id="signup-email"
                     type="email"
                     className={inputCls}
-                    placeholder="your@email.com"
+                    placeholder={t("yourEmail", "your@email.com")}
                     value={signupEmail}
                     onChange={(e) => setSignupEmail(e.target.value)}
                     autoComplete="email"
@@ -694,13 +724,13 @@ export function AuthScreen({
                 </div>
                 <div>
                   <label htmlFor="signup-password" className={labelCls}>
-                    Password
+                    {t("password", "Password")}
                   </label>
                   <input
                     id="signup-password"
                     type="password"
                     className={inputCls}
-                    placeholder="Create a password"
+                    placeholder={t("createPassword", "Create a password")}
                     value={signupPassword}
                     onChange={(e) => setSignupPassword(e.target.value)}
                     autoComplete="new-password"
@@ -709,13 +739,16 @@ export function AuthScreen({
                 </div>
                 <div>
                   <label htmlFor="signup-confirm" className={labelCls}>
-                    Confirm Password
+                    {t("confirmPassword", "Confirm Password")}
                   </label>
                   <input
                     id="signup-confirm"
                     type="password"
                     className={inputCls}
-                    placeholder="Confirm your password"
+                    placeholder={t(
+                      "confirmYourPassword",
+                      "Confirm your password",
+                    )}
                     value={signupConfirm}
                     onChange={(e) => setSignupConfirm(e.target.value)}
                     autoComplete="new-password"
@@ -724,31 +757,40 @@ export function AuthScreen({
                 </div>
                 <div>
                   <label htmlFor="signup-secword" className={labelCls}>
-                    Security Word
+                    {t("securityWord", "Security Word")}
                     <span className="text-zinc-600 ml-1">
-                      (for password recovery)
+                      {t("securityWordHint", "(for password recovery)")}
                     </span>
                   </label>
                   <input
                     id="signup-secword"
                     className={inputCls}
-                    placeholder="A word or phrase only you know"
+                    placeholder={t(
+                      "securityWordPlaceholder",
+                      "A word or phrase only you know",
+                    )}
                     value={signupSecurityWord}
                     onChange={(e) => setSignupSecurityWord(e.target.value)}
                   />
                   <p className="text-xs text-zinc-600 mt-1">
-                    Save this — you'll need it if you forget your password.
+                    {t(
+                      "securityWordSaveHint",
+                      "Save this — you'll need it if you forget your password.",
+                    )}
                   </p>
                 </div>
                 {selectedRole === "community" && (
                   <div>
                     <label htmlFor="signup-code" className={labelCls}>
-                      Community Access Code
+                      {t("communityAccessCode", "Community Access Code")}
                     </label>
                     <input
                       id="signup-code"
                       className={inputCls}
-                      placeholder="Enter the access code from your Creator"
+                      placeholder={t(
+                        "communityCodePlaceholder",
+                        "Enter the access code from your Creator",
+                      )}
                       value={communityCode}
                       onChange={(e) => setCommunityCode(e.target.value)}
                       required
@@ -763,22 +805,17 @@ export function AuthScreen({
                     onChange={(e) => setTermsAccepted(e.target.checked)}
                   />
                   <span className="text-xs text-zinc-400">
-                    I agree to the{" "}
-                    <span className="text-amber-400 underline cursor-pointer">
-                      Terms & Conditions
-                    </span>{" "}
-                    and{" "}
-                    <span className="text-amber-400 underline cursor-pointer">
-                      Privacy Policy
-                    </span>
-                    . Military/army content is strictly prohibited.
+                    {t(
+                      "termsAgreement",
+                      "I agree to the Terms & Conditions and Privacy Policy. Military/army content is strictly prohibited.",
+                    )}
                   </span>
                 </label>
                 <button
                   type="submit"
                   className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold transition-colors"
                 >
-                  Create Account
+                  {t("createAccount", "Create Account")}
                 </button>
               </form>
             )}
@@ -798,16 +835,16 @@ export function AuthScreen({
                   </span>
                   <div>
                     <p className="font-bold text-sm">
-                      Continue with {providerName}
+                      {t("continueWithGoogle", "Continue with")} {providerName}
                     </p>
                     <p className="text-xs opacity-70">
-                      Enter your {providerName} account details
+                      {t("enterDetails", "Enter your account details")}
                     </p>
                   </div>
                 </div>
                 <div>
                   <label htmlFor="social-email" className={labelCls}>
-                    {providerName} Email
+                    {providerName} {t("email", "Email")}
                   </label>
                   <input
                     id="social-email"
@@ -823,12 +860,12 @@ export function AuthScreen({
                 </div>
                 <div>
                   <label htmlFor="social-name" className={labelCls}>
-                    Your Full Name
+                    {t("yourFullName", "Your Full Name")}
                   </label>
                   <input
                     id="social-name"
                     className={inputCls}
-                    placeholder="Name as on your account"
+                    placeholder={t("nameOnAccount", "Name as on your account")}
                     value={socialName}
                     onChange={(e) => setSocialName(e.target.value)}
                     required
@@ -837,12 +874,12 @@ export function AuthScreen({
                 {!isLogin && selectedRole === "community" && (
                   <div>
                     <label htmlFor="social-code" className={labelCls}>
-                      Community Access Code
+                      {t("communityAccessCode", "Community Access Code")}
                     </label>
                     <input
                       id="social-code"
                       className={inputCls}
-                      placeholder="Enter access code"
+                      placeholder={t("enterAccessCode", "Enter access code")}
                       value={socialCommunityCode}
                       onChange={(e) => setSocialCommunityCode(e.target.value)}
                       required
@@ -858,7 +895,9 @@ export function AuthScreen({
                       : "bg-[#1877F2] text-white hover:bg-blue-600"
                   }`}
                 >
-                  {loading ? "Connecting..." : `Continue with ${providerName}`}
+                  {loading
+                    ? t("connecting", "Connecting...")
+                    : `${t("continueWithGoogle", "Continue with")} ${providerName}`}
                 </button>
               </form>
             )}
@@ -868,8 +907,10 @@ export function AuthScreen({
         {/* Warnings */}
         <div className="mt-6 p-3 rounded-lg bg-zinc-900 border border-zinc-800">
           <p className="text-xs text-zinc-500 text-center">
-            ⚠️ Military/army content is strictly prohibited and will result in
-            automatic account warnings.
+            {t(
+              "militaryWarning",
+              "⚠️ Military/army content is strictly prohibited and will result in automatic account warnings.",
+            )}
           </p>
         </div>
       </div>
