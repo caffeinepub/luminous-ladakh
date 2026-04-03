@@ -1,62 +1,47 @@
-# Ladakh Connect — Version 23: Stability & Security Layer
+# Ladakh Connect — Version 31
 
 ## Current State
-Version 22 is live. The app has:
-- 4 roles: User, Member, Community Member, Creator
-- Role-based navigation and conditional rendering
-- Auth via useAuth hook (localStorage-based accounts)
-- Account model (Account type in types/index.ts)
-- Creator wallet (WalletTab.tsx) with pending payments, confirm/reject, withdraw
-- AuthScreen.tsx handles login/signup with role selector
-- Language system (LanguageContext.tsx) with 3 main languages
-- main.tsx wraps App in QueryClientProvider + InternetIdentityProvider
-- No global error boundary — a crash in any component takes down the whole app
-- No security word / password recovery in Account model or AuthScreen
-- No content moderation on uploads
-- No withdrawal security watch or wallet audit log
-- No role isolation enforcement beyond UI conditionals
+- Multi-role PWA: User, Member, Community Member, Creator
+- Hotels: Premier members only, with 2-hour trial for Common. After trial, Common sees locked/upgrade UI.
+- Restaurants/Rentals: Common + Premier members
+- Membership tab: Shows both Common (₹1,000) and Premier (₹1,500) plans with working Pay buttons
+- Trial logic: All new members get 2-hour trial (trialStartDate set at signup). After trial, business tab locked until payment.
+- Security: brute-force protection, security word recovery, role isolation, Creator wallet 4-layer protection
+- Language: English/Hindi/Ladakhi (web); 90+ world languages downloadable (PWA)
+- Stability: ErrorBoundary wraps every tab; LanguageProvider in main.tsx is sometimes missing (root crash cause)
+- Profile photo: upload via hidden file input — no camera permission prompt
+- Onboarding T&C: accepted at signup, 2 generic rules shown
+- Auth screen: role selector for all 4 roles including Creator
 
 ## Requested Changes (Diff)
 
 ### Add
-- **Global Error Boundary** (ErrorBoundary.tsx): React class component wrapping entire app. Catches any render crash, shows a friendly retry/refresh UI instead of blank screen. Also wraps individual tabs so one tab crash doesn't kill the whole app.
-- **AppErrorBoundary** in main.tsx: Wrap `<App />` with the error boundary
-- **Security Word field** on Account type: `securityWord?: string` — stored hashed alongside passwordHash
-- **Security Word setup during signup**: All roles (user, member, community, creator) must set a security word during signup. Creator's security word must be a valid 52-card deck card name (e.g. "King of Hearts", "Ace of Spades") OR the phrase "52 decks of cards".
-- **Forgot Password flow** in AuthScreen: "Forgot Password?" link on login screen → enter username → enter security word → set new password + confirm → save. Works for all roles.
-- **Security Word validation for Creator withdrawal**: Before processing any withdrawal in WalletTab, Creator must enter their security word. Wrong word blocks withdrawal.
-- **Wallet Audit Log**: Every payment confirmation, rejection, and withdrawal attempt (successful or blocked) is logged with timestamp, amount, and action type. Displayed in WalletTab as a scrollable log.
-- **ROG-style Security Watch panel** in WalletTab: Shows a security status monitor during withdrawal — logs the attempt in real time, validates the security word, shows a visual "scanning" state before approving or blocking.
-- **Content moderation on uploads**: When any file/text is submitted (photo contribution, business photo, post), scan for banned keywords (military, army, nude, explicit, spam keywords). Block flagged content and show warning.
-- **Role isolation enforcement**: Add guard utilities so Creator-only data (wallet balance, wallet transactions, moderation data) cannot be accessed from non-Creator components. Each role's data access is scoped.
-- **Auto-retry wrapper**: A `RetryWrapper` component that catches failed data loads and shows a retry button with countdown.
+- **Trial access for all roles at signup**: Every new member (any role) gets to choose any role during signup and access that role's features for the 2-hour trial. This is already the case for members — confirm it's consistent and clearly labeled in UI.
+- **Camera/media permission request**: Before opening the file picker for profile photo upload (in all profile tabs: User, Member, Community Member, Creator) OR before using camera features, the app must show a permission dialog explaining WHY access is needed ("To upload your profile photo, we need access to your photos/camera. Allow?"). User can Allow or Deny. If denied, the upload button is disabled with a message. This is a soft permission gate — using browser's getUserMedia/permissions API where possible, otherwise a custom modal confirmation.
+- **Two new platform rules/guidelines**: Added to the signup T&C acceptance step AND visible in a "Platform Rules" section on each profile tab. Rules:
+  1. **Respect & Authenticity Rule**: "All content posted on Ladakh Connect must be genuine and respectful. Posting fake reviews, misleading business information, or impersonating other users is strictly prohibited and may result in immediate account suspension or permanent ban (Violation Level 5+)."
+  2. **Privacy & Safety Rule**: "Do not share personal contact details, addresses, or private information of other users publicly. Content that endangers personal safety, spreads misinformation, or violates another person's privacy will be removed and penalized under the Violation System."
+- **Hotel business locked to Premier after trial**: After the 2-hour trial, if a member tries to select Hotel as their business type, they must be on Premier plan. Common members trying to select Hotel after trial expiry should see: "Hotel promotion requires the Premier Plan (₹1,500/mo). Upgrade to access." with an Upgrade button.
+- **Other businesses (Restaurant, Rental) available on Common or Premier after trial**: After trial, Common members can still access Restaurant and Rental business types by paying the Common plan.
 
 ### Modify
-- **Account type** (types/index.ts): Add `securityWord?: string` field
-- **useAuth hook** (hooks/useAuth.ts): 
-  - signup() requires securityWord parameter, hashes and stores it
-  - Add recoverPassword(username, securityWord, newPassword) function
-  - login() brute-force protection: track failed attempts per username in localStorage, lock account UI after 5 failed attempts for 15 minutes
-- **AuthScreen.tsx**: 
-  - Add securityWord field to all signup forms (email + social)
-  - Add "Forgot Password?" link on login → recovery flow UI
-  - Creator signup not allowed (login only), but Creator already has security word set via a one-time setup prompt if not set
-- **WalletTab.tsx**: 
-  - Add security word confirmation step before withdrawal processes
-  - Add ROG Edge Pro style security watch UI (scanning animation, status log)
-  - Add full wallet audit log section
-- **main.tsx**: Wrap App in ErrorBoundary
+- **main.tsx**: Ensure `LanguageProvider` wraps `App` — this is the single most common crash cause. Must be: `<QueryClientProvider> → <InternetIdentityProvider> → <LanguageProvider> → <App />`.
+- **Profile photo upload (all 4 profile tabs)**: Replace direct `photoRef.current?.click()` with a permission-check-first flow. Show a custom modal: "Ladakh Connect would like to access your camera/photos to update your profile photo. [Allow] [Deny]". Only proceed to file picker if allowed. Store permission decision in state (not persistent — ask once per session).
+- **Cleanup dead code**: Remove any unused imports, unused state variables, and dead conditional branches. Do NOT remove working features — only clearly unused utilities.
+- **Trial messaging**: Make trial banners clearer — "Your 2-hour free trial includes access to all business types. After the trial, Hotel promotion requires Premier Plan. Restaurant and Rental promotion available on any paid plan."
+- **Business type selection gate**: When trial is expired, enforce: Hotel → Premier only. Restaurant/Rental → Common or Premier.
 
 ### Remove
-- Nothing removed — this is additive
+- Any redundant `applyFontColor` function that is duplicated across profile tab files (it's copy-pasted in 3 files — consolidate to import from useAuth or keep as-is but note for future)
+- Remove any `console.log` or debug statements if present
 
 ## Implementation Plan
-1. Create `src/frontend/src/components/ErrorBoundary.tsx` — React class-based error boundary with retry button
-2. Create `src/frontend/src/components/RetryWrapper.tsx` — functional wrapper for async data with retry UI  
-3. Update `src/frontend/src/types/index.ts` — add securityWord to Account
-4. Update `src/frontend/src/hooks/useAuth.ts` — add securityWord to signup, add recoverPassword(), add brute-force tracking
-5. Update `src/frontend/src/components/AuthScreen.tsx` — add security word field to signup, add forgot password flow
-6. Update `src/frontend/src/components/creator/WalletTab.tsx` — add security word gate on withdrawal, ROG security watch UI, full audit log
-7. Update `src/frontend/src/main.tsx` — wrap App in ErrorBoundary
-8. Create `src/frontend/src/utils/contentModeration.ts` — keyword scanner for uploads
-9. Create `src/frontend/src/utils/cardValidator.ts` — validates Creator security word as valid card name
+1. Fix `main.tsx` — add `LanguageProvider` wrapper (critical stability fix)
+2. Add `CameraPermissionModal` component — reusable modal that gates file/camera access with Allow/Deny. Used in all 4 profile tabs.
+3. Update all 4 profile photo handlers (UserProfileTab, MemberProfileTab, CreatorProfileTab, CommunityProfileTab or equivalent) to use permission modal before opening file picker.
+4. Update `AuthScreen.tsx` — add 2 new platform rules to the T&C section shown before signup confirmation.
+5. Add `PlatformRules` section to each profile tab — collapsible card showing the 2 rules.
+6. Update `MyBusinessTab.tsx` — enforce Hotel = Premier only after trial. Show upgrade prompt for Common members trying to access Hotel after trial.
+7. Update `MembershipTab.tsx` trial banner to clarify Hotel vs other business trial rules.
+8. Clean up: scan all files for unused imports and dead code, remove safely.
+9. Validate: run lint + typecheck + build, fix all errors before deploy.

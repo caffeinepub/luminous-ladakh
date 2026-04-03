@@ -7,6 +7,7 @@ import { applyTheme } from "../../hooks/useAuth";
 import { LANGUAGES } from "../../i18n/translations";
 import type { Account, Violation } from "../../types";
 import { WorldLanguageDownloader } from "../WorldLanguageDownloader";
+import { CameraPermissionModal } from "../shared/CameraPermissionModal";
 import { ViolationCard } from "../shared/ViolationCard";
 import { ElectronicIDCard } from "./ElectronicIDCard";
 
@@ -61,6 +62,10 @@ export function MemberProfileTab({
   const [bio, setBio] = useState(currentUser.bio || "");
   const photoRef = useRef<HTMLInputElement>(null);
 
+  const [showCameraModal, setShowCameraModal] = useState(false);
+  const [photoPermissionGranted, setPhotoPermissionGranted] = useState(false);
+  const [rulesExpanded, setRulesExpanded] = useState(false);
+
   const isPremier = currentUser.membershipTier === "Premier";
 
   let usedBytes = 0;
@@ -81,7 +86,7 @@ export function MemberProfileTab({
   const handleThemeChange = (theme: string) => {
     onUpdateUser({ theme: theme as Account["theme"] });
     applyTheme(theme);
-    toast.success(`${t("theme", "Theme")} → ${theme}`);
+    toast.success(`${t("theme", "Theme")} \u2192 ${theme}`);
   };
 
   const handlePhotoTheme = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -113,8 +118,28 @@ export function MemberProfileTab({
     reader.readAsDataURL(file);
   };
 
+  const handleEditPhotoClick = () => {
+    if (photoPermissionGranted) {
+      photoRef.current?.click();
+    } else {
+      setShowCameraModal(true);
+    }
+  };
+
+  const handlePermissionAllow = () => {
+    setPhotoPermissionGranted(true);
+    setShowCameraModal(false);
+    photoRef.current?.click();
+  };
+
   return (
     <div className="fade-in space-y-4">
+      <CameraPermissionModal
+        open={showCameraModal}
+        onAllow={handlePermissionAllow}
+        onDeny={() => setShowCameraModal(false)}
+      />
+
       <div className="bg-card border border-border rounded-xl p-5">
         <div className="flex items-center gap-4 mb-4">
           <div className="relative">
@@ -133,8 +158,9 @@ export function MemberProfileTab({
             )}
             <button
               type="button"
-              onClick={() => photoRef.current?.click()}
+              onClick={handleEditPhotoClick}
               className="absolute -bottom-1 -right-1 bg-primary rounded-full w-5 h-5 flex items-center justify-center"
+              data-ocid="profile.upload_button"
             >
               <span className="material-symbols-outlined text-black text-xs">
                 edit
@@ -220,6 +246,7 @@ export function MemberProfileTab({
                 size="sm"
                 className="bg-primary text-primary-foreground"
                 onClick={saveBio}
+                data-ocid="profile.save_button"
               >
                 {t("saveBio", "Save Bio")}
               </Button>
@@ -228,6 +255,7 @@ export function MemberProfileTab({
                 variant="outline"
                 className="border-border"
                 onClick={() => setEditingBio(false)}
+                data-ocid="profile.cancel_button"
               >
                 {t("cancel", "Cancel")}
               </Button>
@@ -242,6 +270,7 @@ export function MemberProfileTab({
               type="button"
               onClick={() => setEditingBio(true)}
               className="text-primary text-xs ml-2"
+              data-ocid="profile.edit_button"
             >
               {t("editBio", "Edit")}
             </button>
@@ -378,6 +407,69 @@ export function MemberProfileTab({
       </div>
 
       <ViolationCard violations={violations} userId={currentUser.id} />
+
+      {/* Platform Rules */}
+      <div className="bg-zinc-800 border border-zinc-700 rounded-xl p-4">
+        <button
+          type="button"
+          onClick={() => setRulesExpanded(!rulesExpanded)}
+          className="w-full flex items-center justify-between"
+          data-ocid="profile.rules.toggle"
+        >
+          <span className="flex items-center gap-2 font-semibold text-white text-sm">
+            <span className="material-symbols-outlined text-amber-400 text-lg">
+              policy
+            </span>
+            📋 Platform Rules
+          </span>
+          <span className="material-symbols-outlined text-zinc-400 text-sm">
+            {rulesExpanded ? "expand_less" : "expand_more"}
+          </span>
+        </button>
+        {rulesExpanded && (
+          <div className="mt-3 space-y-3">
+            <div className="flex gap-2">
+              <span className="text-amber-400 font-bold text-sm shrink-0">
+                1.
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-white">
+                  Respect &amp; Authenticity
+                </p>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  All content must be genuine and respectful. Fake reviews,
+                  misleading business info, or impersonating users is strictly
+                  prohibited and may result in suspension or permanent ban
+                  (Violation Level 5+).
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <span className="text-amber-400 font-bold text-sm shrink-0">
+                2.
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-white">
+                  Privacy &amp; Safety
+                </p>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Do not share other users&apos; personal contact details or
+                  private information publicly. Content that endangers safety,
+                  spreads misinformation, or violates privacy will be removed
+                  and penalized.
+                </p>
+              </div>
+            </div>
+            <div className="bg-zinc-900 rounded-lg p-3 mt-2">
+              <p className="text-xs text-zinc-500">
+                These rules are enforced by the Creator. Violations are tracked
+                and escalate from Level 1 (warning) to Level 7 (permanent ban).
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
       <Button
         variant="outline"
         className="w-full border-border text-muted-foreground"

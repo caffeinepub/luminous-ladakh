@@ -6,6 +6,7 @@ import { applyTheme } from "../../hooks/useAuth";
 import { LANGUAGES } from "../../i18n/translations";
 import type { Account, Post, Review, Violation } from "../../types";
 import { WorldLanguageDownloader } from "../WorldLanguageDownloader";
+import { CameraPermissionModal } from "../shared/CameraPermissionModal";
 
 interface SpecialEntry {
   id: string;
@@ -86,9 +87,12 @@ export function CreatorProfileTab({
   const [newCode, setNewCode] = useState("");
   const [showCode, setShowCode] = useState(false);
   const [newSpecialEntry, setNewSpecialEntry] = useState("");
+  const [rulesExpanded, setRulesExpanded] = useState(false);
   const currentCode = localStorage.getItem("lc_communityCode") || "blackjack";
 
   const photoRef = useRef<HTMLInputElement>(null);
+  const [showCameraModal, setShowCameraModal] = useState(false);
+  const [photoPermissionGranted, setPhotoPermissionGranted] = useState(false);
 
   async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -101,10 +105,24 @@ export function CreatorProfileTab({
     reader.readAsDataURL(file);
   }
 
+  const handleEditPhotoClick = () => {
+    if (photoPermissionGranted) {
+      photoRef.current?.click();
+    } else {
+      setShowCameraModal(true);
+    }
+  };
+
+  const handlePermissionAllow = () => {
+    setPhotoPermissionGranted(true);
+    setShowCameraModal(false);
+    photoRef.current?.click();
+  };
+
   const handleThemeChange = (theme: string) => {
     if (onUpdateUser) onUpdateUser({ theme: theme as Account["theme"] });
     applyTheme(theme);
-    toast.success(`${t("theme", "Theme")} → ${theme}`);
+    toast.success(`${t("theme", "Theme")} \u2192 ${theme}`);
   };
 
   const handleFontColor = (colorId: string) => {
@@ -116,6 +134,12 @@ export function CreatorProfileTab({
 
   return (
     <div className="fade-in space-y-4">
+      <CameraPermissionModal
+        open={showCameraModal}
+        onAllow={handlePermissionAllow}
+        onDeny={() => setShowCameraModal(false)}
+      />
+
       {/* Profile Card */}
       <div className="bg-zinc-900 border border-amber-500/30 rounded-xl p-5">
         <div className="flex items-center gap-4 mb-4">
@@ -135,8 +159,9 @@ export function CreatorProfileTab({
             )}
             <button
               type="button"
-              onClick={() => photoRef.current?.click()}
+              onClick={handleEditPhotoClick}
               className="absolute -bottom-1 -right-1 bg-amber-500 rounded-full w-5 h-5 flex items-center justify-center"
+              data-ocid="profile.upload_button"
             >
               <span className="material-symbols-outlined text-black text-xs">
                 edit
@@ -286,6 +311,7 @@ export function CreatorProfileTab({
             placeholder={t("specialAccountUsername", "Username or email...")}
             value={newSpecialEntry}
             onChange={(e) => setNewSpecialEntry(e.target.value)}
+            data-ocid="special_accounts.input"
           />
           <button
             type="button"
@@ -299,25 +325,30 @@ export function CreatorProfileTab({
               toast.success(
                 t(
                   "addedToSpecial",
-                  "Special account added — Lifetime Premier granted!",
+                  "Special account added \u2014 Lifetime Premier granted!",
                 ),
               );
             }}
             className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-sm whitespace-nowrap"
+            data-ocid="special_accounts.primary_button"
           >
             {t("add", "Add")}
           </button>
         </div>
         {specialAccounts.length === 0 ? (
-          <p className="text-xs text-zinc-600 text-center py-2">
+          <p
+            className="text-xs text-zinc-600 text-center py-2"
+            data-ocid="special_accounts.empty_state"
+          >
             {t("noSpecialAccounts", "No special accounts yet.")}
           </p>
         ) : (
           <div className="space-y-2">
-            {specialAccounts.map((entry) => (
+            {specialAccounts.map((entry, idx) => (
               <div
                 key={entry.id}
                 className="flex items-center justify-between bg-zinc-800 rounded-lg px-3 py-2"
+                data-ocid={`special_accounts.item.${idx + 1}`}
               >
                 <div>
                   <p className="text-sm text-white font-medium">
@@ -335,12 +366,13 @@ export function CreatorProfileTab({
                     toast.success(
                       t(
                         "removedFromSpecial",
-                        "Removed from Special Accounts — access revoked.",
+                        "Removed from Special Accounts \u2014 access revoked.",
                       ),
                     );
                   }}
                   className="p-1.5 rounded-lg bg-red-500/15 hover:bg-red-500/30 text-red-400"
                   title={t("remove", "Remove")}
+                  data-ocid={`special_accounts.delete_button.${idx + 1}`}
                 >
                   <span className="material-symbols-outlined text-sm">
                     person_remove
@@ -419,9 +451,9 @@ export function CreatorProfileTab({
             ["Community Partners", community.length],
             [
               t("walletBalance", "Wallet Balance"),
-              `₹${walletBalance.toLocaleString()}`,
+              `\u20b9${walletBalance.toLocaleString()}`,
             ],
-            ["Monthly Revenue", `₹${monthlyRevenue.toLocaleString()}`],
+            ["Monthly Revenue", `\u20b9${monthlyRevenue.toLocaleString()}`],
             ["Active Violations", activeViolations.length],
             [
               "Community Discoveries",
@@ -438,6 +470,68 @@ export function CreatorProfileTab({
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Platform Rules */}
+      <div className="bg-zinc-800 border border-zinc-700 rounded-xl p-4">
+        <button
+          type="button"
+          onClick={() => setRulesExpanded(!rulesExpanded)}
+          className="w-full flex items-center justify-between"
+          data-ocid="profile.rules.toggle"
+        >
+          <span className="flex items-center gap-2 font-semibold text-white text-sm">
+            <span className="material-symbols-outlined text-amber-400 text-lg">
+              policy
+            </span>
+            📋 Platform Rules
+          </span>
+          <span className="material-symbols-outlined text-zinc-400 text-sm">
+            {rulesExpanded ? "expand_less" : "expand_more"}
+          </span>
+        </button>
+        {rulesExpanded && (
+          <div className="mt-3 space-y-3">
+            <div className="flex gap-2">
+              <span className="text-amber-400 font-bold text-sm shrink-0">
+                1.
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-white">
+                  Respect &amp; Authenticity
+                </p>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  All content must be genuine and respectful. Fake reviews,
+                  misleading business info, or impersonating users is strictly
+                  prohibited and may result in suspension or permanent ban
+                  (Violation Level 5+).
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <span className="text-amber-400 font-bold text-sm shrink-0">
+                2.
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-white">
+                  Privacy &amp; Safety
+                </p>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Do not share other users&apos; personal contact details or
+                  private information publicly. Content that endangers safety,
+                  spreads misinformation, or violates privacy will be removed
+                  and penalized.
+                </p>
+              </div>
+            </div>
+            <div className="bg-zinc-900 rounded-lg p-3 mt-2">
+              <p className="text-xs text-zinc-500">
+                These rules are enforced by the Creator. Violations are tracked
+                and escalate from Level 1 (warning) to Level 7 (permanent ban).
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       <Button

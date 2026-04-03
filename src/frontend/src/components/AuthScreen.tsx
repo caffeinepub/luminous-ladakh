@@ -797,6 +797,49 @@ export function AuthScreen({
                     />
                   </div>
                 )}
+                {/* Platform Rules */}
+                <div className="bg-zinc-800 border border-zinc-700 rounded-xl p-4">
+                  <p className="text-xs font-semibold text-amber-400 mb-3 flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-sm">
+                      policy
+                    </span>
+                    📋 Platform Rules
+                  </p>
+                  <div className="space-y-3">
+                    <div className="flex gap-2">
+                      <span className="text-amber-400 font-bold text-xs shrink-0 mt-0.5">
+                        1.
+                      </span>
+                      <div>
+                        <p className="text-xs font-semibold text-white">
+                          Respect &amp; Authenticity
+                        </p>
+                        <p className="text-[11px] text-zinc-400 mt-0.5 leading-relaxed">
+                          All content must be genuine and respectful. Fake
+                          reviews, misleading business info, or impersonating
+                          users is strictly prohibited and may result in
+                          suspension or permanent ban (Violation Level 5+).
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <span className="text-amber-400 font-bold text-xs shrink-0 mt-0.5">
+                        2.
+                      </span>
+                      <div>
+                        <p className="text-xs font-semibold text-white">
+                          Privacy &amp; Safety
+                        </p>
+                        <p className="text-[11px] text-zinc-400 mt-0.5 leading-relaxed">
+                          Do not share other users&apos; personal contact
+                          details or private information publicly. Content that
+                          endangers safety, spreads misinformation, or violates
+                          privacy will be removed and penalized.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input
                     type="checkbox"

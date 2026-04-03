@@ -133,9 +133,13 @@ export function MembershipTab({
             <p className="text-sm text-yellow-400 font-semibold">
               Free Trial Active
             </p>
-            <p className="text-xs text-muted-foreground">
-              {minutesLeft} minutes remaining — Pay now to keep full access
-              after trial ends.
+            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+              {minutesLeft} minutes remaining. During your trial you have access
+              to all business types including Hotel. After your trial:{" "}
+              <strong className="text-amber-400">
+                Hotel promotion requires Premier Plan (₹1,500/mo).
+              </strong>{" "}
+              Restaurant &amp; Rental are available on any paid plan.
             </p>
           </div>
         </div>
