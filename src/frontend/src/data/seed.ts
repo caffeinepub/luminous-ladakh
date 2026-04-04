@@ -11,8 +11,8 @@ function generateId(): string {
 export { generateId };
 
 export function initSeedData() {
-  // Version check: bump to v10 resets to v31 stable state
-  const currentVersion = "v10";
+  // Version check: bump to v11 includes Restaurants, Rentals, Shop tabs
+  const currentVersion = "v11";
 
   if (localStorage.getItem("lc_seeded") !== currentVersion) {
     // Clean wallet state on version upgrade
@@ -120,6 +120,7 @@ export function initSeedData() {
     localStorage.setItem("lc_pendingPayments", JSON.stringify([]));
     localStorage.setItem("lc_flagReports", JSON.stringify([]));
     localStorage.setItem("lc_locationReviews", JSON.stringify([]));
+    localStorage.setItem("lc_menuItemReviews", JSON.stringify([]));
   }
 
   if (!localStorage.getItem("lc_communityCode")) {
@@ -128,6 +129,10 @@ export function initSeedData() {
 
   if (!localStorage.getItem("lc_pendingPayments")) {
     localStorage.setItem("lc_pendingPayments", JSON.stringify([]));
+  }
+
+  if (!localStorage.getItem("lc_menuItemReviews")) {
+    localStorage.setItem("lc_menuItemReviews", JSON.stringify([]));
   }
 
   localStorage.setItem("lc_seeded", currentVersion);

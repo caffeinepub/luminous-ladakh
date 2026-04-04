@@ -6,8 +6,10 @@ import type {
   Business,
   BusinessType,
   MenuItem,
+  PendingPayment,
   RentalAddon,
   RoomType,
+  ShopProduct,
   Violation,
 } from "../../types";
 
@@ -83,6 +85,9 @@ interface Props {
   }[];
   onUpdate: (updates: Partial<Account>) => void;
   onIssueViolation?: (v: Omit<Violation, "id" | "timestamp">) => void;
+  onAddPendingPayment?: (
+    payment: Omit<PendingPayment, "id" | "timestamp">,
+  ) => void;
 }
 
 function StorageBar({ usedMB, limitMB }: { usedMB: number; limitMB: number }) {
@@ -519,6 +524,170 @@ function RentalAddonForm({
 
 // ----- Shop Product Form -----
 
+function ShopProductForm({
+  onSave,
+  onCancel,
+  initial,
+  maxPhotos,
+}: {
+  onSave: (p: ShopProduct) => void;
+  onCancel: () => void;
+  initial?: ShopProduct;
+  maxPhotos: number;
+}) {
+  const [name, setName] = useState(initial?.name ?? "");
+  const [category, setCategory] = useState(initial?.category ?? "");
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [price, setPrice] = useState(String(initial?.price ?? ""));
+  const [photos, setPhotos] = useState<string[]>(initial?.photos ?? []);
+  const photoRef = useRef<HTMLInputElement>(null);
+
+  function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    for (const file of files.slice(0, maxPhotos - photos.length)) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const b64 = ev.target?.result as string;
+        setPhotos((prev) => [...prev, b64]);
+      };
+      reader.readAsDataURL(file);
+    }
+    e.target.value = "";
+  }
+
+  function handleSave() {
+    if (!name.trim()) {
+      toast.error("Product name required");
+      return;
+    }
+    if (!category.trim()) {
+      toast.error("Category required");
+      return;
+    }
+    const priceNum = Number(price);
+    if (!price || Number.isNaN(priceNum) || priceNum < 0) {
+      toast.error("Enter a valid price");
+      return;
+    }
+    onSave({
+      id: initial?.id ?? generateId(),
+      name: name.trim(),
+      category: category.trim(),
+      description: description.trim() || undefined,
+      price: priceNum,
+      photos,
+      announcedAt: initial?.announcedAt,
+    });
+  }
+
+  return (
+    <div className="bg-zinc-800/60 border border-amber-500/20 rounded-xl p-4 space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="col-span-2">
+          <p className="block text-xs text-zinc-400 mb-1">Product Name *</p>
+          <input
+            className={inputCls}
+            placeholder="e.g. Pashmina Shawl"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
+        <div>
+          <p className="block text-xs text-zinc-400 mb-1">Category *</p>
+          <input
+            className={inputCls}
+            placeholder="e.g. Clothing, Electronics"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+          />
+        </div>
+        <div>
+          <p className="block text-xs text-zinc-400 mb-1">Price (₹)</p>
+          <input
+            className={inputCls}
+            type="number"
+            min="0"
+            placeholder="2500"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+          />
+        </div>
+        <div className="col-span-2">
+          <p className="block text-xs text-zinc-400 mb-1">Description</p>
+          <input
+            className={inputCls}
+            placeholder="Optional description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </div>
+      </div>
+      <div>
+        <p className="block text-xs text-zinc-400 mb-1">
+          Photos (max {maxPhotos})
+        </p>
+        <div className="flex gap-2 flex-wrap mb-2">
+          {photos.map((p, i) => (
+            <div key={String(i)} className="relative">
+              <img
+                src={p}
+                alt=""
+                className="w-14 h-14 object-cover rounded-lg"
+              />
+              <button
+                type="button"
+                onClick={() =>
+                  setPhotos((prev) => prev.filter((_, j) => j !== i))
+                }
+                className="absolute -top-1 -right-1 bg-red-500 rounded-full w-4 h-4 flex items-center justify-center text-white text-xs"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+        <input
+          ref={photoRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={handlePhotoUpload}
+        />
+        <button
+          type="button"
+          onClick={() => photoRef.current?.click()}
+          disabled={photos.length >= maxPhotos}
+          className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs text-zinc-300 transition-colors disabled:opacity-50"
+          data-ocid="business.upload_button"
+        >
+          <span className="material-symbols-outlined text-sm mr-1">
+            add_photo_alternate
+          </span>
+          Add Photos
+        </button>
+      </div>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="flex-1 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-sm transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={handleSave}
+          className="flex-1 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-sm transition-colors"
+        >
+          Save Product
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function MemberBusinessTab({
   currentUser,
   reviews,
@@ -587,6 +756,11 @@ export function MemberBusinessTab({
   const [editingMenuItem, setEditingMenuItem] = useState<MenuItem | null>(null);
   const [addingRental, setAddingRental] = useState(false);
   const [editingRental, setEditingRental] = useState<RentalAddon | null>(null);
+  const [formProducts, setFormProducts] = useState<ShopProduct[]>([]);
+  const [addingProduct, setAddingProduct] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<ShopProduct | null>(
+    null,
+  );
 
   function getBizTypeLabel(biz: Business): string {
     if (biz.businessType) return BUSINESS_TYPE_LABELS[biz.businessType];
@@ -614,6 +788,9 @@ export function MemberBusinessTab({
     setEditingMenuItem(null);
     setAddingRental(false);
     setEditingRental(null);
+    setFormProducts([]);
+    setAddingProduct(false);
+    setEditingProduct(null);
   }
 
   function openEdit(biz: Business) {
@@ -631,12 +808,15 @@ export function MemberBusinessTab({
     setFormRoomTypes(biz.roomTypes ?? []);
     setFormMenuItems(biz.menuItems ?? []);
     setFormRentalAddons(biz.rentalAddons ?? []);
+    setFormProducts(biz.products ?? []);
     setAddingRoom(false);
     setEditingRoom(null);
     setAddingMenuItem(false);
     setEditingMenuItem(null);
     setAddingRental(false);
     setEditingRental(null);
+    setAddingProduct(false);
+    setEditingProduct(null);
   }
 
   function validateMapsUrl(url: string): boolean {
@@ -740,6 +920,7 @@ export function MemberBusinessTab({
         formBizType === "rental" || formBizType === "hotel"
           ? formRentalAddons
           : undefined,
+      products: formBizType === "shop" ? formProducts : undefined,
       lastAvailabilityUpdate:
         formBizType === "hotel" ? new Date().toISOString() : undefined,
     };
@@ -1202,20 +1383,18 @@ export function MemberBusinessTab({
                     Users will call this number to enquire / book
                   </p>
                 </div>
-                {(formBizType === "hotel" || formBizType === "restaurant") && (
-                  <div>
-                    <p className="block text-xs text-zinc-400 mb-1">
-                      Email Address
-                    </p>
-                    <input
-                      className={inputCls}
-                      type="email"
-                      placeholder="shop@example.com"
-                      value={formEmail}
-                      onChange={(e) => setFormEmail(e.target.value)}
-                    />
-                  </div>
-                )}
+                <div>
+                  <p className="block text-xs text-zinc-400 mb-1">
+                    Email Address
+                  </p>
+                  <input
+                    className={inputCls}
+                    type="email"
+                    placeholder="shop@example.com"
+                    value={formEmail}
+                    onChange={(e) => setFormEmail(e.target.value)}
+                  />
+                </div>
               </div>
             )}
 
@@ -1600,6 +1779,105 @@ export function MemberBusinessTab({
                       setAddingRental(false);
                     }}
                     onCancel={() => setAddingRental(false)}
+                  />
+                )}
+              </div>
+            )}
+
+            {/* ---- Shop Products ---- */}
+            {formBizType === "shop" && (
+              <div className="border-t border-zinc-700 pt-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h4 className="text-sm font-bold text-white">🛍️ Products</h4>
+                    <p className="text-xs text-zinc-500">
+                      Add your products (max {maxPhotos} photos each)
+                    </p>
+                  </div>
+                  {!addingProduct && !editingProduct && (
+                    <button
+                      type="button"
+                      onClick={() => setAddingProduct(true)}
+                      className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1"
+                      data-ocid="business.open_modal_button"
+                    >
+                      <span className="material-symbols-outlined text-sm">
+                        add
+                      </span>
+                      Add Product
+                    </button>
+                  )}
+                </div>
+
+                {formProducts.map((product) => (
+                  <div key={product.id}>
+                    {editingProduct?.id === product.id ? (
+                      <ShopProductForm
+                        initial={editingProduct}
+                        maxPhotos={maxPhotos}
+                        onSave={(p) => {
+                          setFormProducts((prev) =>
+                            prev.map((x) => (x.id === p.id ? p : x)),
+                          );
+                          setEditingProduct(null);
+                        }}
+                        onCancel={() => setEditingProduct(null)}
+                      />
+                    ) : (
+                      <div className="flex items-center justify-between bg-zinc-800/60 border border-zinc-700 rounded-xl px-4 py-3 mb-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-semibold text-white truncate">
+                              {product.name}
+                            </p>
+                            {product.announcedAt && (
+                              <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-400">
+                                Announced
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-zinc-500">
+                            {product.category} · ₹
+                            {product.price.toLocaleString()}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setEditingProduct(product)}
+                            className="p-1.5 rounded-lg bg-zinc-700 hover:bg-zinc-600 text-zinc-300"
+                          >
+                            <span className="material-symbols-outlined text-sm">
+                              edit
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setFormProducts((prev) =>
+                                prev.filter((x) => x.id !== product.id),
+                              )
+                            }
+                            className="p-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-400"
+                          >
+                            <span className="material-symbols-outlined text-sm">
+                              delete
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {addingProduct && (
+                  <ShopProductForm
+                    maxPhotos={maxPhotos}
+                    onSave={(p) => {
+                      setFormProducts((prev) => [...prev, p]);
+                      setAddingProduct(false);
+                    }}
+                    onCancel={() => setAddingProduct(false)}
                   />
                 )}
               </div>

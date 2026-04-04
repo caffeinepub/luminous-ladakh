@@ -32,6 +32,9 @@ const en: Record<string, string> = {
   vault: "Vault",
   wallet: "Wallet",
   moderation: "Moderation",
+  restaurants: "Restaurants",
+  rentals: "Rentals",
+  shop: "Shop",
 
   // Auth
   login: "Login",
@@ -517,6 +520,9 @@ const hi: Record<string, string> = {
   vault: "वॉल्ट",
   wallet: "वॉलेट",
   moderation: "मॉडरेशन",
+  restaurants: "रेस्तरां",
+  rentals: "किराया",
+  shop: "दुकान",
 
   // Auth
   login: "लॉगिन",
@@ -766,6 +772,9 @@ const ladTibt: Record<string, string> = {
   vault: "གྱི་མཛོད།",
   wallet: "སྒོར་ཤམ།",
   moderation: "སྒྲིག་གཏོང་།",
+  restaurants: "ཟ་ཁང",
+  rentals: "ཁེར་ལེན",
+  shop: "ཚོང་ར",
 
   // Auth
   login: "ནང་འཛུལ།",
@@ -969,6 +978,9 @@ const ladRom: Record<string, string> = {
   vault: "Mdzod",
   wallet: "Sgor-sham",
   moderation: "Sgrig-gtong",
+  restaurants: "Za-khang",
+  rentals: "Kher-len",
+  shop: "Tsong-ra",
 
   // Auth
   login: "Nang-dzul",

@@ -43,6 +43,26 @@ export interface RentalAddon {
   available: boolean;
 }
 
+export interface RentalVehicle {
+  id: string;
+  type: string;
+  model: string;
+  pricePerDay: number;
+  pricePerMonth?: number;
+  photo?: string;
+  available: boolean;
+}
+
+export interface ShopProduct {
+  id: string;
+  name: string;
+  category: string;
+  description?: string;
+  price: number;
+  photos: string[];
+  announcedAt?: string;
+}
+
 export interface PharmacyEntry {
   id: string;
   name: string;
@@ -64,6 +84,8 @@ export interface Business {
   roomTypes?: RoomType[];
   menuItems?: MenuItem[];
   rentalAddons?: RentalAddon[];
+  vehicles?: RentalVehicle[];
+  products?: ShopProduct[];
   lastAvailabilityUpdate?: string;
 }
 
@@ -187,8 +209,9 @@ export interface PendingPayment {
   tier: string;
   timestamp: string;
   status: "pending";
-  paymentType?: "membership" | "event";
+  paymentType?: "membership" | "event" | "announcement";
   eventTitle?: string;
+  productName?: string;
 }
 
 export interface LCEvent {

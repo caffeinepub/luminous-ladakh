@@ -7,6 +7,9 @@ import { EventsTab } from "./components/EventsTab";
 import { ExploreTab } from "./components/ExploreTab";
 import { LanguageSelectScreen } from "./components/LanguageSelectScreen";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
+import { RentalsTab } from "./components/RentalsTab";
+import { RestaurantsTab } from "./components/RestaurantsTab";
+import { ShopTab } from "./components/ShopTab";
 import { CommunityBusinessTab } from "./components/community/CommunityBusinessTab";
 import { CommunityPermissionsTab } from "./components/community/PermissionsTab";
 import { CreatorProfileTab } from "./components/creator/CreatorProfileTab";
@@ -133,6 +136,9 @@ export default function App() {
     { id: "profile", icon: "person", label: t("profile") },
     // Secondary (scrollable row above bottom bar)
     { id: "discover", icon: "travel_explore", label: t("discover") },
+    { id: "restaurants", icon: "restaurant", label: t("restaurants") },
+    { id: "rentals", icon: "directions_car", label: t("rentals") },
+    { id: "shop", icon: "storefront", label: t("shop") },
   ];
 
   const MEMBER_NAV = [
@@ -144,6 +150,9 @@ export default function App() {
     { id: "profile", icon: "person", label: t("profile") },
     // Secondary (scrollable row above bottom bar)
     { id: "events", icon: "event", label: t("events") },
+    { id: "restaurants", icon: "restaurant", label: t("restaurants") },
+    { id: "rentals", icon: "directions_car", label: t("rentals") },
+    { id: "shop", icon: "storefront", label: t("shop") },
   ];
 
   const COMMUNITY_NAV = [
@@ -155,12 +164,18 @@ export default function App() {
     { id: "profile", icon: "person", label: t("profile") },
     // Secondary (scrollable row above bottom bar)
     { id: "events", icon: "event", label: t("events") },
+    { id: "restaurants", icon: "restaurant", label: t("restaurants") },
+    { id: "rentals", icon: "directions_car", label: t("rentals") },
+    { id: "shop", icon: "storefront", label: t("shop") },
   ];
 
   const CREATOR_NAV = [
     { id: "dashboard", icon: "dashboard", label: t("dashboard") },
     { id: "explore", icon: "explore", label: t("explore") },
     { id: "discover", icon: "travel_explore", label: t("discover") },
+    { id: "restaurants", icon: "restaurant", label: t("restaurants") },
+    { id: "rentals", icon: "directions_car", label: t("rentals") },
+    { id: "shop", icon: "storefront", label: t("shop") },
     { id: "events", icon: "event", label: t("events") },
     { id: "vault", icon: "inventory_2", label: t("vault") },
     { id: "wallet", icon: "account_balance_wallet", label: t("wallet") },
@@ -323,6 +338,31 @@ export default function App() {
                 />
               </ErrorBoundary>
             )}
+            {activeTab === "restaurants" && (
+              <ErrorBoundary minimal>
+                <RestaurantsTab
+                  currentUserRole={currentUser.role}
+                  currentUser={{
+                    id: currentUser.id,
+                    username: currentUser.username,
+                  }}
+                />
+              </ErrorBoundary>
+            )}
+            {activeTab === "rentals" && (
+              <ErrorBoundary minimal>
+                <RentalsTab currentUserRole={currentUser.role} />
+              </ErrorBoundary>
+            )}
+            {activeTab === "shop" && (
+              <ErrorBoundary minimal>
+                <ShopTab
+                  currentUserRole={currentUser.role}
+                  currentUser={currentUser}
+                  onAddPendingPayment={data.addPendingPayment}
+                />
+              </ErrorBoundary>
+            )}
           </>
         )}
 
@@ -410,6 +450,31 @@ export default function App() {
                 />
               </ErrorBoundary>
             )}
+            {activeTab === "restaurants" && (
+              <ErrorBoundary minimal>
+                <RestaurantsTab
+                  currentUserRole={currentUser.role}
+                  currentUser={{
+                    id: currentUser.id,
+                    username: currentUser.username,
+                  }}
+                />
+              </ErrorBoundary>
+            )}
+            {activeTab === "rentals" && (
+              <ErrorBoundary minimal>
+                <RentalsTab currentUserRole={currentUser.role} />
+              </ErrorBoundary>
+            )}
+            {activeTab === "shop" && (
+              <ErrorBoundary minimal>
+                <ShopTab
+                  currentUserRole={currentUser.role}
+                  currentUser={currentUser}
+                  onAddPendingPayment={data.addPendingPayment}
+                />
+              </ErrorBoundary>
+            )}
           </>
         )}
 
@@ -492,6 +557,25 @@ export default function App() {
                 />
               </ErrorBoundary>
             )}
+            {activeTab === "restaurants" && (
+              <ErrorBoundary minimal>
+                <RestaurantsTab currentUserRole={currentUser.role} />
+              </ErrorBoundary>
+            )}
+            {activeTab === "rentals" && (
+              <ErrorBoundary minimal>
+                <RentalsTab currentUserRole={currentUser.role} />
+              </ErrorBoundary>
+            )}
+            {activeTab === "shop" && (
+              <ErrorBoundary minimal>
+                <ShopTab
+                  currentUserRole={currentUser.role}
+                  currentUser={currentUser}
+                  onAddPendingPayment={data.addPendingPayment}
+                />
+              </ErrorBoundary>
+            )}
           </>
         )}
 
@@ -541,6 +625,25 @@ export default function App() {
                   onPromoteToExplore={() => {
                     setRenderTick((tick) => tick + 1);
                   }}
+                />
+              </ErrorBoundary>
+            )}
+            {activeTab === "restaurants" && (
+              <ErrorBoundary minimal>
+                <RestaurantsTab currentUserRole={currentUser.role} />
+              </ErrorBoundary>
+            )}
+            {activeTab === "rentals" && (
+              <ErrorBoundary minimal>
+                <RentalsTab currentUserRole={currentUser.role} />
+              </ErrorBoundary>
+            )}
+            {activeTab === "shop" && (
+              <ErrorBoundary minimal>
+                <ShopTab
+                  currentUserRole={currentUser.role}
+                  currentUser={currentUser}
+                  onAddPendingPayment={data.addPendingPayment}
                 />
               </ErrorBoundary>
             )}
