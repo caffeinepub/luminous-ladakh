@@ -6,6 +6,11 @@ const inputCls =
   "w-full bg-zinc-900 text-white border border-zinc-700 rounded-lg px-4 py-3 placeholder:text-zinc-500 focus:outline-none focus:border-amber-500 transition-colors";
 const labelCls = "block text-xs font-medium text-zinc-400 mb-1";
 
+// Security: sanitize user text inputs — trim whitespace and strip HTML tags
+function sanitize(s: string): string {
+  return s.trim().replace(/<[^>]*>/g, "");
+}
+
 interface Props {
   onLogin: (
     username: string,
@@ -135,7 +140,7 @@ export function AuthScreen({
   function handleEmailLogin(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    const result = onLogin(loginUsername, loginPassword);
+    const result = onLogin(sanitize(loginUsername), loginPassword);
     if (!result.success)
       setError(result.error || t("loginFailed", "Login failed"));
   }
@@ -153,12 +158,14 @@ export function AuthScreen({
     }
     const role = selectedRole as Exclude<Role, "creator">;
     const result = onSignup({
-      username: signupUsername,
-      email: signupEmail,
+      username: sanitize(signupUsername),
+      email: sanitize(signupEmail),
       password: signupPassword,
       role,
-      communityCode: role === "community" ? communityCode : undefined,
-      securityWord: signupSecurityWord || undefined,
+      communityCode: role === "community" ? sanitize(communityCode) : undefined,
+      securityWord: signupSecurityWord
+        ? sanitize(signupSecurityWord)
+        : undefined,
     });
     if (!result.success) {
       setError(result.error || t("signupFailed", "Signup failed"));
@@ -215,8 +222,8 @@ export function AuthScreen({
         return;
       }
       const result = onRecoverPassword(
-        recoveryUsername,
-        recoverySecWord,
+        sanitize(recoveryUsername),
+        sanitize(recoverySecWord),
         recoveryNewPw,
       );
       if (!result.success) {

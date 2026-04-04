@@ -12,7 +12,8 @@ export { generateId };
 
 export function initSeedData() {
   // Version check: bump to v11 includes Restaurants, Rentals, Shop tabs
-  const currentVersion = "v11";
+  // v12: LanguageProvider crash fix + button security audit
+  const currentVersion = "v12";
 
   if (localStorage.getItem("lc_seeded") !== currentVersion) {
     // Clean wallet state on version upgrade

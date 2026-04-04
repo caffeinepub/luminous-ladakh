@@ -180,7 +180,7 @@ export function VaultTab() {
                 className="flex-1 bg-primary text-primary-foreground"
                 onClick={() => {
                   if (selected.link !== "#")
-                    window.open(selected.link, "_blank");
+                    window.open(selected.link, "_blank", "noopener,noreferrer");
                 }}
                 data-ocid="vault.primary_button"
               >

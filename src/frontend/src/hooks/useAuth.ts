@@ -141,24 +141,27 @@ export function useAuth() {
         };
       }
 
-      // Successful login — reset failed attempts
+      // Successful login — reset failed attempts and track activity
       const idx = accounts.findIndex((a) => a.id === account.id);
-      if (idx >= 0 && (account.failedLoginAttempts || 0) > 0) {
+      let finalAccount = account;
+      if (idx >= 0) {
         accounts[idx] = {
           ...accounts[idx],
           failedLoginAttempts: 0,
           lockoutUntil: undefined,
+          lastLoginAt: new Date().toISOString(),
         };
         saveAccounts(accounts);
+        finalAccount = accounts[idx];
       }
 
       localStorage.setItem(
         "lc_session",
-        JSON.stringify({ userId: account.id }),
+        JSON.stringify({ userId: finalAccount.id }),
       );
-      applyTheme(account.theme);
-      applyFontColorById(account.fontColor);
-      setState({ currentUser: account, isLoading: false });
+      applyTheme(finalAccount.theme);
+      applyFontColorById(finalAccount.fontColor);
+      setState({ currentUser: finalAccount, isLoading: false });
       return { success: true };
     },
     [],
@@ -372,6 +375,24 @@ export function useAuth() {
   );
 
   const logout = useCallback(() => {
+    // Track last logout time before clearing session
+    const sessionRaw = localStorage.getItem("lc_session");
+    if (sessionRaw) {
+      try {
+        const { userId } = JSON.parse(sessionRaw);
+        const accounts = getAccounts();
+        const idx = accounts.findIndex((a) => a.id === userId);
+        if (idx >= 0) {
+          accounts[idx] = {
+            ...accounts[idx],
+            lastLogoutAt: new Date().toISOString(),
+          };
+          saveAccounts(accounts);
+        }
+      } catch {
+        // safe to ignore
+      }
+    }
     localStorage.removeItem("lc_session");
     applyTheme("dark");
     applyFontColorById("default");
