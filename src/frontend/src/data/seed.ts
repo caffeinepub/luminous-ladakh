@@ -11,18 +11,12 @@ function generateId(): string {
 export { generateId };
 
 export function initSeedData() {
-  // Version check: bump to v11 includes Restaurants, Rentals, Shop tabs
+  // Version check:
   // v12: LanguageProvider crash fix + button security audit
-  const currentVersion = "v12";
+  // v13: Q&A, business hours, discounts, menu card, dark/light mode, inquiry form
+  const currentVersion = "v13";
 
   if (localStorage.getItem("lc_seeded") !== currentVersion) {
-    // Clean wallet state on version upgrade
-    localStorage.removeItem("lc_walletBalance");
-    localStorage.removeItem("lc_walletTransactions");
-    localStorage.setItem("lc_walletBalance", "0");
-    localStorage.setItem("lc_walletTransactions", JSON.stringify([]));
-    localStorage.removeItem("lc_pendingPayments");
-
     // Auto-cleanup: remove test/demo accounts but PRESERVE:
     // - creator_1 (always kept)
     // - any account in lc_specialAccounts
@@ -134,6 +128,17 @@ export function initSeedData() {
 
   if (!localStorage.getItem("lc_menuItemReviews")) {
     localStorage.setItem("lc_menuItemReviews", JSON.stringify([]));
+  }
+
+  // v13: new keys
+  if (!localStorage.getItem("lc_business_qa")) {
+    localStorage.setItem("lc_business_qa", JSON.stringify([]));
+  }
+  if (!localStorage.getItem("lc_discounts")) {
+    localStorage.setItem("lc_discounts", JSON.stringify([]));
+  }
+  if (!localStorage.getItem("lc_inquiries")) {
+    localStorage.setItem("lc_inquiries", JSON.stringify([]));
   }
 
   localStorage.setItem("lc_seeded", currentVersion);

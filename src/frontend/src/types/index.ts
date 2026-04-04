@@ -70,6 +70,14 @@ export interface PharmacyEntry {
   phone: string;
 }
 
+/** Business hours for a single day */
+export interface BusinessHourEntry {
+  day: string;
+  open: string;
+  close: string;
+  closed?: boolean;
+}
+
 export interface Business {
   id: string;
   name: string;
@@ -87,6 +95,8 @@ export interface Business {
   vehicles?: RentalVehicle[];
   products?: ShopProduct[];
   lastAvailabilityUpdate?: string;
+  /** Business hours Mon–Sun */
+  businessHours?: BusinessHourEntry[];
 }
 
 export interface LocationReview {
@@ -248,4 +258,14 @@ export interface RoadStatus {
   note?: string;
   updatedBy?: string;
   updatedAt?: string;
+}
+
+/** Discount / special offer posted by a member for their business */
+export interface DiscountEntry {
+  id: string;
+  businessId: string;
+  memberUsername: string;
+  message: string;
+  validUntil: string;
+  timestamp: string;
 }

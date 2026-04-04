@@ -489,6 +489,7 @@ export class StorageClient {
     });
     const respone = result.response.body;
     if (isV3ResponseBody(respone)) {
+      console.log("Certificate:", respone.certificate);
       return respone.certificate;
     }
     throw new Error("Expected v3 response body");

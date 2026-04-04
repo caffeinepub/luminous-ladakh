@@ -413,6 +413,52 @@ export function CreatorProfileTab({
         </div>
       </div>
 
+      {/* Light/Dark Mode Toggle */}
+      <div className="bg-card border border-border rounded-xl p-4">
+        <h3 className="font-heading font-semibold mb-3 flex items-center gap-2">
+          <span className="material-symbols-outlined text-primary text-lg">
+            light_mode
+          </span>
+          Display Mode
+        </h3>
+        <div className="flex gap-2">
+          {(["dark", "light"] as const).map((mode) => {
+            const stored = (() => {
+              try {
+                return (
+                  (localStorage.getItem("lc_theme_mode") as "dark" | "light") ||
+                  "dark"
+                );
+              } catch {
+                return "dark";
+              }
+            })();
+            return (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => {
+                  try {
+                    localStorage.setItem("lc_theme_mode", mode);
+                    window.dispatchEvent(new Event("lc_data_changed"));
+                  } catch {}
+                }}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-medium transition-all ${
+                  stored === mode
+                    ? "border-primary bg-primary/15 text-primary"
+                    : "border-border bg-secondary text-muted-foreground hover:border-primary/40"
+                }`}
+                data-ocid={`profile.${mode}_mode.toggle`}
+              >
+                <span className="material-symbols-outlined text-base">
+                  {mode === "dark" ? "dark_mode" : "light_mode"}
+                </span>
+                {mode === "dark" ? "Dark" : "Light"}
+              </button>
+            );
+          })}
+        </div>
+      </div>
       {/* Font Color */}
       <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-4">
         <h3 className="font-semibold text-white mb-3 flex items-center gap-2">

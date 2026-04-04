@@ -4,7 +4,9 @@ import { generateId } from "../../data/seed";
 import type {
   Account,
   Business,
+  BusinessHourEntry,
   BusinessType,
+  DiscountEntry,
   MenuItem,
   PendingPayment,
   RentalAddon,
@@ -12,6 +14,12 @@ import type {
   ShopProduct,
   Violation,
 } from "../../types";
+import { getBusinessQA } from "../shared/BusinessQASection";
+import {
+  type InquiryEntry,
+  getInquiries,
+  markInquiryReplied,
+} from "../shared/InquiryModal";
 
 const MILITARY_KEYWORDS = [
   "army",
@@ -761,6 +769,12 @@ export function MemberBusinessTab({
   const [editingProduct, setEditingProduct] = useState<ShopProduct | null>(
     null,
   );
+  const [formBusinessHours, setFormBusinessHours] = useState<
+    BusinessHourEntry[]
+  >([]);
+  const [discountMsg, setDiscountMsg] = useState("");
+  const [showDiscountForm, setShowDiscountForm] = useState(false);
+  const [showInquiriesFor, setShowInquiriesFor] = useState<string | null>(null);
 
   function getBizTypeLabel(biz: Business): string {
     if (biz.businessType) return BUSINESS_TYPE_LABELS[biz.businessType];
@@ -791,6 +805,7 @@ export function MemberBusinessTab({
     setFormProducts([]);
     setAddingProduct(false);
     setEditingProduct(null);
+    setFormBusinessHours([]);
   }
 
   function openEdit(biz: Business) {
@@ -809,6 +824,7 @@ export function MemberBusinessTab({
     setFormMenuItems(biz.menuItems ?? []);
     setFormRentalAddons(biz.rentalAddons ?? []);
     setFormProducts(biz.products ?? []);
+    setFormBusinessHours(biz.businessHours ?? []);
     setAddingRoom(false);
     setEditingRoom(null);
     setAddingMenuItem(false);
@@ -921,6 +937,8 @@ export function MemberBusinessTab({
           ? formRentalAddons
           : undefined,
       products: formBizType === "shop" ? formProducts : undefined,
+      businessHours:
+        formBusinessHours.length > 0 ? formBusinessHours : undefined,
       lastAvailabilityUpdate:
         formBizType === "hotel" ? new Date().toISOString() : undefined,
     };
@@ -1194,6 +1212,102 @@ export function MemberBusinessTab({
             </div>
           );
         })}
+
+      {/* ---- Inquiries Panel ---- */}
+      {!showForm &&
+        businesses.length > 0 &&
+        (() => {
+          const allInquiries = (() => {
+            try {
+              return getInquiries();
+            } catch {
+              return [];
+            }
+          })();
+          const myBusinessIds = new Set(businesses.map((b) => b.id));
+          const myInquiries = allInquiries.filter((i) =>
+            myBusinessIds.has(i.businessId),
+          );
+          const newCount = myInquiries.filter((i) => i.status === "new").length;
+          if (myInquiries.length === 0) return null;
+          return (
+            <div className="mb-4 rounded-2xl bg-zinc-900/80 border border-zinc-800 overflow-hidden">
+              <button
+                type="button"
+                className="w-full flex items-center justify-between p-4 hover:bg-zinc-800/50 transition-colors"
+                onClick={() =>
+                  setShowInquiriesFor(
+                    showInquiriesFor === "panel" ? null : "panel",
+                  )
+                }
+                data-ocid="business.panel"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-amber-400 text-base">
+                    mail
+                  </span>
+                  <span className="text-sm font-bold text-white">
+                    Customer Inquiries
+                  </span>
+                  {newCount > 0 && (
+                    <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-500 text-black font-bold">
+                      {newCount} new
+                    </span>
+                  )}
+                </div>
+                <span className="material-symbols-outlined text-zinc-500 text-base">
+                  {showInquiriesFor === "panel" ? "expand_less" : "expand_more"}
+                </span>
+              </button>
+              {showInquiriesFor === "panel" && (
+                <div className="border-t border-zinc-800 divide-y divide-zinc-800">
+                  {myInquiries.map((inq) => (
+                    <div key={inq.id} className="p-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-amber-400">
+                            {inq.businessName}
+                          </p>
+                          <p className="text-sm text-white mt-0.5">
+                            {inq.message}
+                          </p>
+                          {inq.date && (
+                            <p className="text-xs text-zinc-500 mt-0.5">
+                              Preferred date: {inq.date}
+                            </p>
+                          )}
+                          <p className="text-xs text-zinc-600 mt-1">
+                            From @{inq.fromUsername} ·{" "}
+                            {new Date(inq.timestamp).toLocaleDateString()}
+                          </p>
+                        </div>
+                        {inq.status === "new" ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              markInquiryReplied(inq.id);
+                              window.dispatchEvent(
+                                new Event("lc_data_changed"),
+                              );
+                            }}
+                            className="text-xs px-2 py-1 rounded-lg bg-green-600/20 border border-green-500/30 text-green-400 hover:bg-green-600/30 transition-colors flex-shrink-0"
+                            data-ocid="business.button"
+                          >
+                            Mark Replied
+                          </button>
+                        ) : (
+                          <span className="text-xs text-zinc-600 flex-shrink-0">
+                            Replied
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
       {!showForm && businesses.length === 0 && (
         <div
@@ -1882,6 +1996,196 @@ export function MemberBusinessTab({
                 )}
               </div>
             )}
+
+            {/* ---- Business Hours ---- */}
+            <div className="border-t border-zinc-700 pt-5">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-bold text-white">
+                  🕐 Business Hours
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const days = [
+                      "Mon",
+                      "Tue",
+                      "Wed",
+                      "Thu",
+                      "Fri",
+                      "Sat",
+                      "Sun",
+                    ];
+                    if (formBusinessHours.length === 0) {
+                      setFormBusinessHours(
+                        days.map((d) => ({
+                          day: d,
+                          open: "09:00",
+                          close: "18:00",
+                          closed: false,
+                        })),
+                      );
+                    }
+                  }}
+                  className="text-xs text-amber-400 hover:text-amber-300"
+                  data-ocid="business.button"
+                >
+                  {formBusinessHours.length === 0 ? "Set Hours" : ""}
+                </button>
+              </div>
+              {formBusinessHours.length > 0 && (
+                <div className="space-y-2">
+                  {formBusinessHours.map((h, i) => (
+                    <div key={h.day} className="flex items-center gap-2">
+                      <span className="text-xs text-zinc-400 w-8">{h.day}</span>
+                      <input
+                        type="checkbox"
+                        checked={!h.closed}
+                        onChange={(e) => {
+                          setFormBusinessHours((prev) =>
+                            prev.map((x, idx) =>
+                              idx === i
+                                ? { ...x, closed: !e.target.checked }
+                                : x,
+                            ),
+                          );
+                        }}
+                        className="w-4 h-4 accent-amber-500"
+                      />
+                      {!h.closed ? (
+                        <>
+                          <input
+                            type="time"
+                            value={h.open}
+                            onChange={(e) =>
+                              setFormBusinessHours((prev) =>
+                                prev.map((x, idx) =>
+                                  idx === i
+                                    ? { ...x, open: e.target.value }
+                                    : x,
+                                ),
+                              )
+                            }
+                            className="flex-1 bg-zinc-900 text-white border border-zinc-700 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-amber-500"
+                          />
+                          <span className="text-xs text-zinc-500">to</span>
+                          <input
+                            type="time"
+                            value={h.close}
+                            onChange={(e) =>
+                              setFormBusinessHours((prev) =>
+                                prev.map((x, idx) =>
+                                  idx === i
+                                    ? { ...x, close: e.target.value }
+                                    : x,
+                                ),
+                              )
+                            }
+                            className="flex-1 bg-zinc-900 text-white border border-zinc-700 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-amber-500"
+                          />
+                        </>
+                      ) : (
+                        <span className="text-xs text-red-400 ml-2">
+                          Closed
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setFormBusinessHours([])}
+                    className="text-xs text-zinc-500 hover:text-red-400 mt-1"
+                    data-ocid="business.button"
+                  >
+                    Remove Hours
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* ---- Discounts / Offers ---- */}
+            <div className="border-t border-zinc-700 pt-5">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-bold text-white">
+                  🏷️ Discounts & Offers
+                </h4>
+                {!showDiscountForm && (
+                  <button
+                    type="button"
+                    onClick={() => setShowDiscountForm(true)}
+                    className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1"
+                    data-ocid="business.open_modal_button"
+                  >
+                    <span className="material-symbols-outlined text-sm">
+                      add
+                    </span>
+                    Add Offer
+                  </button>
+                )}
+              </div>
+              {showDiscountForm && (
+                <div className="bg-zinc-800/60 border border-amber-500/20 rounded-xl p-4 space-y-3">
+                  <input
+                    type="text"
+                    placeholder="e.g. 10% off this weekend!"
+                    value={discountMsg}
+                    onChange={(e) => setDiscountMsg(e.target.value)}
+                    className={inputCls}
+                    data-ocid="business.input"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const msg = discountMsg.trim();
+                        if (!msg) return;
+                        const biz = editing;
+                        if (!biz) return;
+                        try {
+                          const LS_DISCOUNTS = "lc_discounts";
+                          const existing: DiscountEntry[] = JSON.parse(
+                            localStorage.getItem(LS_DISCOUNTS) || "[]",
+                          );
+                          const validUntil = new Date(
+                            Date.now() + 7 * 24 * 60 * 60 * 1000,
+                          ).toISOString();
+                          existing.unshift({
+                            id: Date.now().toString(36),
+                            businessId: biz.id,
+                            memberUsername: currentUser.username,
+                            message: msg,
+                            validUntil,
+                            timestamp: new Date().toISOString(),
+                          } as DiscountEntry);
+                          localStorage.setItem(
+                            LS_DISCOUNTS,
+                            JSON.stringify(existing),
+                          );
+                          window.dispatchEvent(new Event("lc_data_changed"));
+                          toast.success("Offer added! Valid for 7 days.");
+                        } catch {}
+                        setDiscountMsg("");
+                        setShowDiscountForm(false);
+                      }}
+                      className="flex-1 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-sm transition-colors"
+                      data-ocid="business.save_button"
+                    >
+                      Post Offer
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowDiscountForm(false);
+                        setDiscountMsg("");
+                      }}
+                      className="flex-1 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-sm transition-colors"
+                      data-ocid="business.cancel_button"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
 
             <div className="flex gap-3 pt-2">
               <button

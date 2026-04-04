@@ -113,6 +113,97 @@
   }
 }
 
+/* ====================================
+   LIGHT MODE OVERRIDES
+   Applied via .light-mode class on root div
+   ====================================  */
+.light-mode {
+  --background: 97% 0.005 60;
+  --foreground: 12% 0.02 30;
+  --card: 94% 0.008 55;
+  --card-foreground: 12% 0.02 30;
+  --popover: 94% 0.008 55;
+  --popover-foreground: 12% 0.02 30;
+  --border: 85% 0.01 55;
+  --input: 96% 0.006 58;
+  --muted: 90% 0.008 55;
+  --muted-foreground: 42% 0.01 50;
+  --secondary: 90% 0.008 55;
+  --secondary-foreground: 20% 0.02 35;
+}
+
+.light-mode body,
+.light-mode {
+  background-color: oklch(97% 0.005 60);
+  color: oklch(12% 0.02 30);
+}
+
+.light-mode .glass {
+  background: oklch(97% 0.005 60 / 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Override dark utility classes in light mode */
+.light-mode .bg-zinc-950 {
+  background-color: oklch(97% 0.005 60) !important;
+}
+.light-mode .bg-zinc-900 {
+  background-color: oklch(94% 0.008 55) !important;
+}
+.light-mode .bg-zinc-800 {
+  background-color: oklch(88% 0.009 52) !important;
+}
+.light-mode .bg-zinc-800\/60 {
+  background-color: oklch(88% 0.009 52 / 0.6) !important;
+}
+.light-mode .border-zinc-800 {
+  border-color: oklch(85% 0.01 55) !important;
+}
+.light-mode .border-zinc-700 {
+  border-color: oklch(80% 0.012 52) !important;
+}
+.light-mode .text-white {
+  color: oklch(12% 0.02 30) !important;
+}
+.light-mode .text-zinc-400 {
+  color: oklch(38% 0.01 50) !important;
+}
+.light-mode .text-zinc-500 {
+  color: oklch(44% 0.01 50) !important;
+}
+.light-mode .text-zinc-300 {
+  color: oklch(22% 0.02 32) !important;
+}
+.light-mode .text-zinc-200 {
+  color: oklch(16% 0.02 31) !important;
+}
+
+/* Fix inputs in light mode */
+.light-mode input,
+.light-mode textarea,
+.light-mode select {
+  color: oklch(12% 0.02 30) !important;
+  background-color: oklch(96% 0.006 58) !important;
+  border-color: oklch(80% 0.012 52) !important;
+}
+.light-mode input::placeholder,
+.light-mode textarea::placeholder {
+  color: oklch(55% 0.01 55) !important;
+  opacity: 1;
+}
+
+/* Keep amber/gold accents visible */
+.light-mode .text-amber-400 {
+  color: oklch(65% 0.17 65) !important;
+}
+.light-mode .text-amber-300 {
+  color: oklch(62% 0.16 65) !important;
+}
+.light-mode .bg-amber-500\/20 {
+  background-color: oklch(75% 0.17 65 / 0.25) !important;
+}
+
 @layer utilities {
   .glass {
     background: oklch(10% 0.008 22 / 0.85);

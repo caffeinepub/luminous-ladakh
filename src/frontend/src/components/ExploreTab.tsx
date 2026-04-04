@@ -1773,6 +1773,9 @@ export function ExploreTab({
       <RoadStatusWidget
         roads={roadStatuses}
         canEdit={isCreator || currentUserRole === "community"}
+        canReport={!isCreator}
+        currentUsername={currentUsername}
+        isCreator={isCreator}
         onUpdateStatus={(id, status, note) => {
           const updated = roadStatuses.map((r) =>
             r.id === id

@@ -58,6 +58,223 @@ function timeAgo(iso: string): string {
   }
 }
 
+// ─── Analytics Panel (Creator-only) ───────────────────────────────────────────
+function AnalyticsPanel({
+  accounts,
+  walletBalance,
+}: { accounts: Account[]; walletBalance: number }) {
+  const [expanded, setExpanded] = useState(false);
+
+  // User analytics
+  const nonCreator = accounts.filter((a) => a.role !== "creator");
+  const totalJoined = nonCreator.length;
+  const activeNow = nonCreator.filter(
+    (a) => !a.status || a.status === "active",
+  ).length;
+  const suspended = nonCreator.filter(
+    (a) => a.status === "suspended" || a.status === "banned",
+  ).length;
+  const inactiveThreshold = 7 * 24 * 60 * 60 * 1000;
+  const inactiveCount = nonCreator.filter((a) => {
+    if (!a.lastLoginAt) return false;
+    return Date.now() - new Date(a.lastLoginAt).getTime() > inactiveThreshold;
+  }).length;
+
+  // Revenue analytics (from wallet transactions)
+  let membershipRevenue = 0;
+  let eventRevenue = 0;
+  let announcementRevenue = 0;
+  try {
+    const txns = JSON.parse(
+      localStorage.getItem("lc_walletTransactions") || "[]",
+    );
+    for (const t of txns) {
+      if (t.type === "payment") {
+        if (t.note?.toLowerCase().includes("membership"))
+          membershipRevenue += t.amount;
+        else if (t.note?.toLowerCase().includes("event"))
+          eventRevenue += t.amount;
+        else if (
+          t.note?.toLowerCase().includes("announcement") ||
+          t.note?.toLowerCase().includes("shop")
+        )
+          announcementRevenue += t.amount;
+        else membershipRevenue += t.amount; // default bucket
+      }
+    }
+  } catch {}
+
+  const totalRevenue = membershipRevenue + eventRevenue + announcementRevenue;
+
+  // Mini bar chart helper
+  const Bar = ({
+    label,
+    value,
+    max,
+    color,
+  }: { label: string; value: number; max: number; color: string }) => {
+    const pct = max > 0 ? Math.round((value / max) * 100) : 0;
+    return (
+      <div className="space-y-1">
+        <div className="flex justify-between text-xs">
+          <span className="text-muted-foreground">{label}</span>
+          <span className="font-semibold text-white">{value}</span>
+        </div>
+        <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all ${color}`}
+            style={{ width: `${Math.max(pct, value > 0 ? 4 : 0)}%` }}
+          />
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="bg-card border border-border rounded-xl p-4">
+      <button
+        type="button"
+        onClick={() => setExpanded((p) => !p)}
+        className="w-full flex items-center justify-between"
+        data-ocid="dashboard.analytics.toggle"
+      >
+        <h2 className="font-heading font-semibold flex items-center gap-2">
+          <span className="material-symbols-outlined text-emerald-400 text-lg">
+            bar_chart
+          </span>
+          Analytics
+          <span className="ml-1 bg-emerald-500/20 text-emerald-400 text-xs font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
+            Creator Only
+          </span>
+        </h2>
+        <span className="material-symbols-outlined text-zinc-500">
+          {expanded ? "expand_less" : "expand_more"}
+        </span>
+      </button>
+
+      {expanded && (
+        <div className="mt-4 space-y-5">
+          {/* User Analytics */}
+          <div>
+            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-widest mb-3">
+              User Analytics
+            </p>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              {[
+                {
+                  label: "Total Joined",
+                  value: totalJoined,
+                  icon: "group_add",
+                  color: "text-blue-400",
+                  bg: "bg-blue-500/10 border-blue-500/20",
+                },
+                {
+                  label: "Active Now",
+                  value: activeNow,
+                  icon: "check_circle",
+                  color: "text-green-400",
+                  bg: "bg-green-500/10 border-green-500/20",
+                },
+                {
+                  label: "Suspended/Banned",
+                  value: suspended,
+                  icon: "block",
+                  color: "text-red-400",
+                  bg: "bg-red-500/10 border-red-500/20",
+                },
+                {
+                  label: "Inactive (7d+)",
+                  value: inactiveCount,
+                  icon: "bedtime",
+                  color: "text-yellow-400",
+                  bg: "bg-yellow-500/10 border-yellow-500/20",
+                },
+              ].map((s) => (
+                <div key={s.label} className={`border rounded-xl p-3 ${s.bg}`}>
+                  <span
+                    className={`material-symbols-outlined text-xl ${s.color} block mb-1`}
+                  >
+                    {s.icon}
+                  </span>
+                  <p className={`font-bold text-xl ${s.color}`}>{s.value}</p>
+                  <p className="text-xs text-muted-foreground">{s.label}</p>
+                </div>
+              ))}
+            </div>
+            <div className="bg-zinc-800/50 rounded-xl p-3 space-y-2">
+              <Bar
+                label="Users"
+                value={nonCreator.filter((a) => a.role === "user").length}
+                max={totalJoined}
+                color="bg-sky-500"
+              />
+              <Bar
+                label="Members"
+                value={nonCreator.filter((a) => a.role === "member").length}
+                max={totalJoined}
+                color="bg-blue-500"
+              />
+              <Bar
+                label="Community"
+                value={nonCreator.filter((a) => a.role === "community").length}
+                max={totalJoined}
+                color="bg-purple-500"
+              />
+            </div>
+          </div>
+
+          {/* Revenue Analytics */}
+          <div>
+            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-widest mb-3">
+              Revenue Analytics
+            </p>
+            <div className="bg-zinc-800/50 rounded-xl p-3 mb-3">
+              <p className="text-xs text-muted-foreground mb-1">
+                Total Revenue
+              </p>
+              <p className="text-2xl font-bold text-emerald-400">
+                &#8377;{totalRevenue.toLocaleString()}
+              </p>
+            </div>
+            <div className="bg-zinc-800/50 rounded-xl p-3 space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">
+                  Membership Payments
+                </span>
+                <span className="font-semibold text-blue-400">
+                  &#8377;{membershipRevenue.toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">
+                  Event Posting Fees
+                </span>
+                <span className="font-semibold text-purple-400">
+                  &#8377;{eventRevenue.toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">
+                  Shop Announcements
+                </span>
+                <span className="font-semibold text-amber-400">
+                  &#8377;{announcementRevenue.toLocaleString()}
+                </span>
+              </div>
+              <div className="border-t border-zinc-700 pt-2 flex justify-between text-sm font-bold">
+                <span>Wallet Balance</span>
+                <span className="text-emerald-400">
+                  &#8377;{walletBalance.toLocaleString()}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function EventApprovalsPanel() {
   const [events, setEvents] = useState<LCEvent[]>(loadEvents);
   const pending = events.filter((e) => e.status === "pending");
@@ -177,7 +394,6 @@ function PhotoApprovalsPanel() {
           </span>
         )}
       </h2>
-
       {pending.length === 0 ? (
         <div className="text-center py-6">
           <span className="material-symbols-outlined text-3xl text-zinc-600 block mb-2">
@@ -213,7 +429,7 @@ function PhotoApprovalsPanel() {
                 <button
                   type="button"
                   onClick={() => approvePhoto(photo)}
-                  className="flex-1 py-2 rounded-lg bg-green-600 hover:bg-green-500 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-1"
+                  className="flex-1 py-2 rounded-lg bg-green-600 hover:bg-green-500 text-white text-sm font-semibold transition-colors"
                   data-ocid="dashboard.confirm_button"
                 >
                   Approve
@@ -221,7 +437,7 @@ function PhotoApprovalsPanel() {
                 <button
                   type="button"
                   onClick={() => rejectPhoto(photo.id)}
-                  className="flex-1 py-2 rounded-lg bg-red-700 hover:bg-red-600 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-1"
+                  className="flex-1 py-2 rounded-lg bg-red-700 hover:bg-red-600 text-white text-sm font-semibold transition-colors"
                   data-ocid="dashboard.cancel_button"
                 >
                   Reject
@@ -241,7 +457,6 @@ function UserActivityPanel({ accounts }: { accounts: Account[] }) {
   const nonCreatorAccounts = accounts
     .filter((a) => a.role !== "creator")
     .sort((a, b) => {
-      // Sort: most recently active first, never-logged-in at bottom
       if (a.lastLoginAt && b.lastLoginAt) {
         return (
           new Date(b.lastLoginAt).getTime() - new Date(a.lastLoginAt).getTime()
@@ -327,17 +542,12 @@ function UserActivityPanel({ accounts }: { accounts: Account[] }) {
                       </p>
                       <div className="flex items-center gap-1.5">
                         <span
-                          className={`text-xs px-1.5 py-0.5 rounded-full border capitalize ${
-                            roleColors[account.role] || roleColors.user
-                          }`}
+                          className={`text-xs px-1.5 py-0.5 rounded-full border capitalize ${roleColors[account.role] || roleColors.user}`}
                         >
                           {account.role}
                         </span>
                         <span
-                          className={`text-xs ${
-                            statusColors[account.status || "active"] ||
-                            statusColors.active
-                          }`}
+                          className={`text-xs ${statusColors[account.status || "active"] || statusColors.active}`}
                         >
                           {account.status || "active"}
                         </span>
@@ -453,6 +663,9 @@ export function CreatorDashboard({
         ))}
       </div>
 
+      {/* Analytics Panel - Creator only */}
+      <AnalyticsPanel accounts={accounts} walletBalance={walletBalance} />
+
       {/* Photo Approvals */}
       <PhotoApprovalsPanel />
 
@@ -462,7 +675,7 @@ export function CreatorDashboard({
       {/* User Activity */}
       <UserActivityPanel accounts={accounts} />
 
-      {/* Recent Activity */}
+      {/* Platform Overview */}
       <div className="bg-card border border-border rounded-xl p-4">
         <h2 className="font-heading font-semibold mb-3 flex items-center gap-2">
           <span className="material-symbols-outlined text-primary text-lg">
@@ -487,7 +700,7 @@ export function CreatorDashboard({
           </div>
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">
-              Monthly revenue
+              Monthly revenue (est.)
             </span>
             <span className="font-semibold text-green-400">
               &#8377;
@@ -526,12 +739,12 @@ export function CreatorDashboard({
         </h2>
         {[
           "Platform Online",
-          "localStorage Data Sync",
+          "Data Sync Active",
           "Moderation System Active",
           "Wallet System Active",
         ].map((item) => (
           <div key={item} className="flex items-center gap-2 py-1.5">
-            <span className="w-2 h-2 rounded-full bg-green-400 pulse-amber" />
+            <span className="w-2 h-2 rounded-full bg-green-400" />
             <span className="text-sm text-muted-foreground">{item}</span>
             <span className="ml-auto text-xs text-green-400">OK</span>
           </div>

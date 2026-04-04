@@ -2,9 +2,55 @@ import { useState } from "react";
 import { useLanguage } from "../context/LanguageContext";
 import type { RoadStatus } from "../types";
 
+// User-reported alerts
+const ALERTS_KEY = "lc_road_alerts";
+
+interface RoadAlert {
+  id: string;
+  message: string;
+  location: string;
+  reportedBy: string;
+  timestamp: string;
+}
+
+function loadAlerts(): RoadAlert[] {
+  try {
+    const saved = localStorage.getItem(ALERTS_KEY);
+    if (!saved) return [];
+    const all: RoadAlert[] = JSON.parse(saved);
+    // Auto-archive alerts older than 24 hours
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    return all.filter((a) => new Date(a.timestamp).getTime() > cutoff);
+  } catch {
+    return [];
+  }
+}
+
+function saveAlerts(alerts: RoadAlert[]) {
+  try {
+    localStorage.setItem(ALERTS_KEY, JSON.stringify(alerts));
+  } catch {}
+}
+
+function timeAgo(iso: string): string {
+  try {
+    const diff = Date.now() - new Date(iso).getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    if (minutes < 1) return "Just now";
+    if (minutes < 60) return `${minutes}m ago`;
+    return `${hours}h ago`;
+  } catch {
+    return "";
+  }
+}
+
 interface Props {
   roads: RoadStatus[];
   canEdit: boolean;
+  canReport?: boolean; // users and community members can report
+  currentUsername?: string;
+  isCreator?: boolean;
   onUpdateStatus: (
     id: string,
     status: RoadStatus["status"],
@@ -12,13 +58,23 @@ interface Props {
   ) => void;
 }
 
-export function RoadStatusWidget({ roads, canEdit, onUpdateStatus }: Props) {
+export function RoadStatusWidget({
+  roads,
+  canEdit,
+  canReport,
+  currentUsername,
+  isCreator,
+  onUpdateStatus,
+}: Props) {
   const { t } = useLanguage();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<{
     status: RoadStatus["status"];
     note: string;
   }>({ status: "open", note: "" });
+  const [alerts, setAlerts] = useState<RoadAlert[]>(loadAlerts);
+  const [showReportForm, setShowReportForm] = useState(false);
+  const [reportForm, setReportForm] = useState({ message: "", location: "" });
 
   const STATUS_CONFIG = {
     open: {
@@ -48,16 +104,53 @@ export function RoadStatusWidget({ roads, canEdit, onUpdateStatus }: Props) {
     setEditingId(null);
   }
 
+  function submitAlert() {
+    if (!reportForm.message.trim() || !reportForm.location.trim()) return;
+    const newAlert: RoadAlert = {
+      id: Date.now().toString(36),
+      message: reportForm.message.trim(),
+      location: reportForm.location.trim(),
+      reportedBy: currentUsername || "Anonymous",
+      timestamp: new Date().toISOString(),
+    };
+    const updated = [newAlert, ...alerts];
+    setAlerts(updated);
+    saveAlerts(updated);
+    setReportForm({ message: "", location: "" });
+    setShowReportForm(false);
+  }
+
+  function removeAlert(id: string) {
+    const updated = alerts.filter((a) => a.id !== id);
+    setAlerts(updated);
+    saveAlerts(updated);
+  }
+
   return (
     <div className="mb-4 bg-card border border-border rounded-xl p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <span className="material-symbols-outlined text-blue-400 text-lg">
-          route
-        </span>
-        <h3 className="text-sm font-semibold">
-          {t("roadStatusTitle", "Road & Pass Status")}
-        </h3>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span className="material-symbols-outlined text-blue-400 text-lg">
+            route
+          </span>
+          <h3 className="text-sm font-semibold">
+            {t("roadStatusTitle", "Road & Pass Status")}
+          </h3>
+        </div>
+        {canReport && (
+          <button
+            type="button"
+            onClick={() => setShowReportForm((p) => !p)}
+            className="flex items-center gap-1 text-xs text-amber-400 hover:text-amber-300 transition-colors"
+            data-ocid="road.report_button"
+          >
+            <span className="material-symbols-outlined text-sm">add_alert</span>
+            Report
+          </button>
+        )}
       </div>
+
+      {/* Road status list */}
       <div className="space-y-2">
         {roads.map((road) => {
           const cfg = STATUS_CONFIG[road.status];
@@ -151,6 +244,93 @@ export function RoadStatusWidget({ roads, canEdit, onUpdateStatus }: Props) {
           );
         })}
       </div>
+
+      {/* User-reported alerts */}
+      {alerts.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-zinc-800">
+          <p className="text-xs font-semibold text-amber-400 mb-2 flex items-center gap-1">
+            <span className="material-symbols-outlined text-sm">campaign</span>
+            Community Alerts
+          </p>
+          <div className="space-y-2">
+            {alerts.map((alert) => (
+              <div
+                key={alert.id}
+                className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-2.5"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-amber-300 truncate">
+                      {alert.location}
+                    </p>
+                    <p className="text-xs text-zinc-300 mt-0.5">
+                      {alert.message}
+                    </p>
+                    <p className="text-[10px] text-zinc-500 mt-1">
+                      @{alert.reportedBy} &middot; {timeAgo(alert.timestamp)}
+                    </p>
+                  </div>
+                  {isCreator && (
+                    <button
+                      type="button"
+                      onClick={() => removeAlert(alert.id)}
+                      className="text-zinc-600 hover:text-red-400 transition-colors flex-shrink-0"
+                    >
+                      <span className="material-symbols-outlined text-xs">
+                        close
+                      </span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Report form */}
+      {showReportForm && (
+        <div className="mt-3 pt-3 border-t border-zinc-800 space-y-2">
+          <p className="text-xs font-semibold text-amber-400">
+            Report a Road/Weather Alert
+          </p>
+          <input
+            type="text"
+            placeholder="Location (e.g. Khardung La)"
+            value={reportForm.location}
+            onChange={(e) =>
+              setReportForm((p) => ({ ...p, location: e.target.value }))
+            }
+            className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-500"
+          />
+          <input
+            type="text"
+            placeholder="What's happening? (e.g. Road blocked due to landslide)"
+            value={reportForm.message}
+            onChange={(e) =>
+              setReportForm((p) => ({ ...p, message: e.target.value }))
+            }
+            className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-500"
+          />
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={submitAlert}
+              className="flex-1 bg-amber-600 hover:bg-amber-500 text-white text-xs py-2 rounded-lg font-semibold transition-colors"
+              data-ocid="road.submit_alert"
+            >
+              Submit Alert
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowReportForm(false)}
+              className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white text-xs py-2 rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,20 +1,70 @@
 import { useState } from "react";
-import type { Account, Business, RentalAddon } from "../types";
+import type {
+  Account,
+  Business,
+  BusinessHourEntry,
+  DiscountEntry,
+  RentalAddon,
+} from "../types";
+import { BusinessQASection } from "./shared/BusinessQASection";
+import { InquiryModal } from "./shared/InquiryModal";
 
 const VEHICLE_TYPES = ["Car", "Bike", "Bicycle", "Scooter", "E-Bike", "Other"];
+const LS_DISCOUNTS = "lc_discounts";
+
+function getActiveDiscounts(businessId: string): DiscountEntry[] {
+  try {
+    const list: DiscountEntry[] = JSON.parse(
+      localStorage.getItem(LS_DISCOUNTS) || "[]",
+    );
+    const now = new Date();
+    return list.filter(
+      (d) => d.businessId === businessId && new Date(d.validUntil) > now,
+    );
+  } catch {
+    return [];
+  }
+}
+
+function getOpenStatus(hours?: BusinessHourEntry[]): "open" | "closed" | null {
+  if (!hours || hours.length === 0) return null;
+  const now = new Date();
+  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const todayName = dayNames[now.getDay()];
+  const entry = hours.find(
+    (h) =>
+      h.day.startsWith(todayName) || todayName.startsWith(h.day.slice(0, 3)),
+  );
+  if (!entry) return null;
+  if (entry.closed) return "closed";
+  const [openH, openM] = entry.open.split(":").map(Number);
+  const [closeH, closeM] = entry.close.split(":").map(Number);
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  const openMins = openH * 60 + openM;
+  const closeMins = closeH * 60 + closeM;
+  if (nowMins >= openMins && nowMins < closeMins) return "open";
+  return "closed";
+}
 
 interface RentalDetailProps {
   business: Business;
   owner: Account;
+  currentUserId: string;
+  currentUsername: string;
+  currentUserRole: string;
   onClose: () => void;
 }
 
 function RentalDetailPanel({
   business,
-  owner: _owner,
+  owner,
+  currentUserId,
+  currentUsername,
+  currentUserRole,
   onClose,
 }: RentalDetailProps) {
-  // Combine both rentalAddons (legacy) and vehicles (new) into one list for display
+  const [showInquiry, setShowInquiry] = useState(false);
+
   const vehicles: RentalAddon[] = [
     ...(business.rentalAddons ?? []),
     ...(business.vehicles ?? []).map((v) => ({
@@ -28,147 +78,258 @@ function RentalDetailPanel({
     })),
   ];
 
+  const activeDiscounts = getActiveDiscounts(business.id);
+  const openStatus = getOpenStatus(business.businessHours);
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="w-full max-w-lg bg-zinc-950 border border-zinc-800 rounded-t-3xl sm:rounded-2xl max-h-[92vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-zinc-800">
-          <div>
-            <h2 className="text-lg font-bold text-white">{business.name}</h2>
-            <p className="text-xs text-zinc-500 mt-0.5">
-              {business.description}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-8 h-8 rounded-full bg-zinc-800 hover:bg-zinc-700 flex items-center justify-center text-zinc-400"
-            data-ocid="rentals.close_button"
-          >
-            <span className="material-symbols-outlined text-sm">close</span>
-          </button>
-        </div>
-
-        <div className="overflow-y-auto flex-1 p-5 space-y-4">
-          {/* Photos */}
-          {(business.photos ?? []).length > 0 && (
-            <div className="flex gap-2 overflow-x-auto">
-              {(business.photos ?? []).map((p, i) => (
-                <img
-                  key={String(i)}
-                  src={p}
-                  alt=""
-                  className="w-32 h-24 object-cover rounded-xl flex-shrink-0"
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Contact */}
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-            <p className="text-xs font-bold text-zinc-400 uppercase tracking-wide mb-3">
-              Contact
-            </p>
-            <div className="flex gap-3">
-              {business.phone && (
-                <a
-                  href={`tel:${business.phone}`}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-green-600/20 border border-green-500/30 text-green-400 text-sm font-semibold hover:bg-green-600/30 transition-colors"
-                  data-ocid="rentals.button"
-                >
-                  <span className="material-symbols-outlined text-base">
-                    call
+    <>
+      <div className="fixed inset-0 z-50 bg-black/80 flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div className="w-full max-w-lg bg-zinc-950 border border-zinc-800 rounded-t-3xl sm:rounded-2xl max-h-[92vh] overflow-hidden flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between p-5 border-b border-zinc-800">
+            <div className="flex-1 min-w-0 pr-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-lg font-bold text-white">
+                  {business.name}
+                </h2>
+                {openStatus === "open" && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 border border-green-500/40 text-green-400 font-semibold">
+                    Open Now
                   </span>
-                  Call
-                </a>
-              )}
-              {business.email && (
-                <a
-                  href={`mailto:${business.email}`}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-400 text-sm font-semibold hover:bg-blue-600/30 transition-colors"
-                  data-ocid="rentals.button"
-                >
-                  <span className="material-symbols-outlined text-base">
-                    mail
+                )}
+                {openStatus === "closed" && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/20 border border-red-500/40 text-red-400 font-semibold">
+                    Closed
                   </span>
-                  Email
-                </a>
-              )}
-            </div>
-          </div>
-
-          {/* Vehicle List */}
-          {vehicles.length > 0 ? (
-            <div>
-              <p className="text-sm font-bold text-white mb-3">
-                Available Vehicles
+                )}
+              </div>
+              <p className="text-xs text-zinc-500 mt-0.5">
+                {business.description}
               </p>
-              <div className="space-y-3">
-                {vehicles.map((v) => (
-                  <div
-                    key={v.id}
-                    className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex gap-3"
-                  >
-                    {v.photo && (
-                      <img
-                        src={v.photo}
-                        alt={v.model}
-                        className="w-20 h-16 object-cover rounded-lg flex-shrink-0"
-                      />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-300">
-                          {v.vehicleType}
-                        </span>
-                        <span
-                          className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                            v.available
-                              ? "bg-green-600/15 border border-green-500/30 text-green-400"
-                              : "bg-red-600/15 border border-red-500/30 text-red-400"
-                          }`}
-                        >
-                          {v.available ? "Available" : "Unavailable"}
-                        </span>
-                      </div>
-                      <p className="text-sm font-semibold text-white truncate">
-                        {v.model}
-                      </p>
-                      <div className="flex gap-3 mt-1">
-                        <span className="text-xs text-amber-400 font-bold">
-                          ₹{v.pricePerDay}/day
-                        </span>
-                        {v.pricePerMonth && (
-                          <span className="text-xs text-zinc-400">
-                            ₹{v.pricePerMonth}/mo
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-zinc-800 hover:bg-zinc-700 flex items-center justify-center text-zinc-400 flex-shrink-0"
+              data-ocid="rentals.close_button"
+            >
+              <span className="material-symbols-outlined text-sm">close</span>
+            </button>
+          </div>
+
+          <div className="overflow-y-auto flex-1 p-5 space-y-4">
+            {/* Discount Banner */}
+            {activeDiscounts.length > 0 && (
+              <div
+                className="bg-amber-500/15 border border-amber-500/40 rounded-xl p-3 flex items-start gap-2"
+                data-ocid="rentals.panel"
+              >
+                <span className="material-symbols-outlined text-amber-400 text-base flex-shrink-0 mt-0.5">
+                  local_offer
+                </span>
+                <div>
+                  {activeDiscounts.map((d) => (
+                    <p
+                      key={d.id}
+                      className="text-sm text-amber-300 font-medium"
+                    >
+                      {d.message}
+                    </p>
+                  ))}
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    Valid until{" "}
+                    {new Date(
+                      activeDiscounts[0].validUntil,
+                    ).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Photos */}
+            {(business.photos ?? []).length > 0 && (
+              <div className="flex gap-2 overflow-x-auto">
+                {(business.photos ?? []).map((p, i) => (
+                  <img
+                    key={String(i)}
+                    src={p}
+                    alt=""
+                    className="w-32 h-24 object-cover rounded-xl flex-shrink-0"
+                  />
                 ))}
               </div>
+            )}
+
+            {/* Contact */}
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+              <p className="text-xs font-bold text-zinc-400 uppercase tracking-wide mb-3">
+                Contact
+              </p>
+              <div className="flex gap-2 flex-wrap">
+                {business.phone && (
+                  <a
+                    href={`tel:${business.phone}`}
+                    className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-green-600/20 border border-green-500/30 text-green-400 text-sm font-semibold hover:bg-green-600/30 transition-colors"
+                    data-ocid="rentals.button"
+                  >
+                    <span className="material-symbols-outlined text-base">
+                      call
+                    </span>
+                    Call
+                  </a>
+                )}
+                {business.email && (
+                  <a
+                    href={`mailto:${business.email}`}
+                    className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-400 text-sm font-semibold hover:bg-blue-600/30 transition-colors"
+                    data-ocid="rentals.button"
+                  >
+                    <span className="material-symbols-outlined text-base">
+                      mail
+                    </span>
+                    Email
+                  </a>
+                )}
+                {currentUserRole !== "member" &&
+                  currentUserRole !== "creator" && (
+                    <button
+                      type="button"
+                      onClick={() => setShowInquiry(true)}
+                      className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-amber-600/20 border border-amber-500/30 text-amber-400 text-sm font-semibold hover:bg-amber-600/30 transition-colors"
+                      data-ocid="rentals.button"
+                    >
+                      <span className="material-symbols-outlined text-base">
+                        chat
+                      </span>
+                      Enquire
+                    </button>
+                  )}
+              </div>
             </div>
-          ) : (
-            <p className="text-sm text-zinc-500 text-center py-4">
-              No vehicles listed yet.
-            </p>
-          )}
+
+            {/* Business Hours */}
+            {business.businessHours && business.businessHours.length > 0 && (
+              <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+                <p className="text-xs font-bold text-zinc-400 uppercase tracking-wide mb-3">
+                  Hours
+                </p>
+                <div className="grid grid-cols-2 gap-1">
+                  {business.businessHours.map((h) => (
+                    <div
+                      key={h.day}
+                      className="flex justify-between text-xs py-0.5"
+                    >
+                      <span className="text-zinc-400">{h.day}</span>
+                      <span
+                        className={h.closed ? "text-red-400" : "text-zinc-300"}
+                      >
+                        {h.closed ? "Closed" : `${h.open}–${h.close}`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Vehicle List */}
+            {vehicles.length > 0 ? (
+              <div>
+                <p className="text-sm font-bold text-white mb-3">
+                  Available Vehicles
+                </p>
+                <div className="space-y-3">
+                  {vehicles.map((v) => (
+                    <div
+                      key={v.id}
+                      className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex gap-3"
+                    >
+                      {v.photo && (
+                        <img
+                          src={v.photo}
+                          alt={v.model}
+                          className="w-20 h-16 object-cover rounded-lg flex-shrink-0"
+                        />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-300">
+                            {v.vehicleType}
+                          </span>
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                              v.available
+                                ? "bg-green-600/15 border border-green-500/30 text-green-400"
+                                : "bg-red-600/15 border border-red-500/30 text-red-400"
+                            }`}
+                          >
+                            {v.available ? "Available" : "Unavailable"}
+                          </span>
+                        </div>
+                        <p className="text-sm font-semibold text-white truncate">
+                          {v.model}
+                        </p>
+                        <div className="flex gap-3 mt-1">
+                          <span className="text-xs text-amber-400 font-bold">
+                            ₹{v.pricePerDay}/day
+                          </span>
+                          {v.pricePerMonth && (
+                            <span className="text-xs text-zinc-400">
+                              ₹{v.pricePerMonth}/mo
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-zinc-500 text-center py-4">
+                No vehicles listed yet.
+              </p>
+            )}
+
+            {/* Q&A Section */}
+            <BusinessQASection
+              businessId={business.id}
+              currentUserId={currentUserId}
+              currentUsername={currentUsername}
+              currentUserRole={currentUserRole}
+              ownerMemberId={owner.id}
+            />
+          </div>
         </div>
       </div>
-    </div>
+
+      {showInquiry && (
+        <InquiryModal
+          businessId={business.id}
+          businessName={business.name}
+          memberUsername={owner.username}
+          businessType={business.businessType}
+          fromUserId={currentUserId}
+          fromUsername={currentUsername}
+          onClose={() => setShowInquiry(false)}
+        />
+      )}
+    </>
   );
 }
 
 interface Props {
   currentUserRole: string;
+  currentUser?: { id: string; username: string };
 }
 
-export function RentalsTab({ currentUserRole: _currentUserRole }: Props) {
+export function RentalsTab({ currentUserRole, currentUser }: Props) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
   const [sort, setSort] = useState<"none" | "price-asc" | "price-desc">("none");
   const [selected, setSelected] = useState<{
+    business: Business;
+    owner: Account;
+  } | null>(null);
+  const [showInquiryCard, setShowInquiryCard] = useState<{
     business: Business;
     owner: Account;
   } | null>(null);
@@ -210,7 +371,6 @@ export function RentalsTab({ currentUserRole: _currentUserRole }: Props) {
 
   let rentals = getRentals();
 
-  // Search
   if (search.trim()) {
     const q = search.toLowerCase();
     rentals = rentals.filter(
@@ -220,7 +380,6 @@ export function RentalsTab({ currentUserRole: _currentUserRole }: Props) {
     );
   }
 
-  // Type filter
   if (filter !== "All") {
     rentals = rentals.filter((r) => {
       const types = getVehicleTypes(r.business);
@@ -228,7 +387,6 @@ export function RentalsTab({ currentUserRole: _currentUserRole }: Props) {
     });
   }
 
-  // Sort
   if (sort === "price-asc") {
     rentals = [...rentals].sort((a, b) => {
       const aMin = getMinDayPrice(a.business) ?? Number.POSITIVE_INFINITY;
@@ -339,79 +497,140 @@ export function RentalsTab({ currentUserRole: _currentUserRole }: Props) {
           {rentals.map(({ business, owner }, idx) => {
             const vehicleTypes = getVehicleTypes(business);
             const minPrice = getMinDayPrice(business);
+            const openStatus = getOpenStatus(business.businessHours);
+            const activeDiscounts = getActiveDiscounts(business.id);
 
             return (
-              <button
+              <div
                 key={business.id}
-                type="button"
-                className="w-full text-left rounded-2xl bg-zinc-900 border border-zinc-800 overflow-hidden hover:border-zinc-600 transition-colors cursor-pointer"
-                onClick={() => setSelected({ business, owner })}
+                className="rounded-2xl bg-zinc-900 border border-zinc-800 overflow-hidden"
                 data-ocid={`rentals.item.${idx + 1}`}
               >
-                {(business.photos ?? [])[0] && (
-                  <img
-                    src={(business.photos ?? [])[0]}
-                    alt={business.name}
-                    className="w-full h-36 object-cover"
-                  />
-                )}
-                <div className="p-4">
-                  <h3 className="font-bold text-white truncate">
-                    {business.name}
-                  </h3>
-                  {business.description && (
-                    <p className="text-xs text-zinc-400 mt-0.5 line-clamp-2">
-                      {business.description}
+                {/* Discount banner */}
+                {activeDiscounts.length > 0 && (
+                  <div className="bg-amber-500/15 border-b border-amber-500/30 px-4 py-2 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-amber-400 text-sm">
+                      local_offer
+                    </span>
+                    <p className="text-xs text-amber-300 font-medium truncate">
+                      {activeDiscounts[0].message}
                     </p>
-                  )}
-                  {vehicleTypes.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {vehicleTypes.map((type) => (
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  className="w-full text-left hover:bg-zinc-800/50 transition-colors cursor-pointer"
+                  onClick={() => setSelected({ business, owner })}
+                >
+                  {(business.photos ?? [])[0] && (
+                    <div className="relative">
+                      <img
+                        src={(business.photos ?? [])[0]}
+                        alt={business.name}
+                        className="w-full h-36 object-cover"
+                      />
+                      {openStatus && (
                         <span
-                          key={type}
-                          className="text-xs px-2 py-0.5 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-300"
+                          className={`absolute top-2 right-2 text-xs px-2 py-0.5 rounded-full font-semibold ${
+                            openStatus === "open"
+                              ? "bg-green-500/90 text-white"
+                              : "bg-red-500/90 text-white"
+                          }`}
                         >
-                          {type}
+                          {openStatus === "open" ? "Open" : "Closed"}
                         </span>
-                      ))}
+                      )}
                     </div>
                   )}
-                  {minPrice !== null && (
-                    <p className="text-xs text-amber-400 font-bold mt-2">
-                      From ₹{minPrice}/day
-                    </p>
-                  )}
-                  <div className="flex gap-2 mt-3">
-                    {business.phone && (
-                      <a
-                        href={`tel:${business.phone}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-green-600/15 border border-green-500/30 text-green-400 text-xs font-medium hover:bg-green-600/25 transition-colors"
+                  <div className="p-4">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-white truncate">
+                        {business.name}
+                      </h3>
+                      {openStatus && (business.photos ?? []).length === 0 && (
+                        <span
+                          className={`text-xs px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0 ${
+                            openStatus === "open"
+                              ? "bg-green-500/20 border border-green-500/40 text-green-400"
+                              : "bg-red-500/20 border border-red-500/40 text-red-400"
+                          }`}
+                        >
+                          {openStatus === "open" ? "Open" : "Closed"}
+                        </span>
+                      )}
+                    </div>
+                    {business.description && (
+                      <p className="text-xs text-zinc-400 mt-0.5 line-clamp-2">
+                        {business.description}
+                      </p>
+                    )}
+                    {vehicleTypes.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {vehicleTypes.map((type) => (
+                          <span
+                            key={type}
+                            className="text-xs px-2 py-0.5 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-300"
+                          >
+                            {type}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {minPrice !== null && (
+                      <p className="text-xs text-amber-400 font-bold mt-2">
+                        From ₹{minPrice}/day
+                      </p>
+                    )}
+                    <div className="flex gap-2 mt-3">
+                      {business.phone && (
+                        <a
+                          href={`tel:${business.phone}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-green-600/15 border border-green-500/30 text-green-400 text-xs font-medium hover:bg-green-600/25 transition-colors"
+                          data-ocid="rentals.button"
+                        >
+                          <span className="material-symbols-outlined text-sm">
+                            call
+                          </span>
+                          Call
+                        </a>
+                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelected({ business, owner });
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400 text-xs font-medium hover:bg-amber-500/25 transition-colors"
                         data-ocid="rentals.button"
                       >
                         <span className="material-symbols-outlined text-sm">
-                          call
+                          info
                         </span>
-                        Call
-                      </a>
-                    )}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelected({ business, owner });
-                      }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400 text-xs font-medium hover:bg-amber-500/25 transition-colors"
-                      data-ocid="rentals.button"
-                    >
-                      <span className="material-symbols-outlined text-sm">
-                        info
-                      </span>
-                      Details
-                    </button>
+                        Details
+                      </button>
+                      {currentUserRole !== "member" &&
+                        currentUserRole !== "creator" && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowInquiryCard({ business, owner });
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-800 border border-zinc-700 text-zinc-300 text-xs font-medium hover:bg-zinc-700 transition-colors"
+                            data-ocid="rentals.button"
+                          >
+                            <span className="material-symbols-outlined text-sm">
+                              chat
+                            </span>
+                            Enquire
+                          </button>
+                        )}
+                    </div>
                   </div>
-                </div>
-              </button>
+                </button>
+              </div>
             );
           })}
         </div>
@@ -421,7 +640,22 @@ export function RentalsTab({ currentUserRole: _currentUserRole }: Props) {
         <RentalDetailPanel
           business={selected.business}
           owner={selected.owner}
+          currentUserId={currentUser?.id ?? ""}
+          currentUsername={currentUser?.username ?? ""}
+          currentUserRole={currentUserRole}
           onClose={() => setSelected(null)}
+        />
+      )}
+
+      {showInquiryCard && (
+        <InquiryModal
+          businessId={showInquiryCard.business.id}
+          businessName={showInquiryCard.business.name}
+          memberUsername={showInquiryCard.owner.username}
+          businessType={showInquiryCard.business.businessType}
+          fromUserId={currentUser?.id ?? ""}
+          fromUsername={currentUser?.username ?? ""}
+          onClose={() => setShowInquiryCard(null)}
         />
       )}
     </div>

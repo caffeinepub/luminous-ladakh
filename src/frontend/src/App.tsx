@@ -51,6 +51,30 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<string>("");
   const [showPostModal, setShowPostModal] = useState(false);
   const [_renderTick, setRenderTick] = useState(0);
+  const [themeMode, setThemeMode] = useState<"dark" | "light">(() => {
+    try {
+      return (
+        (localStorage.getItem("lc_theme_mode") as "dark" | "light") || "dark"
+      );
+    } catch {
+      return "dark";
+    }
+  });
+
+  // Sync theme mode on storage changes
+  useEffect(() => {
+    const handler = () => {
+      try {
+        const mode =
+          (localStorage.getItem("lc_theme_mode") as "dark" | "light") || "dark";
+        setThemeMode(mode);
+      } catch {
+        // ignore
+      }
+    };
+    window.addEventListener("lc_data_changed", handler);
+    return () => window.removeEventListener("lc_data_changed", handler);
+  }, []);
 
   useEffect(() => {
     const handler = () => setRenderTick((tick) => tick + 1);
@@ -203,7 +227,9 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div
+      className={`min-h-screen bg-background${themeMode === "light" ? " light-mode" : ""}`}
+    >
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-40 glass border-b border-border">
         <div className="flex items-center justify-between px-4 py-3 max-w-lg mx-auto">
@@ -351,7 +377,13 @@ export default function App() {
             )}
             {activeTab === "rentals" && (
               <ErrorBoundary minimal>
-                <RentalsTab currentUserRole={currentUser.role} />
+                <RentalsTab
+                  currentUserRole={currentUser.role}
+                  currentUser={{
+                    id: currentUser.id,
+                    username: currentUser.username,
+                  }}
+                />
               </ErrorBoundary>
             )}
             {activeTab === "shop" && (
@@ -463,7 +495,13 @@ export default function App() {
             )}
             {activeTab === "rentals" && (
               <ErrorBoundary minimal>
-                <RentalsTab currentUserRole={currentUser.role} />
+                <RentalsTab
+                  currentUserRole={currentUser.role}
+                  currentUser={{
+                    id: currentUser.id,
+                    username: currentUser.username,
+                  }}
+                />
               </ErrorBoundary>
             )}
             {activeTab === "shop" && (
@@ -564,7 +602,13 @@ export default function App() {
             )}
             {activeTab === "rentals" && (
               <ErrorBoundary minimal>
-                <RentalsTab currentUserRole={currentUser.role} />
+                <RentalsTab
+                  currentUserRole={currentUser.role}
+                  currentUser={{
+                    id: currentUser.id,
+                    username: currentUser.username,
+                  }}
+                />
               </ErrorBoundary>
             )}
             {activeTab === "shop" && (
@@ -635,7 +679,13 @@ export default function App() {
             )}
             {activeTab === "rentals" && (
               <ErrorBoundary minimal>
-                <RentalsTab currentUserRole={currentUser.role} />
+                <RentalsTab
+                  currentUserRole={currentUser.role}
+                  currentUser={{
+                    id: currentUser.id,
+                    username: currentUser.username,
+                  }}
+                />
               </ErrorBoundary>
             )}
             {activeTab === "shop" && (
