@@ -219,9 +219,10 @@ export interface PendingPayment {
   tier: string;
   timestamp: string;
   status: "pending";
-  paymentType?: "membership" | "event" | "announcement";
+  paymentType?: "membership" | "event" | "announcement" | "room_rental";
   eventTitle?: string;
   productName?: string;
+  roomTitle?: string;
 }
 
 export interface LCEvent {
@@ -268,4 +269,35 @@ export interface DiscountEntry {
   message: string;
   validUntil: string;
   timestamp: string;
+}
+
+/** Homeowner room rental listing */
+export interface RoomRental {
+  id: string;
+  title: string;
+  description: string;
+  photos: string[];
+  pricePerNight: number;
+  maxGuests: number;
+  contactNumber: string;
+  location: string;
+  postedById: string;
+  postedByUsername: string;
+  postedByRole: string;
+  postedAt: string;
+  expiresAt: string;
+  extendedUntil?: string;
+  paymentId: string;
+  status: "pending_payment" | "active" | "expired";
+}
+
+/** User feedback / suggestion submitted to Creator */
+export interface FeedbackEntry {
+  id: string;
+  fromUserId: string;
+  fromUsername: string;
+  fromRole: string;
+  message: string;
+  timestamp: string;
+  read: boolean;
 }

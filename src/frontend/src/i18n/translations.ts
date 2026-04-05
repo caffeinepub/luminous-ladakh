@@ -35,6 +35,7 @@ const en: Record<string, string> = {
   restaurants: "Restaurants",
   rentals: "Rentals",
   shop: "Shop",
+  rooms: "Rooms",
 
   // Auth
   login: "Login",
@@ -523,6 +524,7 @@ const hi: Record<string, string> = {
   restaurants: "रेस्तरां",
   rentals: "किराया",
   shop: "दुकान",
+  rooms: "कमरे",
 
   // Auth
   login: "लॉगिन",
@@ -775,6 +777,7 @@ const ladTibt: Record<string, string> = {
   restaurants: "ཟ་ཁང",
   rentals: "ཁེར་ལེན",
   shop: "ཚོང་ར",
+  rooms: "ཤག་ཚང",
 
   // Auth
   login: "ནང་འཛུལ།",
@@ -981,6 +984,7 @@ const ladRom: Record<string, string> = {
   restaurants: "Za-khang",
   rentals: "Kher-len",
   shop: "Tsong-ra",
+  rooms: "Shag-tshang",
 
   // Auth
   login: "Nang-dzul",

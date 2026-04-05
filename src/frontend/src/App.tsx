@@ -5,10 +5,12 @@ import { AuthScreen } from "./components/AuthScreen";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { EventsTab } from "./components/EventsTab";
 import { ExploreTab } from "./components/ExploreTab";
+import { HotelsTab } from "./components/HotelsTab";
 import { LanguageSelectScreen } from "./components/LanguageSelectScreen";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
 import { RentalsTab } from "./components/RentalsTab";
 import { RestaurantsTab } from "./components/RestaurantsTab";
+import { RoomRentalsTab } from "./components/RoomRentalsTab";
 import { ShopTab } from "./components/ShopTab";
 import { CommunityBusinessTab } from "./components/community/CommunityBusinessTab";
 import { CommunityPermissionsTab } from "./components/community/PermissionsTab";
@@ -144,6 +146,8 @@ export default function App() {
     { id: "restaurants", icon: "restaurant", label: t("restaurants") },
     { id: "rentals", icon: "directions_car", label: t("rentals") },
     { id: "shop", icon: "storefront", label: t("shop") },
+    { id: "hotels", icon: "hotel", label: t("hotels") },
+    { id: "rooms", icon: "meeting_room", label: t("rooms") },
   ];
 
   const MEMBER_NAV = [
@@ -156,6 +160,8 @@ export default function App() {
     { id: "restaurants", icon: "restaurant", label: t("restaurants") },
     { id: "rentals", icon: "directions_car", label: t("rentals") },
     { id: "shop", icon: "storefront", label: t("shop") },
+    { id: "hotels", icon: "hotel", label: t("hotels") },
+    { id: "rooms", icon: "meeting_room", label: t("rooms") },
   ];
 
   const COMMUNITY_NAV = [
@@ -168,6 +174,8 @@ export default function App() {
     { id: "restaurants", icon: "restaurant", label: t("restaurants") },
     { id: "rentals", icon: "directions_car", label: t("rentals") },
     { id: "shop", icon: "storefront", label: t("shop") },
+    { id: "hotels", icon: "hotel", label: t("hotels") },
+    { id: "rooms", icon: "meeting_room", label: t("rooms") },
   ];
 
   const CREATOR_NAV = [
@@ -177,6 +185,8 @@ export default function App() {
     { id: "restaurants", icon: "restaurant", label: t("restaurants") },
     { id: "rentals", icon: "directions_car", label: t("rentals") },
     { id: "shop", icon: "storefront", label: t("shop") },
+    { id: "hotels", icon: "hotel", label: t("hotels") },
+    { id: "rooms", icon: "meeting_room", label: t("rooms") },
     { id: "events", icon: "event", label: t("events") },
     { id: "vault", icon: "inventory_2", label: t("vault") },
     { id: "wallet", icon: "account_balance_wallet", label: t("wallet") },
@@ -381,6 +391,28 @@ export default function App() {
                 />
               </ErrorBoundary>
             )}
+            {activeTab === "hotels" && (
+              <ErrorBoundary minimal>
+                <HotelsTab
+                  currentUserRole={currentUser.role}
+                  currentUser={{
+                    id: currentUser.id,
+                    username: currentUser.username,
+                  }}
+                />
+              </ErrorBoundary>
+            )}
+            {activeTab === "rooms" && (
+              <ErrorBoundary minimal>
+                <RoomRentalsTab
+                  currentUserRole={currentUser.role}
+                  currentUser={{
+                    id: currentUser.id,
+                    username: currentUser.username,
+                  }}
+                />
+              </ErrorBoundary>
+            )}
           </>
         )}
 
@@ -507,6 +539,28 @@ export default function App() {
                 />
               </ErrorBoundary>
             )}
+            {activeTab === "hotels" && (
+              <ErrorBoundary minimal>
+                <HotelsTab
+                  currentUserRole={currentUser.role}
+                  currentUser={{
+                    id: currentUser.id,
+                    username: currentUser.username,
+                  }}
+                />
+              </ErrorBoundary>
+            )}
+            {activeTab === "rooms" && (
+              <ErrorBoundary minimal>
+                <RoomRentalsTab
+                  currentUserRole={currentUser.role}
+                  currentUser={{
+                    id: currentUser.id,
+                    username: currentUser.username,
+                  }}
+                />
+              </ErrorBoundary>
+            )}
           </>
         )}
 
@@ -623,6 +677,28 @@ export default function App() {
                 />
               </ErrorBoundary>
             )}
+            {activeTab === "hotels" && (
+              <ErrorBoundary minimal>
+                <HotelsTab
+                  currentUserRole={currentUser.role}
+                  currentUser={{
+                    id: currentUser.id,
+                    username: currentUser.username,
+                  }}
+                />
+              </ErrorBoundary>
+            )}
+            {activeTab === "rooms" && (
+              <ErrorBoundary minimal>
+                <RoomRentalsTab
+                  currentUserRole={currentUser.role}
+                  currentUser={{
+                    id: currentUser.id,
+                    username: currentUser.username,
+                  }}
+                />
+              </ErrorBoundary>
+            )}
           </>
         )}
 
@@ -700,6 +776,28 @@ export default function App() {
                 />
               </ErrorBoundary>
             )}
+            {activeTab === "hotels" && (
+              <ErrorBoundary minimal>
+                <HotelsTab
+                  currentUserRole={currentUser.role}
+                  currentUser={{
+                    id: currentUser.id,
+                    username: currentUser.username,
+                  }}
+                />
+              </ErrorBoundary>
+            )}
+            {activeTab === "rooms" && (
+              <ErrorBoundary minimal>
+                <RoomRentalsTab
+                  currentUserRole={currentUser.role}
+                  currentUser={{
+                    id: currentUser.id,
+                    username: currentUser.username,
+                  }}
+                />
+              </ErrorBoundary>
+            )}
             {activeTab === "events" && (
               <ErrorBoundary minimal>
                 <EventsTab
@@ -727,13 +825,35 @@ export default function App() {
                           ? `Event Post: ${p.eventTitle || "Event"} from @${p.memberUsername}`
                           : p.paymentType === "announcement"
                             ? `Shop Announcement: ${p.productName || "Product"} from @${p.memberUsername}`
-                            : `${p.tier} Membership from @${p.memberUsername}`;
+                            : p.paymentType === "room_rental"
+                              ? `Room Rental: "${p.roomTitle || "Room"}" from @${p.memberUsername}`
+                              : `${p.tier} Membership from @${p.memberUsername}`;
                       data.addWalletTransaction({
                         type: "payment",
                         amount: p.amount,
                         from: p.memberUsername,
                         note,
                       });
+                      // Activate room rental if this is a room rental payment
+                      if (p.paymentType === "room_rental") {
+                        try {
+                          const rentals = JSON.parse(
+                            localStorage.getItem("lc_room_rentals") || "[]",
+                          );
+                          const rIdx = rentals.findIndex(
+                            (r: any) => r.paymentId === id,
+                          );
+                          if (rIdx >= 0) {
+                            rentals[rIdx].status = "active";
+                            localStorage.setItem(
+                              "lc_room_rentals",
+                              JSON.stringify(rentals),
+                            );
+                          }
+                        } catch {
+                          /* safe */
+                        }
+                      }
                       data.removePendingPayment(id);
                       setRenderTick((n) => n + 1);
                     }

@@ -5,9 +5,12 @@ import { useLanguage } from "../../context/LanguageContext";
 import { applyTheme } from "../../hooks/useAuth";
 import { LANGUAGES } from "../../i18n/translations";
 import type { Account, Post, Review, Violation } from "../../types";
+import type { FeedbackEntry } from "../../types";
+import { MyRoomListings } from "../RoomRentalsTab";
 import { WorldLanguageDownloader } from "../WorldLanguageDownloader";
 import { AccountSwitcher } from "../shared/AccountSwitcher";
 import { CameraPermissionModal } from "../shared/CameraPermissionModal";
+import { FeedbackButton, getFeedbacks } from "../shared/FeedbackButton";
 import { TermsModal } from "../shared/TermsModal";
 
 interface SpecialEntry {
@@ -95,6 +98,19 @@ export function CreatorProfileTab({
   const [newSpecialEntry, setNewSpecialEntry] = useState("");
   const [rulesExpanded, setRulesExpanded] = useState(false);
   const [termsModalOpen, setTermsModalOpen] = useState(false);
+  const [feedbacksExpanded, setFeedbacksExpanded] = useState(false);
+  const [feedbacks, setFeedbacks] = useState<FeedbackEntry[]>(() =>
+    getFeedbacks(),
+  );
+
+  function markFeedbackRead(id: string) {
+    const list = getFeedbacks().map((f) =>
+      f.id === id ? { ...f, read: true } : f,
+    );
+    localStorage.setItem("lc_feedbacks", JSON.stringify(list));
+    setFeedbacks(list);
+    window.dispatchEvent(new Event("lc_data_changed"));
+  }
   const currentCode = localStorage.getItem("lc_communityCode") || "blackjack";
 
   const photoRef = useRef<HTMLInputElement>(null);
@@ -595,6 +611,94 @@ export function CreatorProfileTab({
           </div>
         )}
       </div>
+
+      {/* Feedbacks Panel (Creator only) */}
+      <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-4">
+        <button
+          type="button"
+          onClick={() => {
+            setFeedbacksExpanded(!feedbacksExpanded);
+            if (!feedbacksExpanded) setFeedbacks(getFeedbacks());
+          }}
+          className="w-full flex items-center justify-between"
+          data-ocid="feedbacks.panel.toggle"
+        >
+          <span className="flex items-center gap-2 font-semibold text-white text-sm">
+            <span className="material-symbols-outlined text-amber-400 text-lg">
+              feedback
+            </span>
+            User Feedbacks
+            {feedbacks.filter((f) => !f.read).length > 0 && (
+              <span className="text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded-full font-bold">
+                {feedbacks.filter((f) => !f.read).length} new
+              </span>
+            )}
+          </span>
+          <span className="material-symbols-outlined text-zinc-400 text-sm">
+            {feedbacksExpanded ? "expand_less" : "expand_more"}
+          </span>
+        </button>
+        {feedbacksExpanded && (
+          <div className="mt-3 space-y-3">
+            {feedbacks.length === 0 ? (
+              <p
+                className="text-sm text-zinc-500 text-center py-2"
+                data-ocid="feedbacks.empty_state"
+              >
+                No feedbacks yet.
+              </p>
+            ) : (
+              feedbacks.map((fb, idx) => (
+                <div
+                  key={fb.id}
+                  className={`rounded-xl p-3 border ${fb.read ? "bg-zinc-800 border-zinc-700" : "bg-amber-500/5 border-amber-500/30"}`}
+                  data-ocid={`feedbacks.item.${idx + 1}`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-white">
+                        @{fb.fromUsername}
+                        <span className="ml-1 text-zinc-500 font-normal capitalize">
+                          · {fb.fromRole}
+                        </span>
+                      </p>
+                      <p className="text-xs text-zinc-400 mt-1">{fb.message}</p>
+                      <p className="text-[10px] text-zinc-600 mt-1">
+                        {new Date(fb.timestamp).toLocaleString()}
+                      </p>
+                    </div>
+                    {!fb.read && (
+                      <button
+                        type="button"
+                        onClick={() => markFeedbackRead(fb.id)}
+                        className="flex-shrink-0 text-[10px] bg-zinc-700 hover:bg-zinc-600 text-zinc-300 px-2 py-1 rounded-lg transition-colors"
+                        data-ocid={`feedbacks.mark_read.button.${idx + 1}`}
+                      >
+                        Mark read
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Room Listings */}
+      <MyRoomListings
+        currentUserId={currentUser.id}
+        currentUsername={currentUser.username}
+        currentUserRole={currentUser.role}
+        currentUserEmail={currentUser.email}
+      />
+
+      {/* Feedback Button (Creator can also send feedback to self note — still a useful UX component) */}
+      <FeedbackButton
+        currentUserId={currentUser.id}
+        currentUsername={currentUser.username}
+        currentRole={currentUser.role}
+      />
 
       {/* Account Switcher */}
       {onSwitchAccount && onAddAccount && (

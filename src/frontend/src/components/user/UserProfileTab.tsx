@@ -6,9 +6,11 @@ import { useLanguage } from "../../context/LanguageContext";
 import { applyTheme } from "../../hooks/useAuth";
 import { LANGUAGES } from "../../i18n/translations";
 import type { Account, Post, Violation } from "../../types";
+import { MyRoomListings } from "../RoomRentalsTab";
 import { WorldLanguageDownloader } from "../WorldLanguageDownloader";
 import { AccountSwitcher } from "../shared/AccountSwitcher";
 import { CameraPermissionModal } from "../shared/CameraPermissionModal";
+import { FeedbackButton } from "../shared/FeedbackButton";
 import { TermsModal } from "../shared/TermsModal";
 import { ViolationCard } from "../shared/ViolationCard";
 
@@ -492,6 +494,21 @@ export function UserProfileTab({
           </div>
         )}
       </div>
+
+      {/* Room Listings */}
+      <MyRoomListings
+        currentUserId={currentUser.id}
+        currentUsername={currentUser.username}
+        currentUserRole={currentUser.role}
+        currentUserEmail={currentUser.email}
+      />
+
+      {/* Feedback */}
+      <FeedbackButton
+        currentUserId={currentUser.id}
+        currentUsername={currentUser.username}
+        currentRole={currentUser.role}
+      />
 
       {/* Account Switcher */}
       {onSwitchAccount && onAddAccount && (

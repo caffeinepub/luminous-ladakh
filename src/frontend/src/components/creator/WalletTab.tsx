@@ -124,7 +124,9 @@ export function CreatorWallet({
                         ? `Event: ${p.eventTitle || "Event"}`
                         : p.paymentType === "announcement"
                           ? `Shop Announcement: ${p.productName || "Product"}`
-                          : `${p.tier} Membership`}
+                          : p.paymentType === "room_rental"
+                            ? `Room Rental: "${p.roomTitle || "Room"}" from @${p.memberUsername}`
+                            : `${p.tier} Membership`}
                       {" · "}
                       {new Date(p.timestamp).toLocaleString()}
                     </p>

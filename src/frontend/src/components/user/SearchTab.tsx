@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLanguage } from "../../context/LanguageContext";
-import type { Account, Post, Review } from "../../types";
+import type { Account, Post, Review, RoomRental } from "../../types";
 
 const PRELOADED_NAMES = [
   "Thiksey Monastery",
@@ -56,6 +56,17 @@ export function SearchTab({
   );
   const approvedPosts = posts.filter((p) => p.status === "approved");
 
+  const roomRentals: RoomRental[] = (() => {
+    try {
+      return JSON.parse(localStorage.getItem("lc_room_rentals") || "[]");
+    } catch {
+      return [];
+    }
+  })();
+  const activeRooms = roomRentals.filter(
+    (r) => r.status === "active" && new Date(r.expiresAt) > new Date(),
+  );
+
   const matchedLocations = q
     ? PRELOADED_NAMES.filter((n) => n.toLowerCase().includes(q))
     : [];
@@ -87,8 +98,29 @@ export function SearchTab({
       )
     : [];
 
+  const matchedRooms = q
+    ? activeRooms.filter(
+        (r) =>
+          r.title.toLowerCase().includes(q) ||
+          r.location.toLowerCase().includes(q) ||
+          r.postedByUsername.toLowerCase().includes(q),
+      )
+    : [];
+
+  const matchedMembers = q
+    ? members.filter(
+        (m) =>
+          m.username.toLowerCase().includes(q) ||
+          (m.bio || "").toLowerCase().includes(q),
+      )
+    : [];
+
   const hasResults =
-    matchedLocations.length + matchedBusinesses.length + matchedPosts.length >
+    matchedLocations.length +
+      matchedBusinesses.length +
+      matchedPosts.length +
+      matchedRooms.length +
+      matchedMembers.length >
     0;
 
   return (
@@ -237,6 +269,74 @@ export function SearchTab({
                   <p className="font-semibold text-sm text-white">{p.title}</p>
                   <p className="text-xs text-zinc-500">
                     {p.locationName} · {p.category}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {matchedRooms.length > 0 && (
+        <section className="mb-5">
+          <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wide mb-3">
+            Room Rentals ({matchedRooms.length})
+          </h3>
+          <div className="space-y-2">
+            {matchedRooms.map((r) => (
+              <div
+                key={r.id}
+                className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 flex items-center gap-3"
+              >
+                <span className="material-symbols-outlined text-sky-400 text-xl">
+                  meeting_room
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm text-white">{r.title}</p>
+                  <p className="text-xs text-zinc-500">
+                    {r.location} · ₹{r.pricePerNight.toLocaleString()}/night · @
+                    {r.postedByUsername}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {matchedMembers.length > 0 && (
+        <section className="mb-5">
+          <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wide mb-3">
+            Members ({matchedMembers.length})
+          </h3>
+          <div className="space-y-2">
+            {matchedMembers.map((m) => (
+              <div
+                key={m.id}
+                className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 flex items-center gap-3"
+              >
+                {m.profilePhoto ? (
+                  <img
+                    src={m.profilePhoto}
+                    alt=""
+                    className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-blue-500/20 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
+                    <span className="font-bold text-sm text-blue-400">
+                      {m.username[0].toUpperCase()}
+                    </span>
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm text-white">
+                    @{m.username}
+                  </p>
+                  {m.bio && (
+                    <p className="text-xs text-zinc-500 truncate">{m.bio}</p>
+                  )}
+                  <p className="text-[10px] text-zinc-600 capitalize">
+                    {m.role}
                   </p>
                 </div>
               </div>

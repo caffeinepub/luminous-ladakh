@@ -16,7 +16,8 @@ export function initSeedData() {
   // v13: Q&A, business hours, discounts, menu card, dark/light mode, inquiry form
   // v14: UPI payment flow, wallet analytics-only reset (fake data wiped), LanguageProvider in main.tsx
   // v15: T&C modal, account switcher, linked accounts, violation carry-over, user/member/hybrid logs
-  const currentVersion = "v15";
+  // v16: Hotels tab, Room Rentals tab, Feedback system, Search improvements
+  const currentVersion = "v16";
 
   if (localStorage.getItem("lc_seeded") !== currentVersion) {
     // Auto-cleanup: remove test/demo accounts but PRESERVE:
@@ -48,7 +49,7 @@ export function initSeedData() {
       // Ignore cleanup errors — safer to keep data than lose it
     }
 
-    // v15: Initialize lc_linked_accounts from existing accounts if not already set
+    // Initialize lc_linked_accounts from existing accounts if not already set
     if (!localStorage.getItem("lc_linked_accounts")) {
       const accounts: Account[] = JSON.parse(
         localStorage.getItem("lc_accounts") || "[]",
@@ -66,6 +67,14 @@ export function initSeedData() {
         }
       }
       localStorage.setItem("lc_linked_accounts", JSON.stringify(groups));
+    }
+
+    // v16: Initialize new storage keys
+    if (!localStorage.getItem("lc_feedbacks")) {
+      localStorage.setItem("lc_feedbacks", JSON.stringify([]));
+    }
+    if (!localStorage.getItem("lc_room_rentals")) {
+      localStorage.setItem("lc_room_rentals", JSON.stringify([]));
     }
   }
 
@@ -159,6 +168,12 @@ export function initSeedData() {
   }
   if (!localStorage.getItem("lc_inquiries")) {
     localStorage.setItem("lc_inquiries", JSON.stringify([]));
+  }
+  if (!localStorage.getItem("lc_feedbacks")) {
+    localStorage.setItem("lc_feedbacks", JSON.stringify([]));
+  }
+  if (!localStorage.getItem("lc_room_rentals")) {
+    localStorage.setItem("lc_room_rentals", JSON.stringify([]));
   }
 
   localStorage.setItem("lc_seeded", currentVersion);
