@@ -2,6 +2,7 @@ import { useState } from "react";
 import { loadEvents, saveEvents } from "../../data/eventsData";
 import type { Account, LCEvent, Post, Violation } from "../../types";
 import type { PendingPhoto } from "../ExploreTab";
+import { AccountLogs } from "../shared/AccountLogs";
 
 const PENDING_PHOTOS_KEY = "lc_pending_photos";
 const LOCATION_PHOTOS_KEY = "lc_location_photos";
@@ -674,6 +675,9 @@ export function CreatorDashboard({
 
       {/* User Activity */}
       <UserActivityPanel accounts={accounts} />
+
+      {/* Account Logs (User Log, Member Log, Hybrid Log) */}
+      <AccountLogs accounts={accounts} showFullList={true} />
 
       {/* Platform Overview */}
       <div className="bg-card border border-border rounded-xl p-4">

@@ -5,7 +5,7 @@ import {
   hashPw,
   verifyPassword,
 } from "../data/seed";
-import type { Account, Role } from "../types";
+import type { Account, Role, Violation } from "../types";
 import { isValidCreatorSecurityWord } from "../utils/contentModeration";
 
 const MAX_FAILED_ATTEMPTS = 5;
@@ -25,6 +25,11 @@ interface AuthState {
   isLoading: boolean;
 }
 
+export interface LinkedAccountGroup {
+  email: string;
+  accountIds: string[];
+}
+
 function getAccounts(): Account[] {
   try {
     return JSON.parse(localStorage.getItem("lc_accounts") || "[]");
@@ -35,6 +40,93 @@ function getAccounts(): Account[] {
 
 function saveAccounts(accounts: Account[]) {
   localStorage.setItem("lc_accounts", JSON.stringify(accounts));
+}
+
+function getLinkedGroups(): LinkedAccountGroup[] {
+  try {
+    return JSON.parse(localStorage.getItem("lc_linked_accounts") || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function saveLinkedGroups(groups: LinkedAccountGroup[]) {
+  localStorage.setItem("lc_linked_accounts", JSON.stringify(groups));
+}
+
+/** Add an account to the linked groups structure */
+function addToLinkedGroups(email: string, accountId: string) {
+  if (!email) return;
+  const groups = getLinkedGroups();
+  const normalizedEmail = email.toLowerCase();
+  const existing = groups.find(
+    (g) => g.email.toLowerCase() === normalizedEmail,
+  );
+  if (existing) {
+    if (!existing.accountIds.includes(accountId)) {
+      existing.accountIds.push(accountId);
+    }
+  } else {
+    groups.push({ email: normalizedEmail, accountIds: [accountId] });
+  }
+  saveLinkedGroups(groups);
+}
+
+/** Check if new account should receive Level 2 violation due to linked account with L6/L7 */
+function checkViolationCarryOver(
+  email: string,
+  newAccountId: string,
+  newAccountCreatedAt: string,
+) {
+  if (!email) return;
+  try {
+    const accounts = getAccounts();
+    const violations: Violation[] = JSON.parse(
+      localStorage.getItem("lc_violations") || "[]",
+    );
+    // Find all existing accounts with same email (NOT the new account itself)
+    const linkedAccounts = accounts.filter(
+      (a) =>
+        a.email.toLowerCase() === email.toLowerCase() &&
+        a.id !== newAccountId &&
+        a.createdAt < newAccountCreatedAt,
+    );
+    let hasSerious = false;
+    for (const acc of linkedAccounts) {
+      const serious = violations.filter(
+        (v) =>
+          v.targetUserId === acc.id &&
+          (v.level === 6 || v.level === 7) &&
+          !v.resolved,
+      );
+      if (serious.length > 0) {
+        hasSerious = true;
+        break;
+      }
+    }
+    if (hasSerious) {
+      // Auto-apply Level 2 violation to new account
+      const newAccounts = getAccounts();
+      const targetAccount = newAccounts.find((a) => a.id === newAccountId);
+      if (!targetAccount) return;
+      const autoViolation: Violation = {
+        id: generateId(),
+        targetUserId: newAccountId,
+        targetUsername: targetAccount.username,
+        targetRole: targetAccount.role,
+        level: 2,
+        reason:
+          "Linked account (same email) has serious violations. This account has been flagged.",
+        issuedBy: "system",
+        timestamp: new Date().toISOString(),
+        resolved: false,
+      };
+      violations.push(autoViolation);
+      localStorage.setItem("lc_violations", JSON.stringify(violations));
+    }
+  } catch {
+    // safe to ignore
+  }
 }
 
 const FONT_COLOR_MAP: Record<string, string> = {
@@ -102,13 +194,14 @@ export function useAuth() {
           );
           return {
             success: false,
-            error: `Account temporarily locked due to too many failed attempts. Try again in ${minsLeft} minute${minsLeft !== 1 ? "s" : ""}.`,
+            error: `Account temporarily locked due to too many failed attempts. Try again in ${minsLeft} minute${
+              minsLeft !== 1 ? "s" : ""
+            }.`,
           };
         }
       }
 
       if (!verifyPassword(password, account.passwordHash)) {
-        // Increment failed attempts
         const failedAttempts = (account.failedLoginAttempts || 0) + 1;
         const updates: Partial<Account> = {
           failedLoginAttempts: failedAttempts,
@@ -137,11 +230,12 @@ export function useAuth() {
         const remaining = MAX_FAILED_ATTEMPTS - failedAttempts;
         return {
           success: false,
-          error: `Incorrect password. ${remaining} attempt${remaining !== 1 ? "s" : ""} remaining before lockout.`,
+          error: `Incorrect password. ${remaining} attempt${
+            remaining !== 1 ? "s" : ""
+          } remaining before lockout.`,
         };
       }
 
-      // Successful login — reset failed attempts and track activity
       const idx = accounts.findIndex((a) => a.id === account.id);
       let finalAccount = account;
       if (idx >= 0) {
@@ -190,13 +284,26 @@ export function useAuth() {
             error: "This account has been permanently banned.",
           };
         }
+        // Update lastLoginAt
+        const idx = accounts.findIndex((a) => a.id === existing.id);
+        if (idx >= 0) {
+          accounts[idx] = {
+            ...accounts[idx],
+            lastLoginAt: new Date().toISOString(),
+          };
+          saveAccounts(accounts);
+        }
         localStorage.setItem(
           "lc_session",
           JSON.stringify({ userId: existing.id }),
         );
         applyTheme(existing.theme);
         applyFontColorById(existing.fontColor);
-        setState({ currentUser: existing, isLoading: false });
+        setState({
+          currentUser:
+            accounts[accounts.findIndex((a) => a.id === existing.id)],
+          isLoading: false,
+        });
         return { success: true, isNew: false };
       }
       // Create new account
@@ -225,6 +332,7 @@ export function useAuth() {
         authProvider: provider,
         bio: name,
         createdAt: new Date().toISOString(),
+        lastLoginAt: new Date().toISOString(),
         ...(role === "member"
           ? {
               membershipTier: "Common",
@@ -236,6 +344,10 @@ export function useAuth() {
         ...(role === "community" ? { editPermissionStatus: "none" } : {}),
       };
       saveAccounts([...accounts, newAccount]);
+      // Update linked accounts
+      addToLinkedGroups(email, newAccount.id);
+      // Check violation carry-over
+      checkViolationCarryOver(email, newAccount.id, newAccount.createdAt);
       localStorage.setItem(
         "lc_session",
         JSON.stringify({ userId: newAccount.id }),
@@ -266,12 +378,11 @@ export function useAuth() {
           (a) => a.username.toLowerCase() === data.username.toLowerCase(),
         )
       ) {
-        return { success: false, error: "Username already taken" };
-      }
-      if (
-        accounts.find((a) => a.email.toLowerCase() === data.email.toLowerCase())
-      ) {
-        return { success: false, error: "Email already registered" };
+        return {
+          success: false,
+          error:
+            "This username is already taken. Please choose a different username.",
+        };
       }
       if (data.username.toLowerCase() === "hunter") {
         return { success: false, error: "This username is reserved" };
@@ -280,8 +391,10 @@ export function useAuth() {
       const hashedSecurityWord = data.securityWord
         ? hashPw(data.securityWord.trim().toLowerCase())
         : undefined;
+      const newAccountId = generateId();
+      const createdAt = new Date().toISOString();
       const newAccount: Account = {
-        id: generateId(),
+        id: newAccountId,
         username: data.username,
         email: data.email,
         passwordHash: hashPw(data.password),
@@ -289,7 +402,8 @@ export function useAuth() {
         electronicId,
         status: "active",
         authProvider: "email",
-        createdAt: new Date().toISOString(),
+        createdAt,
+        lastLoginAt: new Date().toISOString(),
         ...(hashedSecurityWord ? { securityWord: hashedSecurityWord } : {}),
         ...(data.role === "member"
           ? {
@@ -302,6 +416,10 @@ export function useAuth() {
         ...(data.role === "community" ? { editPermissionStatus: "none" } : {}),
       };
       saveAccounts([...accounts, newAccount]);
+      // Update linked accounts groups
+      addToLinkedGroups(data.email, newAccountId);
+      // Violation carry-over check
+      checkViolationCarryOver(data.email, newAccountId, createdAt);
       localStorage.setItem(
         "lc_session",
         JSON.stringify({ userId: newAccount.id }),
@@ -310,6 +428,57 @@ export function useAuth() {
       applyFontColorById(newAccount.fontColor);
       setState({ currentUser: newAccount, isLoading: false });
       return { success: true, electronicId };
+    },
+    [],
+  );
+
+  /** Switch to a different account (must be in the same email group) */
+  const switchAccount = useCallback(
+    (accountId: string): { success: boolean; error?: string } => {
+      const accounts = getAccounts();
+      const target = accounts.find((a) => a.id === accountId);
+      if (!target) return { success: false, error: "Account not found." };
+      if (target.status === "banned")
+        return { success: false, error: "This account has been banned." };
+
+      // Verify same email group
+      const groups = getLinkedGroups();
+      const currentGroup = groups.find((g) =>
+        g.accountIds.includes(
+          JSON.parse(localStorage.getItem("lc_session") || "{}").userId || "",
+        ),
+      );
+      const targetGroup = groups.find((g) => g.accountIds.includes(accountId));
+      if (
+        !currentGroup ||
+        !targetGroup ||
+        currentGroup.email.toLowerCase() !== targetGroup.email.toLowerCase()
+      ) {
+        return {
+          success: false,
+          error: "Cannot switch — different email address.",
+        };
+      }
+
+      // Update lastLoginAt for target
+      const idx = accounts.findIndex((a) => a.id === accountId);
+      if (idx >= 0) {
+        accounts[idx] = {
+          ...accounts[idx],
+          lastLoginAt: new Date().toISOString(),
+        };
+        saveAccounts(accounts);
+      }
+
+      const finalTarget = accounts[idx] || target;
+      localStorage.setItem(
+        "lc_session",
+        JSON.stringify({ userId: finalTarget.id }),
+      );
+      applyTheme(finalTarget.theme);
+      applyFontColorById(finalTarget.fontColor);
+      setState({ currentUser: finalTarget, isLoading: false });
+      return { success: true };
     },
     [],
   );
@@ -331,7 +500,6 @@ export function useAuth() {
 
       const normalized = securityWordInput.trim().toLowerCase();
 
-      // Creator special handling: accept any valid card name or "52 decks of cards"
       if (account.role === "creator") {
         if (!isValidCreatorSecurityWord(normalized)) {
           return {
@@ -341,7 +509,6 @@ export function useAuth() {
           };
         }
       } else {
-        // All other roles: verify against stored hash
         if (!account.securityWord) {
           return {
             success: false,
@@ -358,7 +525,6 @@ export function useAuth() {
         }
       }
 
-      // Update password
       const idx = accounts.findIndex((a) => a.id === account.id);
       if (idx >= 0) {
         accounts[idx] = {
@@ -375,7 +541,6 @@ export function useAuth() {
   );
 
   const logout = useCallback(() => {
-    // Track last logout time before clearing session
     const sessionRaw = localStorage.getItem("lc_session");
     if (sessionRaw) {
       try {
@@ -393,6 +558,7 @@ export function useAuth() {
         // safe to ignore
       }
     }
+    // Clear session — do NOT auto-login to linked account
     localStorage.removeItem("lc_session");
     applyTheme("dark");
     applyFontColorById("default");
@@ -440,6 +606,7 @@ export function useAuth() {
     socialLogin,
     signup,
     logout,
+    switchAccount,
     updateCurrentUser,
     refreshUser,
     recoverPassword,

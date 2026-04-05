@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLanguage } from "../context/LanguageContext";
 import type { Role } from "../types";
+import { TermsModal } from "./shared/TermsModal";
 
 const inputCls =
   "w-full bg-zinc-900 text-white border border-zinc-700 rounded-lg px-4 py-3 placeholder:text-zinc-500 focus:outline-none focus:border-amber-500 transition-colors";
@@ -9,6 +10,17 @@ const labelCls = "block text-xs font-medium text-zinc-400 mb-1";
 // Security: sanitize user text inputs — trim whitespace and strip HTML tags
 function sanitize(s: string): string {
   return s.trim().replace(/<[^>]*>/g, "");
+}
+
+function getStoredUsernames(): string[] {
+  try {
+    const accounts = JSON.parse(
+      localStorage.getItem("lc_accounts") || "[]",
+    ) as { username: string }[];
+    return accounts.map((a) => a.username.toLowerCase());
+  } catch {
+    return [];
+  }
 }
 
 interface Props {
@@ -102,6 +114,32 @@ export function AuthScreen({
   const [signupSecurityWord, setSignupSecurityWord] = useState("");
   const [communityCode, setCommunityCode] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsModalOpen, setTermsModalOpen] = useState(false);
+
+  // Username availability (debounced)
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(
+    null,
+  );
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const checkUsernameAvailability = useCallback((username: string) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!username.trim() || username.length < 2) {
+      setUsernameAvailable(null);
+      return;
+    }
+    debounceRef.current = setTimeout(() => {
+      const taken = getStoredUsernames();
+      const isReserved = username.toLowerCase() === "hunter";
+      setUsernameAvailable(
+        !isReserved && !taken.includes(username.toLowerCase()),
+      );
+    }, 300);
+  }, []);
+
+  useEffect(() => {
+    checkUsernameAvailability(signupUsername);
+  }, [signupUsername, checkUsernameAvailability]);
 
   // Social
   const [socialEmail, setSocialEmail] = useState("");
@@ -153,7 +191,15 @@ export function AuthScreen({
       return;
     }
     if (!termsAccepted) {
-      setError(t("acceptTerms", "Please accept the Terms & Conditions"));
+      setError(
+        t("acceptTerms", "Please read and accept the Terms & Conditions"),
+      );
+      return;
+    }
+    if (usernameAvailable === false) {
+      setError(
+        "This username is already taken. Please choose a different username.",
+      );
       return;
     }
     const role = selectedRole as Exclude<Role, "creator">;
@@ -171,7 +217,7 @@ export function AuthScreen({
       setError(result.error || t("signupFailed", "Signup failed"));
     } else if (result.electronicId) {
       setSuccessMsg(
-        `${t("welcomeElectronicId", "Welcome! Your Electronic ID is:")}: ${result.electronicId} — ${t("saveForRelogin", "save this for re-login.")}`,
+        `${t("welcomeElectronicId", "Welcome! Your Electronic ID is:")}: ${result.electronicId} \u2014 ${t("saveForRelogin", "save this for re-login.")}`,
       );
     }
   }
@@ -245,6 +291,19 @@ export function AuthScreen({
 
   const providerName = method === "google" ? "Google" : "Facebook";
 
+  // Terms modal open
+  if (termsModalOpen) {
+    return (
+      <TermsModal
+        onAccept={() => {
+          setTermsAccepted(true);
+          setTermsModalOpen(false);
+        }}
+        onClose={() => setTermsModalOpen(false)}
+      />
+    );
+  }
+
   // Forgot password flow
   if (showForgotPassword) {
     const isCreatorRole = selectedRole === "creator";
@@ -256,7 +315,7 @@ export function AuthScreen({
             onClick={resetRecovery}
             className="text-zinc-400 hover:text-white text-sm flex items-center gap-1 mb-6 transition-colors"
           >
-            {t("backToLogin", "← Back to Login")}
+            {t("backToLogin", "\u2190 Back to Login")}
           </button>
 
           <div className="text-center mb-6">
@@ -321,7 +380,7 @@ export function AuthScreen({
                 onClick={handleRecoveryNext}
                 className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold transition-colors"
               >
-                {t("next", "Next")} →
+                {t("next", "Next")} \u2192
               </button>
             </div>
           )}
@@ -363,7 +422,7 @@ export function AuthScreen({
                 onClick={handleRecoveryNext}
                 className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold transition-colors"
               >
-                {t("next", "Next")} →
+                {t("next", "Next")} \u2192
               </button>
             </div>
           )}
@@ -452,13 +511,14 @@ export function AuthScreen({
                   resetForm();
                 }}
                 className="w-full flex items-center gap-4 p-4 rounded-xl border border-zinc-800 bg-zinc-900/60 hover:border-amber-500/50 hover:bg-zinc-800 transition-all text-left"
+                data-ocid="auth.button"
               >
                 <span className="text-2xl">{r.icon}</span>
                 <div>
                   <p className="text-white font-semibold text-sm">{r.label}</p>
                   <p className="text-zinc-500 text-xs">{r.desc}</p>
                 </div>
-                <span className="ml-auto text-zinc-600 text-lg">›</span>
+                <span className="ml-auto text-zinc-600 text-lg">\u203A</span>
               </button>
             ))}
           </div>
@@ -500,8 +560,9 @@ export function AuthScreen({
             type="button"
             onClick={() => setSelectedRole(null)}
             className="text-zinc-400 hover:text-white text-sm flex items-center gap-1 transition-colors"
+            data-ocid="auth.cancel_button"
           >
-            ← {t("back", "Back")}
+            \u2190 {t("back", "Back")}
           </button>
           <span className="ml-auto px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-xs font-semibold capitalize">
             {ROLES.find((r) => r.value === selectedRole)?.icon}{" "}
@@ -510,7 +571,10 @@ export function AuthScreen({
         </div>
 
         {successMsg && (
-          <div className="mb-4 p-3 rounded-lg bg-green-500/15 border border-green-500/30 text-green-400 text-sm">
+          <div
+            className="mb-4 p-3 rounded-lg bg-green-500/15 border border-green-500/30 text-green-400 text-sm"
+            data-ocid="auth.success_state"
+          >
             {successMsg}
           </div>
         )}
@@ -525,7 +589,10 @@ export function AuthScreen({
               )}
             </p>
             {error && (
-              <div className="mb-4 p-3 rounded-lg bg-red-500/15 border border-red-500/30 text-red-400 text-sm">
+              <div
+                className="mb-4 p-3 rounded-lg bg-red-500/15 border border-red-500/30 text-red-400 text-sm"
+                data-ocid="auth.error_state"
+              >
                 {error}
               </div>
             )}
@@ -542,6 +609,7 @@ export function AuthScreen({
                   onChange={(e) => setLoginUsername(e.target.value)}
                   autoComplete="username"
                   required
+                  data-ocid="auth.input"
                 />
               </div>
               <div>
@@ -557,11 +625,13 @@ export function AuthScreen({
                   onChange={(e) => setLoginPassword(e.target.value)}
                   autoComplete="current-password"
                   required
+                  data-ocid="auth.input"
                 />
               </div>
               <button
                 type="submit"
                 className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold transition-colors"
+                data-ocid="auth.submit_button"
               >
                 {t("signInAsCreator", "Sign In as Creator")}
               </button>
@@ -593,6 +663,7 @@ export function AuthScreen({
                     ? "bg-amber-500 text-black"
                     : "bg-zinc-900 text-zinc-400 hover:text-white"
                 }`}
+                data-ocid="auth.tab"
               >
                 {t("signIn", "Sign In")}
               </button>
@@ -608,6 +679,7 @@ export function AuthScreen({
                     ? "bg-amber-500 text-black"
                     : "bg-zinc-900 text-zinc-400 hover:text-white"
                 }`}
+                data-ocid="auth.tab"
               >
                 {t("signup", "Sign Up")}
               </button>
@@ -628,6 +700,7 @@ export function AuthScreen({
                       ? "border-amber-500 text-amber-400 bg-amber-500/10"
                       : "border-zinc-800 text-zinc-500 hover:text-zinc-300"
                   }`}
+                  data-ocid="auth.tab"
                 >
                   {m === "email"
                     ? `📧 ${t("email", "Email")}`
@@ -640,7 +713,10 @@ export function AuthScreen({
 
             {/* Error */}
             {error && (
-              <div className="mb-4 p-3 rounded-lg bg-red-500/15 border border-red-500/30 text-red-400 text-sm">
+              <div
+                className="mb-4 p-3 rounded-lg bg-red-500/15 border border-red-500/30 text-red-400 text-sm"
+                data-ocid="auth.error_state"
+              >
                 {error}
               </div>
             )}
@@ -660,6 +736,7 @@ export function AuthScreen({
                     onChange={(e) => setLoginUsername(e.target.value)}
                     autoComplete="username"
                     required
+                    data-ocid="auth.input"
                   />
                 </div>
                 <div>
@@ -675,11 +752,13 @@ export function AuthScreen({
                     onChange={(e) => setLoginPassword(e.target.value)}
                     autoComplete="current-password"
                     required
+                    data-ocid="auth.input"
                   />
                 </div>
                 <button
                   type="submit"
                   className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold transition-colors"
+                  data-ocid="auth.submit_button"
                 >
                   {t("signIn", "Sign In")}
                 </button>
@@ -712,7 +791,20 @@ export function AuthScreen({
                     onChange={(e) => setSignupUsername(e.target.value)}
                     autoComplete="username"
                     required
+                    data-ocid="auth.input"
                   />
+                  {/* Real-time availability feedback */}
+                  {signupUsername.length >= 2 && usernameAvailable !== null && (
+                    <p
+                      className={`text-xs mt-1 ${
+                        usernameAvailable ? "text-green-400" : "text-red-400"
+                      }`}
+                    >
+                      {usernameAvailable
+                        ? "\u2713 Username available"
+                        : "\u2717 Username already taken"}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label htmlFor="signup-email" className={labelCls}>
@@ -727,6 +819,7 @@ export function AuthScreen({
                     onChange={(e) => setSignupEmail(e.target.value)}
                     autoComplete="email"
                     required
+                    data-ocid="auth.input"
                   />
                 </div>
                 <div>
@@ -742,6 +835,7 @@ export function AuthScreen({
                     onChange={(e) => setSignupPassword(e.target.value)}
                     autoComplete="new-password"
                     required
+                    data-ocid="auth.input"
                   />
                 </div>
                 <div>
@@ -760,6 +854,7 @@ export function AuthScreen({
                     onChange={(e) => setSignupConfirm(e.target.value)}
                     autoComplete="new-password"
                     required
+                    data-ocid="auth.input"
                   />
                 </div>
                 <div>
@@ -778,11 +873,12 @@ export function AuthScreen({
                     )}
                     value={signupSecurityWord}
                     onChange={(e) => setSignupSecurityWord(e.target.value)}
+                    data-ocid="auth.input"
                   />
                   <p className="text-xs text-zinc-600 mt-1">
                     {t(
                       "securityWordSaveHint",
-                      "Save this — you'll need it if you forget your password.",
+                      "Save this \u2014 you'll need it if you forget your password.",
                     )}
                   </p>
                 </div>
@@ -801,6 +897,7 @@ export function AuthScreen({
                       value={communityCode}
                       onChange={(e) => setCommunityCode(e.target.value)}
                       required
+                      data-ocid="auth.input"
                     />
                   </div>
                 )}
@@ -847,23 +944,47 @@ export function AuthScreen({
                     </div>
                   </div>
                 </div>
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="mt-1 accent-amber-500"
-                    checked={termsAccepted}
-                    onChange={(e) => setTermsAccepted(e.target.checked)}
-                  />
-                  <span className="text-xs text-zinc-400">
-                    {t(
-                      "termsAgreement",
-                      "I agree to the Terms & Conditions and Privacy Policy. Military/army content is strictly prohibited.",
-                    )}
-                  </span>
-                </label>
+
+                {/* Terms & Conditions */}
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => setTermsModalOpen(true)}
+                    className="text-sm text-amber-400 hover:text-amber-300 underline underline-offset-2 transition-colors"
+                    data-ocid="terms.open_modal_button"
+                  >
+                    📜 Read Terms &amp; Conditions
+                  </button>
+                  <label
+                    className={`flex items-start gap-3 ${
+                      termsAccepted ? "cursor-pointer" : "cursor-pointer"
+                    }`}
+                    data-ocid="terms.checkbox"
+                  >
+                    <input
+                      type="checkbox"
+                      className="mt-1 accent-amber-500"
+                      checked={termsAccepted}
+                      onChange={(e) => setTermsAccepted(e.target.checked)}
+                    />
+                    <span className="text-xs text-zinc-400">
+                      {t(
+                        "termsAgreement",
+                        "I have read and agree to the Terms & Conditions and Privacy Policy.",
+                      )}
+                      {!termsAccepted && (
+                        <span className="text-zinc-600 ml-1">
+                          (Read the T&amp;C first to confirm)
+                        </span>
+                      )}
+                    </span>
+                  </label>
+                </div>
+
                 <button
                   type="submit"
                   className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold transition-colors"
+                  data-ocid="auth.submit_button"
                 >
                   {t("createAccount", "Create Account")}
                 </button>
@@ -906,6 +1027,7 @@ export function AuthScreen({
                     value={socialEmail}
                     onChange={(e) => setSocialEmail(e.target.value)}
                     required
+                    data-ocid="auth.input"
                   />
                 </div>
                 <div>
@@ -919,6 +1041,7 @@ export function AuthScreen({
                     value={socialName}
                     onChange={(e) => setSocialName(e.target.value)}
                     required
+                    data-ocid="auth.input"
                   />
                 </div>
                 {!isLogin && selectedRole === "community" && (
@@ -933,9 +1056,22 @@ export function AuthScreen({
                       value={socialCommunityCode}
                       onChange={(e) => setSocialCommunityCode(e.target.value)}
                       required
+                      data-ocid="auth.input"
                     />
                   </div>
                 )}
+                {/* Social login T&C link */}
+                <p className="text-xs text-zinc-500 text-center">
+                  By continuing, you agree to our{" "}
+                  <button
+                    type="button"
+                    onClick={() => setTermsModalOpen(true)}
+                    className="text-amber-400 hover:text-amber-300 underline underline-offset-1"
+                    data-ocid="terms.open_modal_button"
+                  >
+                    Terms &amp; Conditions
+                  </button>
+                </p>
                 <button
                   type="submit"
                   disabled={loading}
@@ -944,6 +1080,7 @@ export function AuthScreen({
                       ? "bg-white text-zinc-900 hover:bg-zinc-100"
                       : "bg-[#1877F2] text-white hover:bg-blue-600"
                   }`}
+                  data-ocid="auth.submit_button"
                 >
                   {loading
                     ? t("connecting", "Connecting...")
@@ -959,7 +1096,7 @@ export function AuthScreen({
           <p className="text-xs text-zinc-500 text-center">
             {t(
               "militaryWarning",
-              "⚠️ Military/army content is strictly prohibited and will result in automatic account warnings.",
+              "\u26A0\uFE0F Military/army content is strictly prohibited and will result in automatic account warnings.",
             )}
           </p>
         </div>

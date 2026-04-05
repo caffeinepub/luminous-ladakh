@@ -8,6 +8,8 @@ import type {
   PermissionRequest,
   Violation,
 } from "../../types";
+import { AccountLogs } from "../shared/AccountLogs";
+import { TermsModal } from "../shared/TermsModal";
 import { ViolationCard } from "../shared/ViolationCard";
 
 interface Props {
@@ -22,6 +24,7 @@ interface Props {
   onFlagMember: (report: Omit<FlagReport, "id" | "timestamp">) => void;
   onUpdateUser: (updates: Partial<Account>) => void;
   onLogout: () => void;
+  accounts?: import("../../types").Account[];
 }
 
 export function CommunityPermissionsTab({
@@ -34,10 +37,12 @@ export function CommunityPermissionsTab({
   onFlagMember,
   onUpdateUser,
   onLogout,
+  accounts = [],
 }: Props) {
   const [flagTarget, setFlagTarget] = useState("");
   const [flagReason, setFlagReason] = useState("");
   const [showFlagForm, setShowFlagForm] = useState(false);
+  const [termsModalOpen, setTermsModalOpen] = useState(false);
 
   const myRequest = permissionRequests.filter(
     (r) => r.requesterId === currentUser.id,
@@ -248,6 +253,27 @@ export function CommunityPermissionsTab({
           </div>
         )}
       </div>
+
+      {/* Account Logs (read-only, Community Member view) */}
+      <AccountLogs accounts={accounts} showFullList={false} />
+
+      {/* Terms & Conditions */}
+      <button
+        type="button"
+        onClick={() => setTermsModalOpen(true)}
+        className="w-full py-2.5 rounded-xl border border-zinc-700 text-zinc-400 hover:text-amber-400 hover:border-amber-500/30 text-sm transition-colors flex items-center justify-center gap-2"
+        data-ocid="terms.open_modal_button"
+      >
+        <span className="material-symbols-outlined text-base">description</span>
+        Terms &amp; Conditions
+      </button>
+
+      {termsModalOpen && (
+        <TermsModal
+          onAccept={() => setTermsModalOpen(false)}
+          onClose={() => setTermsModalOpen(false)}
+        />
+      )}
 
       <Button
         variant="outline"

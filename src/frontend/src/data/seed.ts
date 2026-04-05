@@ -14,7 +14,9 @@ export function initSeedData() {
   // Version check:
   // v12: LanguageProvider crash fix + button security audit
   // v13: Q&A, business hours, discounts, menu card, dark/light mode, inquiry form
-  const currentVersion = "v13";
+  // v14: UPI payment flow, wallet analytics-only reset (fake data wiped), LanguageProvider in main.tsx
+  // v15: T&C modal, account switcher, linked accounts, violation carry-over, user/member/hybrid logs
+  const currentVersion = "v15";
 
   if (localStorage.getItem("lc_seeded") !== currentVersion) {
     // Auto-cleanup: remove test/demo accounts but PRESERVE:
@@ -38,13 +40,32 @@ export function initSeedData() {
             specialIds.has(a.email?.toLowerCase()) ||
             !!a.lastLoginAt, // keep accounts with real activity
         );
-        // Only apply cleanup if it actually removes some accounts
         if (cleaned.length < accounts.length) {
           localStorage.setItem("lc_accounts", JSON.stringify(cleaned));
         }
       }
     } catch {
       // Ignore cleanup errors — safer to keep data than lose it
+    }
+
+    // v15: Initialize lc_linked_accounts from existing accounts if not already set
+    if (!localStorage.getItem("lc_linked_accounts")) {
+      const accounts: Account[] = JSON.parse(
+        localStorage.getItem("lc_accounts") || "[]",
+      );
+      const groups: { email: string; accountIds: string[] }[] = [];
+      for (const acc of accounts) {
+        if (!acc.email) continue;
+        const existing = groups.find(
+          (g) => g.email.toLowerCase() === acc.email.toLowerCase(),
+        );
+        if (existing) {
+          existing.accountIds.push(acc.id);
+        } else {
+          groups.push({ email: acc.email.toLowerCase(), accountIds: [acc.id] });
+        }
+      }
+      localStorage.setItem("lc_linked_accounts", JSON.stringify(groups));
     }
   }
 
@@ -130,7 +151,6 @@ export function initSeedData() {
     localStorage.setItem("lc_menuItemReviews", JSON.stringify([]));
   }
 
-  // v13: new keys
   if (!localStorage.getItem("lc_business_qa")) {
     localStorage.setItem("lc_business_qa", JSON.stringify([]));
   }

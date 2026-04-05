@@ -27,10 +27,9 @@ import { SearchTab } from "./components/user/SearchTab";
 import { UserProfileTab } from "./components/user/UserProfileTab";
 import { useLanguage } from "./context/LanguageContext";
 import { initEventsData } from "./data/eventsData";
-import { initSeedData, verifyPassword } from "./data/seed";
+import { initSeedData } from "./data/seed";
 import { useAuth } from "./hooks/useAuth";
 import { useData } from "./hooks/useData";
-import { isValidCreatorSecurityWord } from "./utils/contentModeration";
 
 // Init seed data once
 initSeedData();
@@ -43,6 +42,7 @@ export default function App() {
     socialLogin,
     signup,
     logout,
+    switchAccount,
     updateCurrentUser,
     recoverPassword,
   } = useAuth();
@@ -50,7 +50,7 @@ export default function App() {
   const { t, languageSelected } = useLanguage();
   const [activeTab, setActiveTab] = useState<string>("");
   const [showPostModal, setShowPostModal] = useState(false);
-  const [_renderTick, setRenderTick] = useState(0);
+  const [renderTick, setRenderTick] = useState(0);
   const [themeMode, setThemeMode] = useState<"dark" | "light">(() => {
     try {
       return (
@@ -61,9 +61,10 @@ export default function App() {
     }
   });
 
-  // Sync theme mode on storage changes
+  // Single lc_data_changed listener for re-renders
   useEffect(() => {
     const handler = () => {
+      setRenderTick((n) => n + 1);
       try {
         const mode =
           (localStorage.getItem("lc_theme_mode") as "dark" | "light") || "dark";
@@ -76,12 +77,7 @@ export default function App() {
     return () => window.removeEventListener("lc_data_changed", handler);
   }, []);
 
-  useEffect(() => {
-    const handler = () => setRenderTick((tick) => tick + 1);
-    window.addEventListener("lc_data_changed", handler);
-    return () => window.removeEventListener("lc_data_changed", handler);
-  }, []);
-
+  // Set default tab when user logs in
   useEffect(() => {
     if (currentUser) {
       const defaults: Record<string, string> = {
@@ -101,20 +97,6 @@ export default function App() {
       setActiveTab(tabId);
     }
   }, []);
-
-  // Security word verifier for Creator wallet
-  const verifySecurityWord = useCallback(
-    (input: string): boolean => {
-      if (!currentUser || currentUser.role !== "creator") return false;
-      const normalized = input.trim().toLowerCase();
-      if (currentUser.securityWord) {
-        if (verifyPassword(normalized, currentUser.securityWord)) return true;
-        return isValidCreatorSecurityWord(normalized);
-      }
-      return isValidCreatorSecurityWord(normalized);
-    },
-    [currentUser],
-  );
 
   // Language selection gate
   if (!languageSelected) {
@@ -146,19 +128,18 @@ export default function App() {
   const locationReviews = data.getLocationReviews();
   const violations = data.getViolations();
   const permissionRequests = data.getPermissionRequests();
-  const walletBalance = data.getWalletBalance();
   const walletTransactions = data.getWalletTransactions();
   const flagReports = data.getFlagReports();
   const members = accounts.filter((a) => a.role === "member");
+  // suppress unused renderTick lint
+  void renderTick;
 
   const USER_NAV = [
-    // Primary 5 (bottom bar)
     { id: "explore", icon: "explore", label: t("explore") },
     { id: "events", icon: "event", label: t("events") },
     { id: "post", icon: "add_circle", label: t("post") },
     { id: "search", icon: "search", label: t("search") },
     { id: "profile", icon: "person", label: t("profile") },
-    // Secondary (scrollable row above bottom bar)
     { id: "discover", icon: "travel_explore", label: t("discover") },
     { id: "restaurants", icon: "restaurant", label: t("restaurants") },
     { id: "rentals", icon: "directions_car", label: t("rentals") },
@@ -166,13 +147,11 @@ export default function App() {
   ];
 
   const MEMBER_NAV = [
-    // Primary 5 (bottom bar)
     { id: "explore", icon: "explore", label: t("explore") },
     { id: "business", icon: "store", label: t("business") },
     { id: "membership", icon: "card_membership", label: t("membership") },
     { id: "search", icon: "search", label: t("search") },
     { id: "profile", icon: "person", label: t("profile") },
-    // Secondary (scrollable row above bottom bar)
     { id: "events", icon: "event", label: t("events") },
     { id: "restaurants", icon: "restaurant", label: t("restaurants") },
     { id: "rentals", icon: "directions_car", label: t("rentals") },
@@ -180,13 +159,11 @@ export default function App() {
   ];
 
   const COMMUNITY_NAV = [
-    // Primary 5 (bottom bar)
     { id: "explore", icon: "explore", label: t("explore") },
     { id: "business", icon: "store", label: t("business") },
     { id: "permissions", icon: "key", label: t("permissions") },
     { id: "search", icon: "search", label: t("search") },
     { id: "profile", icon: "person", label: t("profile") },
-    // Secondary (scrollable row above bottom bar)
     { id: "events", icon: "event", label: t("events") },
     { id: "restaurants", icon: "restaurant", label: t("restaurants") },
     { id: "rentals", icon: "directions_car", label: t("rentals") },
@@ -253,7 +230,9 @@ export default function App() {
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
             <span
-              className={`text-xs px-2 py-0.5 rounded-full border capitalize ${roleColors[currentUser.role] || roleColors.user}`}
+              className={`text-xs px-2 py-0.5 rounded-full border capitalize ${
+                roleColors[currentUser.role] || roleColors.user
+              }`}
             >
               {currentUser.role}
             </span>
@@ -282,7 +261,6 @@ export default function App() {
                     : "text-muted-foreground border-transparent hover:text-foreground"
                 }`}
                 type="button"
-                data-ocid={`creator.${item.id}.tab`}
               >
                 <span className="material-symbols-outlined text-[18px]">
                   {item.icon}
@@ -361,6 +339,14 @@ export default function App() {
                   onUpdateBio={(bio) => updateCurrentUser({ bio })}
                   onUpdateUser={updateCurrentUser}
                   onLogout={logout}
+                  onSwitchAccount={
+                    switchAccount
+                      ? (id) => {
+                          switchAccount(id);
+                        }
+                      : undefined
+                  }
+                  onAddAccount={() => logout()}
                 />
               </ErrorBoundary>
             )}
@@ -479,6 +465,14 @@ export default function App() {
                   onUpdateBio={(bio) => updateCurrentUser({ bio })}
                   onUpdateUser={updateCurrentUser}
                   onLogout={logout}
+                  onSwitchAccount={
+                    switchAccount
+                      ? (id) => {
+                          switchAccount(id);
+                        }
+                      : undefined
+                  }
+                  onAddAccount={() => logout()}
                 />
               </ErrorBoundary>
             )}
@@ -581,6 +575,7 @@ export default function App() {
                     updateCurrentUser(updates);
                   }}
                   onLogout={logout}
+                  accounts={accounts}
                 />
               </ErrorBoundary>
             )}
@@ -592,6 +587,14 @@ export default function App() {
                   onUpdateBio={(bio) => updateCurrentUser({ bio })}
                   onUpdateUser={updateCurrentUser}
                   onLogout={logout}
+                  onSwitchAccount={
+                    switchAccount
+                      ? (id) => {
+                          switchAccount(id);
+                        }
+                      : undefined
+                  }
+                  onAddAccount={() => logout()}
                 />
               </ErrorBoundary>
             )}
@@ -632,7 +635,9 @@ export default function App() {
                   accounts={accounts}
                   posts={posts}
                   violations={violations}
-                  walletBalance={walletBalance}
+                  walletBalance={walletTransactions
+                    .filter((t) => t.type === "payment")
+                    .reduce((s, t) => s + t.amount, 0)}
                 />
               </ErrorBoundary>
             )}
@@ -651,12 +656,12 @@ export default function App() {
                   onApprovePost={(id) => {
                     data.updatePost(id, { status: "approved" });
                     toast.success("Post approved!");
-                    setRenderTick((tick) => tick + 1);
+                    setRenderTick((n) => n + 1);
                   }}
                   onRejectPost={(id) => {
                     data.deletePost(id);
                     toast.success("Post rejected and removed.");
-                    setRenderTick((tick) => tick + 1);
+                    setRenderTick((n) => n + 1);
                   }}
                 />
               </ErrorBoundary>
@@ -666,9 +671,7 @@ export default function App() {
                 <DiscoverTab
                   currentUser={currentUser}
                   isCreator
-                  onPromoteToExplore={() => {
-                    setRenderTick((tick) => tick + 1);
-                  }}
+                  onPromoteToExplore={() => setRenderTick((n) => n + 1)}
                 />
               </ErrorBoundary>
             )}
@@ -713,20 +716,8 @@ export default function App() {
             {activeTab === "wallet" && (
               <ErrorBoundary minimal>
                 <CreatorWallet
-                  balance={walletBalance}
                   transactions={walletTransactions}
                   pendingPayments={data.getPendingPayments()}
-                  members={members}
-                  verifySecurityWord={verifySecurityWord}
-                  onWithdraw={(amount, bankName) => {
-                    data.addWalletTransaction({
-                      type: "withdrawal",
-                      amount,
-                      bankName,
-                      note: `Withdrawal to ${bankName}`,
-                    });
-                    setRenderTick((tick) => tick + 1);
-                  }}
                   onConfirmPayment={(id) => {
                     const pending = data.getPendingPayments();
                     const p = pending.find((x) => x.id === id);
@@ -734,7 +725,9 @@ export default function App() {
                       const note =
                         p.paymentType === "event"
                           ? `Event Post: ${p.eventTitle || "Event"} from @${p.memberUsername}`
-                          : `${p.tier} Membership from @${p.memberUsername}`;
+                          : p.paymentType === "announcement"
+                            ? `Shop Announcement: ${p.productName || "Product"} from @${p.memberUsername}`
+                            : `${p.tier} Membership from @${p.memberUsername}`;
                       data.addWalletTransaction({
                         type: "payment",
                         amount: p.amount,
@@ -742,12 +735,12 @@ export default function App() {
                         note,
                       });
                       data.removePendingPayment(id);
-                      setRenderTick((tick) => tick + 1);
+                      setRenderTick((n) => n + 1);
                     }
                   }}
                   onRejectPayment={(id) => {
                     data.removePendingPayment(id);
-                    setRenderTick((tick) => tick + 1);
+                    setRenderTick((n) => n + 1);
                   }}
                 />
               </ErrorBoundary>
@@ -766,11 +759,11 @@ export default function App() {
                   onUpdateAccount={data.updateAccount}
                   onBanAccount={(id) => {
                     data.banAccount(id);
-                    setRenderTick((tick) => tick + 1);
+                    setRenderTick((n) => n + 1);
                   }}
                   onSuspendAccount={(id) => {
                     data.suspendAccount(id);
-                    setRenderTick((tick) => tick + 1);
+                    setRenderTick((n) => n + 1);
                   }}
                 />
               </ErrorBoundary>
@@ -783,9 +776,19 @@ export default function App() {
                   posts={posts}
                   reviews={reviews}
                   violations={violations}
-                  walletBalance={walletBalance}
+                  walletBalance={walletTransactions
+                    .filter((t) => t.type === "payment")
+                    .reduce((s, t) => s + t.amount, 0)}
                   onLogout={logout}
                   onUpdateUser={updateCurrentUser}
+                  onSwitchAccount={
+                    switchAccount
+                      ? (id) => {
+                          switchAccount(id);
+                        }
+                      : undefined
+                  }
+                  onAddAccount={() => logout()}
                   onSetCommunityCode={data.setCommunityCode}
                   specialAccounts={data.getSpecialAccountsList()}
                   onAddSpecialAccount={data.addSpecialAccount}
@@ -813,7 +816,7 @@ export default function App() {
           onClose={() => setShowPostModal(false)}
           onSubmit={(postData) => {
             data.addPost(postData);
-            setRenderTick((tick) => tick + 1);
+            setRenderTick((n) => n + 1);
           }}
           onIssueViolation={data.addViolation}
         />

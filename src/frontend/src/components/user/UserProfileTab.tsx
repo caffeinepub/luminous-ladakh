@@ -7,7 +7,9 @@ import { applyTheme } from "../../hooks/useAuth";
 import { LANGUAGES } from "../../i18n/translations";
 import type { Account, Post, Violation } from "../../types";
 import { WorldLanguageDownloader } from "../WorldLanguageDownloader";
+import { AccountSwitcher } from "../shared/AccountSwitcher";
 import { CameraPermissionModal } from "../shared/CameraPermissionModal";
+import { TermsModal } from "../shared/TermsModal";
 import { ViolationCard } from "../shared/ViolationCard";
 
 interface Props {
@@ -17,6 +19,8 @@ interface Props {
   onUpdateBio: (bio: string) => void;
   onUpdateUser: (updates: Partial<Account>) => void;
   onLogout: () => void;
+  onSwitchAccount?: (accountId: string) => void;
+  onAddAccount?: () => void;
 }
 
 const THEMES = [
@@ -70,6 +74,8 @@ export function UserProfileTab({
   onUpdateBio,
   onUpdateUser,
   onLogout,
+  onSwitchAccount,
+  onAddAccount,
 }: Props) {
   const { t, language, setLanguage, isPWA } = useLanguage();
   const [editingBio, setEditingBio] = useState(false);
@@ -80,6 +86,7 @@ export function UserProfileTab({
   const [showCameraModal, setShowCameraModal] = useState(false);
   const [photoPermissionGranted, setPhotoPermissionGranted] = useState(false);
   const [rulesExpanded, setRulesExpanded] = useState(false);
+  const [termsModalOpen, setTermsModalOpen] = useState(false);
 
   const saveBio = () => {
     onUpdateBio(bio);
@@ -123,6 +130,15 @@ export function UserProfileTab({
     setShowCameraModal(false);
     photoRef.current?.click();
   };
+
+  if (termsModalOpen) {
+    return (
+      <TermsModal
+        onAccept={() => setTermsModalOpen(false)}
+        onClose={() => setTermsModalOpen(false)}
+      />
+    );
+  }
 
   return (
     <div className="fade-in space-y-4">
@@ -476,6 +492,26 @@ export function UserProfileTab({
           </div>
         )}
       </div>
+
+      {/* Account Switcher */}
+      {onSwitchAccount && onAddAccount && (
+        <AccountSwitcher
+          currentUser={currentUser}
+          onSwitch={onSwitchAccount}
+          onAddAccount={onAddAccount}
+        />
+      )}
+
+      {/* Terms & Conditions */}
+      <button
+        type="button"
+        onClick={() => setTermsModalOpen(true)}
+        className="w-full py-2.5 rounded-xl border border-zinc-700 text-zinc-400 hover:text-amber-400 hover:border-amber-500/30 text-sm transition-colors flex items-center justify-center gap-2"
+        data-ocid="terms.open_modal_button"
+      >
+        <span className="material-symbols-outlined text-base">description</span>
+        Terms &amp; Conditions
+      </button>
 
       <Button
         variant="outline"

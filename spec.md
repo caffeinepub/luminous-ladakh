@@ -1,47 +1,41 @@
-# Ladakh Connect
+# Ladakh Connect – Version 41
 
 ## Current State
-Version 36 is a clean rebuild of Version 31. It has:
-- Language system (LanguageProvider in context, LanguageSelectScreen on first launch)
-- Auth system with roles: user, member, community, creator
-- Explore, Events, Search, Profile tabs for all roles
-- Hotels module (Premier members only)
-- Creator dashboard, wallet (4-layer protection), moderation, vault, discover
-- Member business tab (MyBusinessTab) with hotel management
-- Bottom navigation: 5 primary tabs + secondary scrollable row
-- CRITICAL BUG: main.tsx is missing LanguageProvider wrapper — fixed in this version
+- App is stable at v40 with full navigation, role-based tabs, UPI payment flow, wallet analytics, Restaurants/Rentals/Shop tabs, and all v39 features (weather, community posts, Q&A, photo contributions, business hours, discounts, menu QR, dark/light mode, inquiry form).
+- AuthScreen has a basic T&C checkbox with a one-liner agreement text — not a full readable modal.
+- No account switcher feature exists.
+- No multi-account linking logic or violation carry-over.
+- No User Log / Member Log / Hybrid Log in analytics.
+- Logout clears only the current session with no multi-account awareness.
 
 ## Requested Changes (Diff)
 
 ### Add
-- **RestaurantsTab** — public browsing tab for all roles; shows restaurant listings added by members; search, veg/non-veg filter, price sort, star ratings per dish; Users can rate dishes; contact (call/email) goes direct to business
-- **RentalsTab** — public browsing tab for all roles; shows vehicle rental listings; filter by vehicle type (Car/Bike/Bicycle/Scooter/E-Bike/Other); sort by price; direct contact
-- **ShopTab** — public browsing tab for all roles; shows product listings from member shops; search by name/category; "New Arrival" badge for announced products; direct contact
-- **Restaurant listing form** in MyBusinessTab — Common + Premier members can add restaurant with: name, description, phone, email, menu items (category, photo, price, veg/non-veg), up to 20 photos (Common) / 50 photos (Premier)
-- **Rental listing form** in MyBusinessTab — Common + Premier members can add rental agency with: name, description, phone, vehicles (type, model, daily price, monthly price, photo, available toggle)
-- **Shop listing form** in MyBusinessTab — members can add shop/products with: shop name, description, phone, products (name, category, description, price, photos up to 20/50), shop announcement fee ₹200
-- **Shop product announcement** — member pays ₹200 to mark a product as "New Arrival" for 7 days visibility; goes through pending payment flow
-- **Restaurant/Rental/Shop types** in types/index.ts: RentalVehicle, ShopProduct interfaces
-- **Navigation additions**: Restaurants, Rentals, Shop as secondary tabs for User, Member, Community, Creator nav
-- **Translation keys** for restaurants, rentals, shop tabs
+1. **Terms & Conditions full modal** — scrollable full-screen modal accessible by tapping a "Read Terms & Conditions" link in signup form. Must scroll to bottom before the checkbox becomes enabled. T&C text covers all user types (User, Member, Community Member), abuse rules, violation levels, business listing rules, payment terms. T&C also accessible from all profile settings pages (User, Member, Creator) via a "Terms & Conditions" button.
+2. **Account switcher** — Instagram-style account switcher in all profile tabs (UserProfileTab, MemberProfileTab, CreatorProfileTab). Shows current account at top with all linked accounts (same email group) below. "+ Add Account" button at bottom. Switching between same-email accounts is instant (no re-login). Different-email accounts cannot switch. Unlimited accounts can be added.
+3. **Linked account soft notice** — when a user has multiple accounts on the same email, show a quiet info banner in their profile: "You have X accounts linked to this email."
+4. **Violation carry-over rule** — new logic in data layer: when an account reaches violation Level 6 or 7, any NEW account created AFTER that violation using the same email automatically receives a Level 2 violation. Accounts created BEFORE the violation are not affected.
+5. **User Log, Member Log, Hybrid Log** — new collapsible sections in CreatorDashboard (AnalyticsPanel) and visible also to Community Members in their PermissionsTab. User Log shows total users, active, inactive. Member Log shows total members, active, recently updated listings. Hybrid Log shows accounts where one email has multiple roles, with status of each account (Active/Inactive/Deactivated).
+6. **Multi-account logout** — logging out hides all linked accounts from view. Session clears completely. App returns to login screen. Creator log reflects all linked accounts as logged out.
 
 ### Modify
-- **main.tsx** — add LanguageProvider wrapper (critical crash fix)
-- **types/index.ts** — add RentalVehicle, ShopProduct, ShopAnnouncement interfaces; extend Business type with vehicles and products arrays
-- **MyBusinessTab** — extend to handle restaurant, rental, shop business types with appropriate forms
-- **App.tsx** — add Restaurants, Rentals, Shop tab routing for all roles; add secondary tabs to USER_NAV, MEMBER_NAV, COMMUNITY_NAV, CREATOR_NAV
-- **seed.ts** — bump version to v11 to reset/migrate properly
+- `AuthScreen.tsx` — replace T&C checkbox one-liner with a "Read T&C" link that opens a full scrollable modal; checkbox only activates after scrolling to bottom.
+- `useAuth.ts` — add violation carry-over logic on signup; add multi-account session tracking (lc_linked_accounts in localStorage).
+- `seed.ts` — bump version to v15; initialize lc_linked_accounts if not present.
+- `DashboardTab.tsx` — add User Log, Member Log, Hybrid Log sections to AnalyticsPanel.
+- `UserProfileTab.tsx`, `MemberProfileTab.tsx`, `CreatorProfileTab.tsx` — add account switcher UI and T&C link.
+- `community/PermissionsTab.tsx` — add read-only Hybrid Log view.
 
 ### Remove
-- No removals; extending existing patterns cleanly
+- Nothing removed.
 
 ## Implementation Plan
-1. Fix main.tsx (LanguageProvider + ErrorBoundary at root) — prevents all crashes
-2. Extend types/index.ts with RentalVehicle, ShopProduct, ShopAnnouncement
-3. Create RestaurantsTab.tsx — browse listings, filter veg/non-veg + price, dish ratings by Users
-4. Create RentalsTab.tsx — browse listings, filter by vehicle type + price sort
-5. Create ShopTab.tsx — browse products, search, new arrival badges
-6. Update MyBusinessTab.tsx — add restaurant/rental/shop forms within existing business setup flow
-7. Update App.tsx — add tab routing and secondary nav items for all roles
-8. Update translations with new keys
-9. Validate + deploy
+1. Create `TermsModal.tsx` — full scrollable T&C modal with scroll-to-bottom enforcement.
+2. Create `AccountSwitcher.tsx` — Instagram-style account switcher component.
+3. Update `useAuth.ts` — add linked account tracking, violation carry-over on signup, multi-account logout.
+4. Update `seed.ts` — bump to v15, initialize linked accounts store.
+5. Update `AuthScreen.tsx` — wire TermsModal, disable checkbox until scrolled.
+6. Update `DashboardTab.tsx` — add User/Member/Hybrid logs to AnalyticsPanel.
+7. Update `UserProfileTab.tsx`, `MemberProfileTab.tsx`, `CreatorProfileTab.tsx` — embed AccountSwitcher and T&C link.
+8. Update `community/PermissionsTab.tsx` — add read-only Hybrid Log.
+9. Validate build — lint, typecheck, build. Fix any errors before deploying.
