@@ -99,8 +99,18 @@ export function AccountLogs({ accounts, showFullList = true }: Props) {
     });
   });
 
-  // Hybrid Log — groups with 2+ accounts
-  const hybridGroups = groups.filter((g) => g.accountIds.length >= 2);
+  // Hybrid Log — groups with 2+ non-creator accounts.
+  // Creator accounts are NEVER shown in the Hybrid Log feed.
+  const hybridGroups = groups
+    .map((g) => ({
+      ...g,
+      // Strip creator account IDs out before evaluating the group
+      accountIds: g.accountIds.filter((id) => {
+        const acc = accounts.find((a) => a.id === id);
+        return acc && acc.role !== "creator";
+      }),
+    }))
+    .filter((g) => g.accountIds.length >= 2);
 
   return (
     <div className="bg-card border border-border rounded-xl p-4">
@@ -329,8 +339,10 @@ export function AccountLogs({ accounts, showFullList = true }: Props) {
                 </p>
               ) : (
                 hybridGroups.map((group, gi) => {
-                  const groupAccounts = accounts.filter((a) =>
-                    group.accountIds.includes(a.id),
+                  // Only show non-creator accounts inside each group row
+                  const groupAccounts = accounts.filter(
+                    (a) =>
+                      group.accountIds.includes(a.id) && a.role !== "creator",
                   );
                   const groupViolations = violations.filter(
                     (v) =>
