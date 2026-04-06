@@ -28,6 +28,8 @@ function generateId() {
   return `disc_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
 interface Props {
   currentUser: Account;
   onPromoteToExplore?: (post: DiscoveryPost) => void;
@@ -44,6 +46,9 @@ export function DiscoverTab({
     [...loadDiscoveries()].sort((a, b) => b.upvotes.length - a.upvotes.length),
   );
   const [showForm, setShowForm] = useState(false);
+  const [activeTab, setActiveTab] = useState<"undiscovered" | "discovered">(
+    "undiscovered",
+  );
   const [form, setForm] = useState({
     title: "",
     area: "",
@@ -52,6 +57,16 @@ export function DiscoverTab({
   });
   const [submitting, setSubmitting] = useState(false);
   const photoRef = useRef<HTMLInputElement>(null);
+
+  const now = Date.now();
+  const undiscoveredPosts = posts.filter(
+    (p) => now - new Date(p.timestamp).getTime() < SEVEN_DAYS_MS,
+  );
+  const discoveredPosts = posts.filter(
+    (p) => now - new Date(p.timestamp).getTime() >= SEVEN_DAYS_MS,
+  );
+  const displayedPosts =
+    activeTab === "undiscovered" ? undiscoveredPosts : discoveredPosts;
 
   function handleUpvote(postId: string) {
     const all = loadDiscoveries();
@@ -106,6 +121,7 @@ export function DiscoverTab({
       timestamp: new Date().toISOString(),
       upvotes: [],
       promoted: false,
+      discoveredAt: new Date().toISOString(),
     };
     const all = [...loadDiscoveries(), newPost];
     saveDiscoveries(all);
@@ -128,6 +144,11 @@ export function DiscoverTab({
     }
   }
 
+  function getDaysOld(iso: string) {
+    const ms = Date.now() - new Date(iso).getTime();
+    return Math.floor(ms / (1000 * 60 * 60 * 24));
+  }
+
   return (
     <div className="fade-in space-y-4">
       <div className="flex items-center justify-between">
@@ -136,7 +157,7 @@ export function DiscoverTab({
             {t("discoverTitle", "Discover")}
           </h2>
           <p className="text-xs text-muted-foreground">
-            {t("noUndiscoveredPlaces", "Undiscovered places in Ladakh")}
+            {t("noUndiscoveredPlaces", "Hidden gems in Ladakh")}
           </p>
         </div>
         <button
@@ -152,24 +173,83 @@ export function DiscoverTab({
         </button>
       </div>
 
-      {posts.length === 0 ? (
+      {/* Tab switcher */}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => setActiveTab("undiscovered")}
+          className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all border ${
+            activeTab === "undiscovered"
+              ? "bg-primary text-primary-foreground border-primary"
+              : "bg-secondary text-muted-foreground border-border hover:border-primary/40"
+          }`}
+          data-ocid="discover.undiscovered.tab"
+        >
+          <span className="flex items-center justify-center gap-1.5">
+            <span className="material-symbols-outlined text-sm">explore</span>
+            {t("undiscovered", "Undiscovered")}
+            {undiscoveredPosts.length > 0 && (
+              <span className="text-[10px] bg-primary/30 px-1.5 py-0.5 rounded-full">
+                {undiscoveredPosts.length}
+              </span>
+            )}
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("discovered")}
+          className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all border ${
+            activeTab === "discovered"
+              ? "bg-amber-500/20 text-amber-400 border-amber-500/60"
+              : "bg-secondary text-muted-foreground border-border hover:border-amber-400/40"
+          }`}
+          data-ocid="discover.discovered.tab"
+        >
+          <span className="flex items-center justify-center gap-1.5">
+            <span className="material-symbols-outlined text-sm">verified</span>
+            {t("discovered", "Discovered")}
+            {discoveredPosts.length > 0 && (
+              <span className="text-[10px] bg-amber-500/30 px-1.5 py-0.5 rounded-full">
+                {discoveredPosts.length}
+              </span>
+            )}
+          </span>
+        </button>
+      </div>
+
+      {activeTab === "discovered" && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3">
+          <p className="text-xs text-amber-300 flex items-start gap-1">
+            <span className="material-symbols-outlined text-sm flex-shrink-0">
+              info
+            </span>
+            Places shared more than 7 days ago — now known to the community.
+          </p>
+        </div>
+      )}
+
+      {displayedPosts.length === 0 ? (
         <div className="text-center py-16" data-ocid="discover.empty_state">
           <span className="material-symbols-outlined text-5xl text-zinc-600 block mb-3">
-            travel_explore
+            {activeTab === "undiscovered" ? "travel_explore" : "verified"}
           </span>
           <p className="text-zinc-400 font-semibold mb-1">
-            {t("noUndiscoveredPlaces", "No discoveries yet")}
+            {activeTab === "undiscovered"
+              ? t("noUndiscoveredPlaces", "No new discoveries yet")
+              : t("noDiscovered", "No discovered places yet")}
           </p>
           <p className="text-xs text-zinc-500">
-            {t(
-              "beFirstToPost",
-              "Be the first to share a hidden gem in Ladakh!",
-            )}
+            {activeTab === "undiscovered"
+              ? t(
+                  "beFirstToPost",
+                  "Be the first to share a hidden gem in Ladakh!",
+                )
+              : "Places older than 7 days will appear here."}
           </p>
         </div>
       ) : (
         <div className="space-y-4">
-          {posts.map((post, i) => (
+          {displayedPosts.map((post, i) => (
             <div
               key={post.id}
               className="bg-card border border-border rounded-xl overflow-hidden"
@@ -185,11 +265,18 @@ export function DiscoverTab({
               <div className="p-4">
                 <div className="flex items-start justify-between gap-2 mb-1">
                   <h3 className="font-bold text-base">{post.title}</h3>
-                  {post.promoted && (
-                    <span className="flex-shrink-0 text-xs bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full">
-                      {t("promoted", "Promoted")}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {post.promoted && (
+                      <span className="text-xs bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full">
+                        {t("promoted", "Promoted")}
+                      </span>
+                    )}
+                    {activeTab === "discovered" && (
+                      <span className="text-xs bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-0.5 rounded-full">
+                        {getDaysOld(post.timestamp)}d ago
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
                   <span className="material-symbols-outlined text-xs">
@@ -238,7 +325,10 @@ export function DiscoverTab({
                         );
                         onPromoteToExplore?.(post);
                         toast.success(
-                          `"${post.title}" ${t("promoteToExplore", "promoted to Explore!")}`,
+                          `"${post.title}" ${t(
+                            "promoteToExplore",
+                            "promoted to Explore!",
+                          )}`,
                         );
                       }}
                       className="text-xs bg-amber-500/15 text-amber-400 border border-amber-500/30 px-3 py-1.5 rounded-lg hover:bg-amber-500/25 transition-colors"

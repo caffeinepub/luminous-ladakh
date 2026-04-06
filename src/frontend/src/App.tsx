@@ -33,6 +33,7 @@ import { initEventsData } from "./data/eventsData";
 import { initSeedData } from "./data/seed";
 import { useAuth } from "./hooks/useAuth";
 import { useData } from "./hooks/useData";
+import { runAutoAccept } from "./utils/autoAccept";
 
 // Init seed data once
 initSeedData();
@@ -94,6 +95,13 @@ export default function App() {
       setActiveTab(defaults[currentUser.role] || "explore");
     }
   }, [currentUser]);
+
+  // Auto-accept engine: runs on mount and every 5 minutes
+  useEffect(() => {
+    runAutoAccept();
+    const interval = setInterval(runAutoAccept, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleTabSelect = useCallback((tabId: string) => {
     if (tabId === "post") {
@@ -950,6 +958,9 @@ export default function App() {
                     data.removePendingPayment(id);
                     setRenderTick((n) => n + 1);
                   }}
+                  autoAcceptLog={data.getAutoAcceptLog()}
+                  autoAcceptUnread={data.getAutoAcceptUnread()}
+                  onClearAutoAcceptUnread={data.clearAutoAcceptUnread}
                 />
               </ErrorBoundary>
             )}

@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { generateId } from "../data/seed";
 import type {
   Account,
+  AutoAcceptLogEntry,
   FlagReport,
   LocationReview,
   PendingPayment,
@@ -373,6 +374,35 @@ export function useData() {
     [],
   );
 
+  // Auto-Accept Log
+  const getAutoAcceptLog = useCallback(
+    (): AutoAcceptLogEntry[] => getLS<AutoAcceptLogEntry>("lc_autoAcceptLog"),
+    [],
+  );
+  const addAutoAcceptLogEntry = useCallback((entry: AutoAcceptLogEntry) => {
+    const log = getLS<AutoAcceptLogEntry>("lc_autoAcceptLog");
+    log.unshift(entry);
+    if (log.length > 100) log.splice(100); // keep last 100
+    localStorage.setItem("lc_autoAcceptLog", JSON.stringify(log));
+    // increment unread count
+    const unread = Number.parseInt(
+      localStorage.getItem("lc_autoAccept_unread") || "0",
+      10,
+    );
+    localStorage.setItem("lc_autoAccept_unread", String(unread + 1));
+    notify();
+  }, []);
+  const clearAutoAcceptUnread = useCallback(() => {
+    localStorage.setItem("lc_autoAccept_unread", "0");
+    notify();
+  }, []);
+  const getAutoAcceptUnread = useCallback((): number => {
+    return Number.parseInt(
+      localStorage.getItem("lc_autoAccept_unread") || "0",
+      10,
+    );
+  }, []);
+
   return {
     refresh,
     getAccounts,
@@ -409,5 +439,9 @@ export function useData() {
     getFlagReports,
     addFlagReport,
     updateFlagReport,
+    getAutoAcceptLog,
+    addAutoAcceptLogEntry,
+    clearAutoAcceptUnread,
+    getAutoAcceptUnread,
   };
 }

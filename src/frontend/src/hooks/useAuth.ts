@@ -11,6 +11,8 @@ import { isValidCreatorSecurityWord } from "../utils/contentModeration";
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 15;
 
+const VIP_LIFETIME_EMAILS = ["bigbhi52@gmail.com"];
+
 interface SignupData {
   username: string;
   email: string;
@@ -239,14 +241,55 @@ export function useAuth() {
       const idx = accounts.findIndex((a) => a.id === account.id);
       let finalAccount = account;
       if (idx >= 0) {
+        const vipLoginUpgrades: Partial<Account> = VIP_LIFETIME_EMAILS.includes(
+          (accounts[idx].email || "").toLowerCase(),
+        )
+          ? {
+              membershipTier: "Premier",
+              membershipStatus: "active",
+              isVipLifetime: true,
+            }
+          : {};
         accounts[idx] = {
           ...accounts[idx],
           failedLoginAttempts: 0,
           lockoutUntil: undefined,
           lastLoginAt: new Date().toISOString(),
+          ...vipLoginUpgrades,
         };
         saveAccounts(accounts);
         finalAccount = accounts[idx];
+        // Auto-register VIP email in special accounts list
+        if (
+          VIP_LIFETIME_EMAILS.includes((finalAccount.email || "").toLowerCase())
+        ) {
+          try {
+            const spl: {
+              id: string;
+              usernameOrEmail: string;
+              addedAt: string;
+              greetingShown?: boolean;
+            }[] = JSON.parse(
+              localStorage.getItem("lc_specialAccounts") || "[]",
+            );
+            if (
+              !spl.find(
+                (e) =>
+                  e.usernameOrEmail.toLowerCase() ===
+                  (finalAccount.email || "").toLowerCase(),
+              )
+            ) {
+              spl.push({
+                id: Math.random().toString(36).slice(2),
+                usernameOrEmail: finalAccount.email || "",
+                addedAt: new Date().toISOString(),
+              });
+              localStorage.setItem("lc_specialAccounts", JSON.stringify(spl));
+            }
+          } catch {
+            /* ignore */
+          }
+        }
       }
 
       localStorage.setItem(
@@ -314,7 +357,38 @@ export function useAuth() {
           : {}),
         ...(role === "community" ? { editPermissionStatus: "none" } : {}),
       };
+      // VIP Lifetime Premier: auto-upgrade if email is on VIP list (OAuth path)
+      const isVipEmail = VIP_LIFETIME_EMAILS.includes(email.toLowerCase());
+      if (isVipEmail && newAccount.role === "member") {
+        newAccount.membershipTier = "Premier";
+        newAccount.membershipStatus = "active";
+        newAccount.isVipLifetime = true;
+      }
       saveAccounts([...accounts, newAccount]);
+      // Auto-register VIP email in special accounts list on OAuth signup
+      if (isVipEmail) {
+        try {
+          const spl: {
+            id: string;
+            usernameOrEmail: string;
+            addedAt: string;
+          }[] = JSON.parse(localStorage.getItem("lc_specialAccounts") || "[]");
+          if (
+            !spl.find(
+              (e) => e.usernameOrEmail.toLowerCase() === email.toLowerCase(),
+            )
+          ) {
+            spl.push({
+              id: Math.random().toString(36).slice(2),
+              usernameOrEmail: email,
+              addedAt: new Date().toISOString(),
+            });
+            localStorage.setItem("lc_specialAccounts", JSON.stringify(spl));
+          }
+        } catch {
+          /* ignore */
+        }
+      }
       // Update linked accounts
       addToLinkedGroups(email, newAccount.id);
       // Check violation carry-over
@@ -386,7 +460,41 @@ export function useAuth() {
           : {}),
         ...(data.role === "community" ? { editPermissionStatus: "none" } : {}),
       };
+      // VIP Lifetime Premier: auto-upgrade if email is on VIP list
+      const isVipEmail = VIP_LIFETIME_EMAILS.includes(
+        (data.email || "").toLowerCase(),
+      );
+      if (isVipEmail && newAccount.role === "member") {
+        newAccount.membershipTier = "Premier";
+        newAccount.membershipStatus = "active";
+        newAccount.isVipLifetime = true;
+      }
       saveAccounts([...accounts, newAccount]);
+      // Auto-register VIP email in special accounts list on signup
+      if (isVipEmail) {
+        try {
+          const spl: {
+            id: string;
+            usernameOrEmail: string;
+            addedAt: string;
+          }[] = JSON.parse(localStorage.getItem("lc_specialAccounts") || "[]");
+          if (
+            !spl.find(
+              (e) =>
+                e.usernameOrEmail.toLowerCase() === data.email.toLowerCase(),
+            )
+          ) {
+            spl.push({
+              id: Math.random().toString(36).slice(2),
+              usernameOrEmail: data.email,
+              addedAt: new Date().toISOString(),
+            });
+            localStorage.setItem("lc_specialAccounts", JSON.stringify(spl));
+          }
+        } catch {
+          /* ignore */
+        }
+      }
       // Update linked accounts groups
       addToLinkedGroups(data.email, newAccountId);
       // Violation carry-over check

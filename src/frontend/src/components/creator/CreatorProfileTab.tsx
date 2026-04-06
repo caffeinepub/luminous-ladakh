@@ -11,6 +11,7 @@ import { WorldLanguageDownloader } from "../WorldLanguageDownloader";
 import { AccountSwitcher } from "../shared/AccountSwitcher";
 import { CameraPermissionModal } from "../shared/CameraPermissionModal";
 import { FeedbackButton, getFeedbacks } from "../shared/FeedbackButton";
+import { ProfileTitlePicker, TitleBadge } from "../shared/ProfileTitlePicker";
 import { TermsModal } from "../shared/TermsModal";
 
 interface SpecialEntry {
@@ -208,6 +209,7 @@ export function CreatorProfileTab({
             />
           </div>
           <div>
+            <TitleBadge title={currentUser.title} />
             <h2 className="text-xl font-bold text-white">
               @{currentUser.username}
             </h2>
@@ -684,6 +686,15 @@ export function CreatorProfileTab({
           </div>
         )}
       </div>
+
+      {/* Title Picker */}
+      {onUpdateUser && (
+        <ProfileTitlePicker
+          currentUser={currentUser}
+          allAccounts={accounts}
+          onUpdateUser={onUpdateUser}
+        />
+      )}
 
       {/* Room Listings */}
       <MyRoomListings

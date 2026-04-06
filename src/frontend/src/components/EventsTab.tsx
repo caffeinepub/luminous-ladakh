@@ -52,29 +52,35 @@ function getDaysUntil(dateStr: string): number {
   }
 }
 
+const UPI_ID = "ladakhconnect@upi";
+
+type ModalStep = "form" | "payment";
+
 export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
   const { t } = useLanguage();
   const [events, setEvents] = useState<LCEvent[]>(loadEvents);
   const [showForm, setShowForm] = useState(false);
+  const [modalStep, setModalStep] = useState<ModalStep>("form");
   const [form, setForm] = useState({
     title: "",
     date: "",
     location: "",
     description: "",
   });
+  const [txRef, setTxRef] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // Staged event for after payment step
+  const [stagedEvent, setStagedEvent] = useState<LCEvent | null>(null);
 
   const isCreator = currentUser.role === "creator";
   const approvedEvents = events.filter((e) => e.status === "approved");
 
-  // Only show UPCOMING approved events (today and future)
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const upcomingEvents = approvedEvents.filter(
     (e) => new Date(e.date) >= today,
   );
 
-  // Creator sees all pending events regardless of date
   const pendingEvents = isCreator
     ? events.filter((e) => e.status === "pending")
     : [];
@@ -103,7 +109,14 @@ export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
     toast.info(t("rejected", "Event rejected and removed."));
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleCloseModal() {
+    setShowForm(false);
+    setModalStep("form");
+    setTxRef("");
+    setStagedEvent(null);
+  }
+
+  async function handleFormSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (
       !form.title.trim() ||
@@ -114,13 +127,10 @@ export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
       toast.error("Please fill in all fields.");
       return;
     }
-    // Prevent past dates
     if (form.date < todayStr) {
       toast.error("Event date cannot be in the past.");
       return;
     }
-    setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 400));
     const paymentId = `evpay_${Date.now()}`;
     const newEvent: LCEvent = {
       id: `ev_${Date.now()}`,
@@ -135,7 +145,15 @@ export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
       status: "pending",
       timestamp: new Date().toISOString(),
     };
-    const updated = [...events, newEvent];
+    setStagedEvent(newEvent);
+    setModalStep("payment");
+  }
+
+  async function handlePaymentSubmit() {
+    if (!txRef.trim() || !stagedEvent) return;
+    setSubmitting(true);
+    await new Promise((r) => setTimeout(r, 400));
+    const updated = [...events, stagedEvent];
     setEvents(updated);
     saveEvents(updated);
     onAddPendingPayment({
@@ -146,17 +164,23 @@ export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
       tier: "Event Post",
       status: "pending",
       paymentType: "event",
-      eventTitle: form.title.trim(),
+      eventTitle: stagedEvent.title,
     });
     setForm({ title: "", date: "", location: "", description: "" });
-    setShowForm(false);
+    setTxRef("");
+    setStagedEvent(null);
     setSubmitting(false);
+    handleCloseModal();
     toast.success(
-      t(
-        "submitted",
-        "Event submitted! ₹500 payment pending Creator confirmation.",
-      ),
+      t("submitted", "Event submitted! Payment pending Creator confirmation."),
     );
+  }
+
+  function copyUpiId() {
+    navigator.clipboard
+      .writeText(UPI_ID)
+      .then(() => toast.success("Copied!"))
+      .catch(() => toast.error("Could not copy"));
   }
 
   return (
@@ -172,7 +196,10 @@ export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
         </div>
         <button
           type="button"
-          onClick={() => setShowForm(true)}
+          onClick={() => {
+            setShowForm(true);
+            setModalStep("form");
+          }}
           className="flex items-center gap-1.5 bg-primary text-primary-foreground px-3 py-2 rounded-xl text-xs font-semibold hover:bg-primary/90 transition-colors"
           data-ocid="events.open_modal_button"
         >
@@ -308,9 +335,9 @@ export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
       {showForm && (
         <div
           className="fixed inset-0 z-50 bg-black/80 flex items-end sm:items-center justify-center p-0 sm:p-4"
-          onClick={() => setShowForm(false)}
+          onClick={handleCloseModal}
           onKeyDown={(e) => {
-            if (e.key === "Escape") setShowForm(false);
+            if (e.key === "Escape") handleCloseModal();
           }}
           role="presentation"
         >
@@ -321,161 +348,276 @@ export function EventsTab({ currentUser, onAddPendingPayment }: Props) {
             role="presentation"
             data-ocid="events.dialog"
           >
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-bold text-lg">
-                {t("postEvent", "Post an Event")}
-              </h2>
-              <button
-                type="button"
-                onClick={() => setShowForm(false)}
-                data-ocid="events.close_button"
-              >
-                <span className="material-symbols-outlined text-muted-foreground">
-                  close
-                </span>
-              </button>
-            </div>
+            {modalStep === "form" ? (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-bold text-lg">
+                    {t("postEvent", "Post an Event")}
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={handleCloseModal}
+                    data-ocid="events.close_button"
+                  >
+                    <span className="material-symbols-outlined text-muted-foreground">
+                      close
+                    </span>
+                  </button>
+                </div>
 
-            {/* Fee breakdown info */}
-            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 mb-4">
-              <p className="text-xs text-amber-300 font-semibold mb-2 flex items-center gap-1">
-                <span className="material-symbols-outlined text-sm">info</span>
-                {t("eventFee", "Event Posting Fee: ₹500")}
-              </p>
-              <div className="space-y-1">
-                <div className="flex justify-between text-xs">
-                  <span className="text-zinc-400">Posting fee</span>
-                  <span className="text-white font-semibold">₹500</span>
+                {/* Fee info */}
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 mb-4">
+                  <p className="text-xs text-amber-300 font-semibold mb-1 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-sm">
+                      info
+                    </span>
+                    {t("eventFee", "Event Posting Fee: ₹500")}
+                  </p>
+                  <p className="text-xs text-zinc-400">
+                    Pay once via UPI to post your event. Creator reviews and
+                    approves within 24 hours.
+                  </p>
                 </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-zinc-400">First 7 days</span>
-                  <span className="text-green-400 font-semibold">FREE</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-zinc-400">Day 8+ (daily)</span>
-                  <span className="text-white">₹10/day</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-zinc-400">
-                    After 2 weeks (2-day pack)
-                  </span>
-                  <span className="text-white">₹70 per 2 days</span>
-                </div>
-                <p className="text-xs text-zinc-500 mt-1.5 pt-1.5 border-t border-zinc-700">
-                  {t(
-                    "eventExtensionNote",
-                    "If extension fee is not paid, event is removed.",
-                  )}
-                </p>
-              </div>
-            </div>
 
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <div className="space-y-1">
-                <label
-                  htmlFor="evt-title"
-                  className="text-xs text-muted-foreground"
-                >
-                  {t("eventName", "Event Title")}
-                </label>
-                <input
-                  id="evt-title"
-                  type="text"
-                  placeholder="e.g. Village Harvest Festival"
-                  value={form.title}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, title: e.target.value }))
-                  }
-                  className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-primary"
-                  data-ocid="events.input"
-                />
-              </div>
-              <div className="space-y-1">
-                <label
-                  htmlFor="evt-date"
-                  className="text-xs text-muted-foreground"
-                >
-                  {t("eventDate", "Date")}
-                </label>
-                <input
-                  id="evt-date"
-                  type="date"
-                  min={todayStr}
-                  value={form.date}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, date: e.target.value }))
-                  }
-                  className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary"
-                  data-ocid="events.input"
-                />
-              </div>
-              <div className="space-y-1">
-                <label
-                  htmlFor="evt-loc"
-                  className="text-xs text-muted-foreground"
-                >
-                  {t("eventLocation", "Location")}
-                </label>
-                <input
-                  id="evt-loc"
-                  type="text"
-                  placeholder="e.g. Leh Palace Grounds"
-                  value={form.location}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, location: e.target.value }))
-                  }
-                  className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-primary"
-                  data-ocid="events.input"
-                />
-              </div>
-              <div className="space-y-1">
-                <label
-                  htmlFor="evt-desc"
-                  className="text-xs text-muted-foreground"
-                >
-                  {t("eventDesc", "Description")}
-                </label>
-                <textarea
-                  id="evt-desc"
-                  rows={3}
-                  placeholder="Describe the event..."
-                  value={form.description}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, description: e.target.value }))
-                  }
-                  className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-primary resize-none"
-                  data-ocid="events.textarea"
-                />
-              </div>
+                <form onSubmit={handleFormSubmit} className="space-y-3">
+                  <div className="space-y-1">
+                    <label
+                      htmlFor="evt-title"
+                      className="text-xs text-muted-foreground"
+                    >
+                      {t("eventName", "Event Title")}
+                    </label>
+                    <input
+                      id="evt-title"
+                      type="text"
+                      placeholder="e.g. Village Harvest Festival"
+                      value={form.title}
+                      onChange={(e) =>
+                        setForm((p) => ({ ...p, title: e.target.value }))
+                      }
+                      className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-primary"
+                      data-ocid="events.input"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label
+                      htmlFor="evt-date"
+                      className="text-xs text-muted-foreground"
+                    >
+                      {t("eventDate", "Date")}
+                    </label>
+                    <input
+                      id="evt-date"
+                      type="date"
+                      min={todayStr}
+                      value={form.date}
+                      onChange={(e) =>
+                        setForm((p) => ({ ...p, date: e.target.value }))
+                      }
+                      className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary"
+                      data-ocid="events.input"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label
+                      htmlFor="evt-loc"
+                      className="text-xs text-muted-foreground"
+                    >
+                      {t("eventLocation", "Location")}
+                    </label>
+                    <input
+                      id="evt-loc"
+                      type="text"
+                      placeholder="e.g. Leh Palace Grounds"
+                      value={form.location}
+                      onChange={(e) =>
+                        setForm((p) => ({ ...p, location: e.target.value }))
+                      }
+                      className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-primary"
+                      data-ocid="events.input"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label
+                      htmlFor="evt-desc"
+                      className="text-xs text-muted-foreground"
+                    >
+                      {t("eventDesc", "Description")}
+                    </label>
+                    <textarea
+                      id="evt-desc"
+                      rows={3}
+                      placeholder="Describe the event..."
+                      value={form.description}
+                      onChange={(e) =>
+                        setForm((p) => ({ ...p, description: e.target.value }))
+                      }
+                      className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-primary resize-none"
+                      data-ocid="events.textarea"
+                    />
+                  </div>
 
-              <div className="flex gap-3 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setShowForm(false)}
-                  className="flex-1 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-semibold transition-colors"
-                  data-ocid="events.cancel_button"
-                >
-                  {t("cancel", "Cancel")}
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="flex-1 py-3 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
-                  data-ocid="events.submit_button"
-                >
-                  {submitting ? (
-                    <>
-                      <span className="material-symbols-outlined text-base animate-spin">
-                        progress_activity
+                  <div className="flex gap-3 pt-1">
+                    <button
+                      type="button"
+                      onClick={handleCloseModal}
+                      className="flex-1 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-semibold transition-colors"
+                      data-ocid="events.cancel_button"
+                    >
+                      {t("cancel", "Cancel")}
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 py-3 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-bold transition-colors flex items-center justify-center gap-2"
+                      data-ocid="events.submit_button"
+                    >
+                      <span className="material-symbols-outlined text-base">
+                        payment
                       </span>
-                      Submitting...
-                    </>
-                  ) : (
-                    <>{t("pay", "Pay")} ₹500 &amp; Post</>
-                  )}
-                </button>
-              </div>
-            </form>
+                      {t("pay", "Pay")} ₹500 &amp; Post
+                    </button>
+                  </div>
+                </form>
+              </>
+            ) : (
+              <>
+                {/* Step 2: Payment */}
+                <div className="flex items-center gap-3 mb-5">
+                  <button
+                    type="button"
+                    onClick={() => setModalStep("form")}
+                    className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors"
+                    data-ocid="events.back_button"
+                  >
+                    <span className="material-symbols-outlined text-base">
+                      arrow_back
+                    </span>
+                  </button>
+                  <div>
+                    <h2 className="font-bold text-lg">Complete Payment</h2>
+                    <p className="text-xs text-muted-foreground">Step 2 of 2</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCloseModal}
+                    className="ml-auto"
+                    data-ocid="events.close_button"
+                  >
+                    <span className="material-symbols-outlined text-muted-foreground">
+                      close
+                    </span>
+                  </button>
+                </div>
+
+                {/* Placeholder QR Code */}
+                <div className="flex flex-col items-center mb-5">
+                  <div className="w-44 h-44 bg-white rounded-2xl flex items-center justify-center mb-3 shadow-lg">
+                    <div className="text-center">
+                      <span className="material-symbols-outlined text-black text-[80px] block">
+                        qr_code_2
+                      </span>
+                      <p className="text-black text-[8px] font-bold tracking-widest">
+                        LADAKH CONNECT
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-zinc-500 text-center max-w-xs">
+                    Placeholder QR · Your real QR will appear here after setup
+                  </p>
+                </div>
+
+                {/* UPI ID */}
+                <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-4 mb-4">
+                  <p className="text-xs text-zinc-400 mb-2">UPI ID</p>
+                  <div className="flex items-center gap-2">
+                    <p className="flex-1 font-mono text-white font-semibold text-sm">
+                      {UPI_ID}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={copyUpiId}
+                      className="flex items-center gap-1 text-xs bg-primary/15 text-primary px-3 py-1.5 rounded-lg border border-primary/30 hover:bg-primary/25 transition-colors"
+                      data-ocid="events.copy_button"
+                    >
+                      <span className="material-symbols-outlined text-sm">
+                        content_copy
+                      </span>
+                      Copy
+                    </button>
+                  </div>
+                </div>
+
+                {/* Instructions */}
+                <ol className="space-y-2 mb-5">
+                  {[
+                    "Open any UPI app (Google Pay, PhonePe, Paytm)",
+                    "Scan the QR code or enter the UPI ID above",
+                    "Pay ₹500",
+                    "Enter the transaction reference number below",
+                  ].map((step, i) => (
+                    <li key={step} className="flex items-start gap-2 text-xs">
+                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/20 text-primary text-[10px] font-bold flex items-center justify-center">
+                        {i + 1}
+                      </span>
+                      <span className="text-zinc-300 pt-0.5">{step}</span>
+                    </li>
+                  ))}
+                </ol>
+
+                {/* Transaction Reference */}
+                <div className="space-y-1 mb-5">
+                  <label
+                    htmlFor="tx-ref"
+                    className="text-xs text-muted-foreground"
+                  >
+                    Transaction Reference / UTR Number *
+                  </label>
+                  <input
+                    id="tx-ref"
+                    type="text"
+                    placeholder="e.g. 407123456789"
+                    value={txRef}
+                    onChange={(e) => setTxRef(e.target.value)}
+                    className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-primary"
+                    data-ocid="events.tx_ref.input"
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setModalStep("form")}
+                    className="flex-1 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-semibold transition-colors"
+                    data-ocid="events.back_button"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handlePaymentSubmit}
+                    disabled={!txRef.trim() || submitting}
+                    className="flex-1 py-3 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                    data-ocid="events.submit_payment_button"
+                  >
+                    {submitting ? (
+                      <>
+                        <span className="material-symbols-outlined text-base animate-spin">
+                          progress_activity
+                        </span>
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        <span className="material-symbols-outlined text-base">
+                          check_circle
+                        </span>
+                        Submit Payment
+                      </>
+                    )}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

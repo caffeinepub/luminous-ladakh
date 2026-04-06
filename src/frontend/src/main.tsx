@@ -3,11 +3,10 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import { InternetIdentityProvider } from "./hooks/useInternetIdentity";
 import "./index.css";
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║  CRITICAL — LanguageProvider MUST wrap App here in main.tsx.    ║
-// ║  Removing or moving it breaks the Continue button and causes    ║
-// ║  the language screen to never advance. DO NOT REMOVE.           ║
-// ╚══════════════════════════════════════════════════════════════════╝
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// CRITICAL: LanguageProvider MUST wrap App — DO NOT REMOVE THIS IMPORT/USAGE
+// Removing it breaks the Continue button and causes crashes on language screen
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 import { LanguageProvider } from "./context/LanguageContext";
 
 BigInt.prototype.toJSON = function () {
@@ -25,7 +24,7 @@ const queryClient = new QueryClient();
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={queryClient}>
     <InternetIdentityProvider>
-      {/* CRITICAL: LanguageProvider must be here — see comment above */}
+      {/* CRITICAL: LanguageProvider must stay here — see comment above */}
       <LanguageProvider>
         <App />
       </LanguageProvider>

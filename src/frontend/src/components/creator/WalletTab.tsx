@@ -1,12 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { toast } from "sonner";
-import type { PendingPayment, WalletTransaction } from "../../types";
+import type {
+  AutoAcceptLogEntry,
+  PendingPayment,
+  WalletTransaction,
+} from "../../types";
 
 interface Props {
   transactions: WalletTransaction[];
   pendingPayments: PendingPayment[];
   onConfirmPayment: (id: string) => void;
   onRejectPayment: (id: string) => void;
+  autoAcceptLog: AutoAcceptLogEntry[];
+  autoAcceptUnread: number;
+  onClearAutoAcceptUnread: () => void;
 }
 
 function getMonthLabel(iso: string): string {
@@ -19,7 +26,17 @@ export function CreatorWallet({
   pendingPayments,
   onConfirmPayment,
   onRejectPayment,
+  autoAcceptLog,
+  autoAcceptUnread,
+  onClearAutoAcceptUnread,
 }: Props) {
+  // Clear unread badge when this component mounts (Creator opened wallet)
+  useEffect(() => {
+    if (autoAcceptUnread > 0) {
+      onClearAutoAcceptUnread();
+    }
+  }, [autoAcceptUnread, onClearAutoAcceptUnread]);
+
   // Only count real confirmed payments (type === "payment")
   const confirmedPayments = transactions.filter((t) => t.type === "payment");
   const totalReceived = confirmedPayments.reduce((s, t) => s + t.amount, 0);
@@ -94,15 +111,27 @@ export function CreatorWallet({
       </div>
 
       {/* Pending Payments */}
-      <div className="bg-card border border-border rounded-xl p-4">
-        <h2 className="font-heading font-semibold mb-3 flex items-center gap-2">
+      <div
+        className="bg-card border border-border rounded-xl p-4"
+        data-ocid="wallet.pending.panel"
+      >
+        <h2 className="font-heading font-semibold mb-1 flex items-center gap-2">
           <span className="material-symbols-outlined text-yellow-400 text-lg">
             pending
           </span>
           Pending Payments ({pendingPayments.length})
         </h2>
+        <p className="text-xs text-amber-400/80 mb-3 flex items-center gap-1">
+          <span className="material-symbols-outlined text-[14px]">
+            schedule
+          </span>
+          Items not reviewed in 24h are auto-approved.
+        </p>
         {pendingPayments.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
+          <p
+            className="text-sm text-muted-foreground"
+            data-ocid="wallet.pending.empty_state"
+          >
             No pending payments. Member payments submitted via UPI will appear
             here.
           </p>
@@ -112,6 +141,7 @@ export function CreatorWallet({
               <div
                 key={p.id}
                 className="bg-secondary rounded-lg p-3 border border-yellow-500/20"
+                data-ocid={`wallet.pending.item.${i + 1}`}
               >
                 <div className="flex items-start justify-between gap-2 mb-1">
                   <div>
@@ -136,6 +166,8 @@ export function CreatorWallet({
                         UPI Ref: {(p as any).upiRef}
                       </p>
                     )}
+                    {/* Time remaining before auto-accept */}
+                    <AutoAcceptCountdown timestamp={p.timestamp} />
                   </div>
                   <p className="font-bold text-yellow-400">
                     ₹{p.amount.toLocaleString()}
@@ -280,9 +312,16 @@ export function CreatorWallet({
                     </span>
                   </div>
                   <div>
-                    <p className="text-sm font-medium">
-                      {t.note || `From @${t.from}`}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium">
+                        {t.note || `From @${t.from}`}
+                      </p>
+                      {t.note?.startsWith("Auto-Approved") && (
+                        <span className="text-[10px] bg-green-500/15 text-green-400 border border-green-500/30 px-1.5 py-0.5 rounded-full font-semibold">
+                          AUTO
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground">
                       {new Date(t.timestamp).toLocaleDateString()}
                     </p>
@@ -296,6 +335,131 @@ export function CreatorWallet({
           </div>
         )}
       </div>
+
+      {/* Auto-Accept Log */}
+      <div
+        className="bg-card border border-border rounded-xl p-4"
+        data-ocid="wallet.auto_accept.panel"
+      >
+        <h2 className="font-heading font-semibold mb-3 flex items-center gap-2">
+          <span className="material-symbols-outlined text-green-400 text-lg">
+            auto_awesome
+          </span>
+          Auto-Approved Items
+          {autoAcceptLog.length > 0 && (
+            <span className="ml-auto bg-green-500/20 text-green-400 border border-green-500/30 text-xs px-2 py-0.5 rounded-full font-semibold">
+              {autoAcceptLog.length}
+            </span>
+          )}
+        </h2>
+        <p className="text-xs text-muted-foreground mb-3">
+          Items not manually reviewed within 24 hours are automatically
+          approved. Content scan still runs — flagged items are noted below.
+        </p>
+
+        {autoAcceptLog.length === 0 ? (
+          <div
+            className="text-center py-6"
+            data-ocid="wallet.auto_accept.empty_state"
+          >
+            <span className="material-symbols-outlined text-3xl text-muted-foreground mb-2 block">
+              schedule
+            </span>
+            <p className="text-sm text-muted-foreground">
+              No auto-approved items yet.
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Pending items older than 24h will appear here.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {autoAcceptLog.map((entry, i) => (
+              <div
+                key={entry.id}
+                className={`rounded-lg p-3 border ${
+                  entry.flagged
+                    ? "bg-orange-500/5 border-orange-500/20"
+                    : "bg-secondary border-border"
+                }`}
+                data-ocid={`wallet.auto_accept.item.${i + 1}`}
+              >
+                <div className="flex items-start gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center flex-wrap gap-1.5 mb-1">
+                      <span className="text-[10px] bg-green-500/20 text-green-400 border border-green-500/30 px-1.5 py-0.5 rounded-full font-bold tracking-wide">
+                        AUTO-APPROVED
+                      </span>
+                      {entry.flagged && (
+                        <span className="text-[10px] bg-orange-500/20 text-orange-400 border border-orange-500/30 px-1.5 py-0.5 rounded-full font-bold tracking-wide flex items-center gap-0.5">
+                          <span className="material-symbols-outlined text-[11px]">
+                            flag
+                          </span>
+                          FLAGGED
+                        </span>
+                      )}
+                      <span className="text-[10px] text-muted-foreground capitalize bg-zinc-800 px-1.5 py-0.5 rounded-full">
+                        {entry.itemType.replace("_", " ")}
+                      </span>
+                    </div>
+                    <p className="text-sm font-medium truncate">
+                      {entry.itemTitle}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Submitted by @{entry.submittedBy}
+                    </p>
+                    {entry.amount && (
+                      <p className="text-xs text-green-400 font-semibold mt-0.5">
+                        ₹{entry.amount.toLocaleString()}
+                      </p>
+                    )}
+                    {entry.flagged && entry.flagReason && (
+                      <p className="text-xs text-orange-400 mt-1 bg-orange-500/10 rounded px-2 py-1">
+                        <span className="font-semibold">Flag reason:</span>{" "}
+                        {entry.flagReason}
+                      </p>
+                    )}
+                    <p className="text-[10px] text-zinc-600 mt-1">
+                      Auto-approved:{" "}
+                      {new Date(entry.autoApprovedAt).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
+  );
+}
+
+/** Shows a countdown / time-since label for the 24h auto-accept window */
+function AutoAcceptCountdown({ timestamp }: { timestamp: string }) {
+  const submitted = new Date(timestamp).getTime();
+  const deadline = submitted + 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  const remaining = deadline - now;
+
+  if (remaining <= 0) {
+    return (
+      <p className="text-[10px] text-amber-400 mt-0.5 flex items-center gap-0.5">
+        <span className="material-symbols-outlined text-[12px]">schedule</span>
+        Auto-approving now...
+      </p>
+    );
+  }
+
+  const hoursLeft = Math.floor(remaining / (60 * 60 * 1000));
+  const minutesLeft = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
+
+  return (
+    <p className="text-[10px] text-zinc-500 mt-0.5 flex items-center gap-0.5">
+      <span className="material-symbols-outlined text-[12px]">schedule</span>
+      Auto-approves in{" "}
+      <span className="text-amber-400 font-semibold">
+        {hoursLeft}h {minutesLeft}m
+      </span>
+    </p>
   );
 }

@@ -11,6 +11,7 @@ import { WorldLanguageDownloader } from "../WorldLanguageDownloader";
 import { AccountSwitcher } from "../shared/AccountSwitcher";
 import { CameraPermissionModal } from "../shared/CameraPermissionModal";
 import { FeedbackButton } from "../shared/FeedbackButton";
+import { ProfileTitlePicker, TitleBadge } from "../shared/ProfileTitlePicker";
 import { TermsModal } from "../shared/TermsModal";
 import { ViolationCard } from "../shared/ViolationCard";
 
@@ -185,6 +186,7 @@ export function UserProfileTab({
             />
           </div>
           <div className="flex-1">
+            <TitleBadge title={currentUser.title} />
             <h2 className="font-heading text-xl font-bold">
               @{currentUser.username}
             </h2>
@@ -393,6 +395,13 @@ export function UserProfileTab({
       </div>
 
       <ViolationCard violations={violations} userId={currentUser.id} />
+
+      {/* Title Picker */}
+      <ProfileTitlePicker
+        currentUser={currentUser}
+        allAccounts={[]}
+        onUpdateUser={onUpdateUser}
+      />
 
       <div className="bg-card border border-border rounded-xl p-4">
         <h3 className="font-heading font-semibold mb-3 flex items-center gap-2">

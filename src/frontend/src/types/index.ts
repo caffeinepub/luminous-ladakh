@@ -140,6 +140,9 @@ export interface Account {
   editPermissionStatus?: "none" | "pending" | "approved" | "denied";
   lastLoginAt?: string;
   lastLogoutAt?: string;
+  title?: string;
+  earnedTitles?: string[];
+  isVipLifetime?: boolean; // Lifetime Premier VIP (granted at account level)
 }
 
 export interface Post {
@@ -154,6 +157,7 @@ export interface Post {
   submitterUsername: string;
   timestamp: string;
   status: "pending" | "approved";
+  autoApproved?: boolean;
 }
 
 export interface Review {
@@ -223,6 +227,7 @@ export interface PendingPayment {
   eventTitle?: string;
   productName?: string;
   roomTitle?: string;
+  autoApproved?: boolean;
 }
 
 export interface LCEvent {
@@ -250,6 +255,9 @@ export interface DiscoveryPost {
   timestamp: string;
   upvotes: string[];
   promoted: boolean;
+  discoveredAt?: string;
+  status?: "pending" | "approved";
+  autoApproved?: boolean;
 }
 
 export interface RoadStatus {
@@ -300,4 +308,17 @@ export interface FeedbackEntry {
   message: string;
   timestamp: string;
   read: boolean;
+}
+
+/** Auto-accept log entry — records items that were auto-approved after 24h */
+export interface AutoAcceptLogEntry {
+  id: string;
+  itemType: "payment" | "post" | "discovery_post";
+  itemId: string;
+  itemTitle: string;
+  submittedBy: string;
+  amount?: number;
+  flagged: boolean;
+  flagReason?: string;
+  autoApprovedAt: string;
 }
