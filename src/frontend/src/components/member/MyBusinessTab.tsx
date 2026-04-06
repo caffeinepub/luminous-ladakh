@@ -14,6 +14,12 @@ import type {
   ShopProduct,
   Violation,
 } from "../../types";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
+import iconRetinaUrl from "leaflet/dist/images/marker-icon-2x.png";
+import iconUrl from "leaflet/dist/images/marker-icon.png";
+import shadowUrl from "leaflet/dist/images/marker-shadow.png";
+import { MapContainer, Marker, TileLayer, useMapEvents } from "react-leaflet";
 import { getBusinessQA } from "../shared/BusinessQASection";
 import {
   type InquiryEntry,
@@ -696,6 +702,74 @@ function ShopProductForm({
   );
 }
 
+// Fix Leaflet default icon in React/Vite
+(L.Icon.Default.prototype as any)._getIconUrl = undefined;
+L.Icon.Default.mergeOptions({ iconRetinaUrl, iconUrl, shadowUrl });
+
+// Extract lat/lng from a Google Maps URL
+function extractLatLng(url: string): { lat: number; lng: number } | null {
+  const atMatch = url.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+  if (atMatch)
+    return {
+      lat: Number.parseFloat(atMatch[1]),
+      lng: Number.parseFloat(atMatch[2]),
+    };
+  const qMatch = url.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+  if (qMatch)
+    return {
+      lat: Number.parseFloat(qMatch[1]),
+      lng: Number.parseFloat(qMatch[2]),
+    };
+  const llMatch = url.match(/ll=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+  if (llMatch)
+    return {
+      lat: Number.parseFloat(llMatch[1]),
+      lng: Number.parseFloat(llMatch[2]),
+    };
+  return null;
+}
+
+// Draggable map pin for location picking
+function DraggablePin({
+  onMove,
+}: { onMove: (lat: number, lng: number) => void }) {
+  useMapEvents({
+    click(e) {
+      onMove(e.latlng.lat, e.latlng.lng);
+    },
+  });
+  return null;
+}
+
+function LocationPickerMap({
+  lat,
+  lng,
+  onMove,
+}: { lat: number; lng: number; onMove: (lat: number, lng: number) => void }) {
+  return (
+    <MapContainer
+      center={[lat, lng]}
+      zoom={13}
+      style={{ height: "100%", width: "100%" }}
+      zoomControl
+      scrollWheelZoom={false}
+    >
+      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+      <Marker
+        position={[lat, lng]}
+        draggable
+        eventHandlers={{
+          dragend: (e: any) => {
+            const pos = e.target.getLatLng();
+            onMove(pos.lat, pos.lng);
+          },
+        }}
+      />
+      <DraggablePin onMove={onMove} />
+    </MapContainer>
+  );
+}
+
 export function MemberBusinessTab({
   currentUser,
   reviews,
@@ -775,6 +849,14 @@ export function MemberBusinessTab({
   const [discountMsg, setDiscountMsg] = useState("");
   const [showDiscountForm, setShowDiscountForm] = useState(false);
   const [showInquiriesFor, setShowInquiriesFor] = useState<string | null>(null);
+  const [updatingBizId, setUpdatingBizId] = useState<string | null>(null);
+  const [updateLocationMode, setUpdateLocationMode] = useState<
+    "none" | "url" | "current"
+  >("none");
+  const [updateUrlInput, setUpdateUrlInput] = useState("");
+  const [pickedLat, setPickedLat] = useState<number | null>(null);
+  const [pickedLng, setPickedLng] = useState<number | null>(null);
+  const [locPermissionError, setLocPermissionError] = useState("");
 
   function getBizTypeLabel(biz: Business): string {
     if (biz.businessType) return BUSINESS_TYPE_LABELS[biz.businessType];
@@ -1127,12 +1209,33 @@ export function MemberBusinessTab({
                     <button
                       type="button"
                       onClick={() => openEdit(biz)}
-                      className="p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors"
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors text-xs font-medium text-zinc-300"
                       data-ocid="business.edit_button"
                     >
-                      <span className="material-symbols-outlined text-sm text-zinc-300">
+                      <span className="material-symbols-outlined text-sm">
                         edit
                       </span>
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUpdatingBizId(
+                          updatingBizId === biz.id ? null : biz.id,
+                        );
+                        setUpdateLocationMode("none");
+                        setUpdateUrlInput("");
+                        setPickedLat(null);
+                        setPickedLng(null);
+                        setLocPermissionError("");
+                      }}
+                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border transition-colors text-xs font-medium ${updatingBizId === biz.id ? "bg-amber-500/20 border-amber-500/50 text-amber-300" : "bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-zinc-300"}`}
+                      data-ocid="business.save_button"
+                    >
+                      <span className="material-symbols-outlined text-sm">
+                        tune
+                      </span>
+                      Update
                     </button>
                     <button
                       type="button"
@@ -1206,6 +1309,260 @@ export function MemberBusinessTab({
                         className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
                       />
                     ))}
+                  </div>
+                )}
+
+                {/* Location Pending Badge */}
+                {biz.locationStatus === "pending_review" && (
+                  <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-xl bg-yellow-500/10 border border-yellow-500/30">
+                    <span className="material-symbols-outlined text-yellow-400 text-sm">
+                      schedule
+                    </span>
+                    <p className="text-xs text-yellow-300 font-medium">
+                      Location Update Pending (30-day review)
+                    </p>
+                  </div>
+                )}
+
+                {/* Update Panel */}
+                {updatingBizId === biz.id && (
+                  <div className="mt-3 border-t border-zinc-700 pt-3 space-y-4">
+                    {/* Business Status */}
+                    <div>
+                      <p className="text-xs font-semibold text-zinc-300 mb-2">
+                        Business Status
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {(
+                          [
+                            "open",
+                            "closed",
+                            "temporarily_closed",
+                            "coming_soon",
+                          ] as const
+                        ).map((s) => {
+                          const labels: Record<string, string> = {
+                            open: "Open",
+                            closed: "Closed",
+                            temporarily_closed: "Temp. Closed",
+                            coming_soon: "Coming Soon",
+                          };
+                          const colors: Record<string, string> = {
+                            open: "text-green-400 border-green-500/50 bg-green-500/10",
+                            closed:
+                              "text-red-400 border-red-500/50 bg-red-500/10",
+                            temporarily_closed:
+                              "text-yellow-400 border-yellow-500/50 bg-yellow-500/10",
+                            coming_soon:
+                              "text-blue-400 border-blue-500/50 bg-blue-500/10",
+                          };
+                          return (
+                            <button
+                              key={s}
+                              type="button"
+                              onClick={() => {
+                                const updated = businesses.map((b) =>
+                                  b.id === biz.id
+                                    ? { ...b, businessStatus: s }
+                                    : b,
+                                );
+                                onUpdate({ businesses: updated });
+                                toast.success("Status updated!");
+                              }}
+                              className={`py-2 rounded-xl border text-xs font-medium transition-colors ${biz.businessStatus === s ? colors[s] : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`}
+                              data-ocid={`business.${s}.toggle`}
+                            >
+                              {labels[s]}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Business Location */}
+                    <div>
+                      <p className="text-xs font-semibold text-zinc-300 mb-2">
+                        Business Location
+                      </p>
+                      <div className="flex gap-2 mb-3">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setUpdateLocationMode(
+                              updateLocationMode === "url" ? "none" : "url",
+                            )
+                          }
+                          className={`flex-1 py-2 rounded-xl border text-xs font-medium transition-colors ${updateLocationMode === "url" ? "bg-amber-500/20 border-amber-500/50 text-amber-300" : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`}
+                          data-ocid="business.button"
+                        >
+                          <span className="material-symbols-outlined text-sm block mx-auto mb-0.5">
+                            link
+                          </span>
+                          Paste Google Maps URL
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setUpdateLocationMode(
+                              updateLocationMode === "current"
+                                ? "none"
+                                : "current",
+                            )
+                          }
+                          className={`flex-1 py-2 rounded-xl border text-xs font-medium transition-colors ${updateLocationMode === "current" ? "bg-amber-500/20 border-amber-500/50 text-amber-300" : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`}
+                          data-ocid="business.button"
+                        >
+                          <span className="material-symbols-outlined text-sm block mx-auto mb-0.5">
+                            my_location
+                          </span>
+                          Use Current Location
+                        </button>
+                      </div>
+
+                      {updateLocationMode === "url" && (
+                        <div className="space-y-2">
+                          <input
+                            className="w-full bg-zinc-900 text-white border border-zinc-700 rounded-lg px-3 py-2.5 text-sm placeholder:text-zinc-500 focus:outline-none focus:border-amber-500 transition-colors"
+                            placeholder="https://maps.google.com/..."
+                            value={updateUrlInput}
+                            onChange={(e) => setUpdateUrlInput(e.target.value)}
+                            data-ocid="business.input"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const extracted = extractLatLng(updateUrlInput);
+                              if (!extracted) {
+                                toast.error(
+                                  "Could not extract coordinates. Use a direct Google Maps link.",
+                                );
+                                return;
+                              }
+                              const updated = businesses.map((b) =>
+                                b.id === biz.id
+                                  ? {
+                                      ...b,
+                                      pendingLat: extracted.lat,
+                                      pendingLng: extracted.lng,
+                                      locationStatus: "pending_review" as const,
+                                    }
+                                  : b,
+                              );
+                              onUpdate({ businesses: updated });
+                              toast.success(
+                                "Location submitted for review. Will be applied within 30 days.",
+                              );
+                              setUpdateLocationMode("none");
+                              setUpdateUrlInput("");
+                            }}
+                            className="w-full py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-sm transition-colors"
+                            data-ocid="business.submit_button"
+                          >
+                            Submit Location
+                          </button>
+                          <p className="text-xs text-zinc-500">
+                            Location changes will be reviewed and applied within
+                            30 days. Your current location remains visible until
+                            approved.
+                          </p>
+                        </div>
+                      )}
+
+                      {updateLocationMode === "current" && (
+                        <div className="space-y-2">
+                          {locPermissionError && (
+                            <p className="text-xs text-red-400">
+                              {locPermissionError}
+                            </p>
+                          )}
+                          {pickedLat === null ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLocPermissionError("");
+                                navigator.geolocation.getCurrentPosition(
+                                  (pos) => {
+                                    setPickedLat(pos.coords.latitude);
+                                    setPickedLng(pos.coords.longitude);
+                                  },
+                                  (err) => {
+                                    setLocPermissionError(
+                                      `Location access denied. Please allow location in browser settings. Error: ${err.message}`,
+                                    );
+                                  },
+                                );
+                              }}
+                              className="w-full py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-600 text-zinc-300 text-sm transition-colors"
+                              data-ocid="business.button"
+                            >
+                              <span className="material-symbols-outlined text-sm mr-1">
+                                gps_fixed
+                              </span>
+                              Detect My Location
+                            </button>
+                          ) : (
+                            <div className="space-y-2">
+                              <p className="text-xs text-green-400">
+                                Location detected: {pickedLat.toFixed(5)},{" "}
+                                {(pickedLng ?? 0).toFixed(5)}
+                              </p>
+                              <p className="text-xs text-zinc-500">
+                                Showing your current location on map. Drag pin
+                                to adjust if needed.
+                              </p>
+                              <div
+                                style={{
+                                  height: 220,
+                                  borderRadius: 12,
+                                  overflow: "hidden",
+                                  border: "1px solid #3f3f46",
+                                }}
+                              >
+                                <LocationPickerMap
+                                  lat={pickedLat}
+                                  lng={pickedLng ?? 0}
+                                  onMove={(lat, lng) => {
+                                    setPickedLat(lat);
+                                    setPickedLng(lng);
+                                  }}
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = businesses.map((b) =>
+                                    b.id === biz.id
+                                      ? {
+                                          ...b,
+                                          pendingLat: pickedLat!,
+                                          pendingLng: pickedLng!,
+                                          locationStatus:
+                                            "pending_review" as const,
+                                        }
+                                      : b,
+                                  );
+                                  onUpdate({ businesses: updated });
+                                  toast.success(
+                                    "Location submitted for review. Will be applied within 30 days.",
+                                  );
+                                  setUpdateLocationMode("none");
+                                  setPickedLat(null);
+                                  setPickedLng(null);
+                                }}
+                                className="w-full py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-sm transition-colors"
+                                data-ocid="business.submit_button"
+                              >
+                                Confirm Location
+                              </button>
+                              <p className="text-xs text-zinc-500">
+                                Location changes will be reviewed and applied
+                                within 30 days.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

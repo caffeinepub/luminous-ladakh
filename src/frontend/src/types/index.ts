@@ -97,6 +97,18 @@ export interface Business {
   lastAvailabilityUpdate?: string;
   /** Business hours Mon–Sun */
   businessHours?: BusinessHourEntry[];
+  /** Geo-coordinates for the map pin */
+  lat?: number;
+  lng?: number;
+  /** Location review status */
+  locationStatus?: "active" | "pending_review";
+  /** Pending new coordinates (awaiting 30-day review) */
+  pendingLat?: number;
+  pendingLng?: number;
+  /** Business operational status */
+  businessStatus?: "open" | "closed" | "temporarily_closed" | "coming_soon";
+  /** Pending status change string */
+  pendingBusinessStatus?: string;
 }
 
 export interface LocationReview {

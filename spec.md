@@ -1,36 +1,37 @@
-# Ladakh Connect
+# Ladakh Connect — v55: Organic Map System
 
 ## Current State
-
-The app has a working ParcelConnectTab with a single unified view: a list of travel posts and a form modal to post a trip. Each post has a destination, travel date, parcel size (category), and phone number. The tab has a search filter but no capacity/slot tracking and no tab split.
-
-Members sign up without any location restriction — no check enforces that their business must be in Ladakh.
+The app has Explore, Discover, Hotels, Restaurants, Rentals, Shop, Rooms, Parcel Connect, Events tabs. No map feature exists. Business listings have a single edit flow. The BottomNav has a special circular 'post' button for users. Members and Community Members have no map access.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Two tabs inside ParcelConnectTab: "I'm Going" and "Send a Parcel"
-- "I'm Going" tab: travellers post their route + capacity (number of packages, 1–10), manually reduce slots when they accept a parcel, mark as Full
-- "Send a Parcel" tab: senders search by destination, see all travellers going there, see available slots, call directly
-- Full posts still show in both tabs but with a grey "Full" badge so people know someone is going that route
-- Ladakh-only business rule: during Member signup and business listing creation, must confirm business is located in Ladakh (checkbox + validation)
+- New `LadakhMapTab` component: full offline-first interactive map of Ladakh using Leaflet.js + OpenStreetMap tiles cached via service worker / localStorage tile cache
+- Map shows pins for: Explore locations, Member businesses, Events, Community posts with location tags
+- Daily auto-refresh of new pins (small delta, only when online)
+- Military/restricted zones displayed as "Unnamed" with no description or label detail
+- Map tab added to all nav arrays (USER_NAV, MEMBER_NAV, COMMUNITY_NAV, CREATOR_NAV)
+- Business location picker inside member business form: two options — "Paste Google Maps URL" (auto-extract lat/lng from URL) and "Use Current Location" (device geolocation API, shows pin on inbuilt map)
+- Device location permission dialog before accessing GPS
 
 ### Modify
-- ParcelConnectTab.tsx: complete rewrite to support two-tab layout, slot capacity (number input 1–10), manual slot reduction, Full badge, and separate "Send a Parcel" search view
-- ParcelTrip interface: add `capacity` (number), `slotsLeft` (number), `isFull` (boolean) fields
-- AuthScreen.tsx: add Ladakh business location confirmation checkbox for Member role signup
-- MyBusinessTab.tsx: add Ladakh location confirmation when creating a new listing
+- **BottomNav**: For Users — replace the single circular 'post' button with a compact split dual-dash button (two flat bars side by side): left = Post, right = Map. Both shaped as flat horizontal dashes.
+- **BottomNav**: For Members and Community Members — show only the Map dash button (single, slightly larger)
+- **MemberBusinessTab**: Split the edit flow into two separate buttons:
+  - **Edit** button: instant changes to photos, description, menu, prices, hours, amenities
+  - **Update** button: location change (30-day review) and business status change (Open/Closed/Temporarily Closed/Coming Soon). Clear notice shown: "Location changes will be reviewed and applied within 30 days". Old pin/location stays visible on map until approved.
+- **Business type** in types/index.ts: add optional `lat`, `lng`, `locationStatus` ("active" | "pending_review"), `businessStatus` ("open" | "closed" | "temporarily_closed" | "coming_soon") fields to Business interface
+- **App.tsx**: Add `map` tab routing for all roles
+- **main.tsx**: CRITICAL — ensure LanguageProvider is present (do not remove)
 
 ### Remove
-- Old single-view parcel layout (replaced by two-tab layout)
-- CARRY_OPTIONS dropdown (replaced by numeric capacity input)
+- Nothing removed
 
 ## Implementation Plan
-
-1. Update ParcelTrip interface to include capacity, slotsLeft, isFull
-2. Rewrite ParcelConnectTab with two tabs: "I'm Going" and "Send a Parcel"
-   - "I'm Going": shows own posts with slot controls (reduce, mark full); also shows all active trips; post form uses numeric capacity
-   - "Send a Parcel": search/filter by destination, shows all trips including full ones (grey badge), call button
-3. Add Ladakh location confirmation to Member signup in AuthScreen
-4. Add Ladakh location validation to MyBusinessTab listing creation
-5. Validate build — no TypeScript errors, no crashes
+1. Install `leaflet` and `@types/leaflet` npm packages
+2. Create `src/components/LadakhMapTab.tsx` with Leaflet map, OSM tiles, all pin categories, military unnamed zones, daily refresh logic
+3. Update `Business` interface in `types/index.ts` to add lat/lng/locationStatus/businessStatus
+4. Update `MemberBusinessTab` to split Edit/Update buttons with location picker (Google Maps URL parser + current location)
+5. Update `BottomNav` for split dual-dash button (Users) and single map dash (Members/Community)
+6. Add `map` tab to all nav arrays in `App.tsx` and wire the `LadakhMapTab` component for all roles
+7. Validate + deploy

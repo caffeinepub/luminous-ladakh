@@ -58,6 +58,37 @@ export function BottomNav({ items, active, onSelect }: Props) {
       {/* Primary tabs row */}
       <div className="flex items-center justify-around py-1.5 max-w-lg mx-auto">
         {primaryItems.map((item) => {
+          // Special "map" button — flat rectangular amber accent
+          if (item.id === "map") {
+            const isMapActive = active === "map";
+            return (
+              <button
+                key={item.id}
+                onClick={() => onSelect(item.id)}
+                type="button"
+                className={`relative flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all flex-1 ${
+                  isMapActive
+                    ? "text-amber-400 bg-amber-500/15 border border-amber-500/30"
+                    : "text-muted-foreground hover:text-foreground border border-transparent"
+                }`}
+                data-ocid="nav.map.link"
+                aria-label="Open map"
+              >
+                <span
+                  className={`material-symbols-outlined text-[22px] ${isMapActive ? "text-amber-400" : ""}`}
+                >
+                  map
+                </span>
+                <span className="text-[9px] font-medium leading-none">
+                  {item.label}
+                </span>
+                {isMapActive && (
+                  <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-amber-400" />
+                )}
+              </button>
+            );
+          }
+
           // Special "post" button — big glowing circle in the center
           if (item.id === "post") {
             return (

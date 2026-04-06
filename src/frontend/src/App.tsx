@@ -6,6 +6,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { EventsTab } from "./components/EventsTab";
 import { ExploreTab } from "./components/ExploreTab";
 import { HotelsTab } from "./components/HotelsTab";
+import { LadakhMapTab } from "./components/LadakhMapTab";
 import { LanguageSelectScreen } from "./components/LanguageSelectScreen";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
 import { ParcelConnectTab } from "./components/ParcelConnectTab";
@@ -161,6 +162,7 @@ export default function App() {
     { id: "hotels", icon: "hotel", label: t("hotels") },
     { id: "rooms", icon: "meeting_room", label: t("rooms") },
     { id: "parcel", icon: "local_shipping", label: "Parcel" },
+    { id: "map", icon: "map", label: "Map" },
   ];
 
   const MEMBER_NAV = [
@@ -176,6 +178,7 @@ export default function App() {
     { id: "hotels", icon: "hotel", label: t("hotels") },
     { id: "rooms", icon: "meeting_room", label: t("rooms") },
     { id: "parcel", icon: "local_shipping", label: "Parcel" },
+    { id: "map", icon: "map", label: "Map" },
   ];
 
   const COMMUNITY_NAV = [
@@ -191,10 +194,12 @@ export default function App() {
     { id: "hotels", icon: "hotel", label: t("hotels") },
     { id: "rooms", icon: "meeting_room", label: t("rooms") },
     { id: "parcel", icon: "local_shipping", label: "Parcel" },
+    { id: "map", icon: "map", label: "Map" },
   ];
 
   const CREATOR_NAV = [
     { id: "dashboard", icon: "dashboard", label: t("dashboard") },
+    { id: "map", icon: "map", label: "Map" },
     { id: "explore", icon: "explore", label: t("explore") },
     { id: "discover", icon: "travel_explore", label: t("discover") },
     { id: "restaurants", icon: "restaurant", label: t("restaurants") },
@@ -494,6 +499,11 @@ export default function App() {
                 <ParcelConnectTab currentUser={currentUser} />
               </ErrorBoundary>
             )}
+            {activeTab === "map" && (
+              <ErrorBoundary minimal>
+                <LadakhMapTab currentUser={currentUser} />
+              </ErrorBoundary>
+            )}
           </>
         )}
 
@@ -647,6 +657,11 @@ export default function App() {
                 <ParcelConnectTab currentUser={currentUser} />
               </ErrorBoundary>
             )}
+            {activeTab === "map" && (
+              <ErrorBoundary minimal>
+                <LadakhMapTab currentUser={currentUser} />
+              </ErrorBoundary>
+            )}
           </>
         )}
 
@@ -790,6 +805,11 @@ export default function App() {
                 <ParcelConnectTab currentUser={currentUser} />
               </ErrorBoundary>
             )}
+            {activeTab === "map" && (
+              <ErrorBoundary minimal>
+                <LadakhMapTab currentUser={currentUser} />
+              </ErrorBoundary>
+            )}
           </>
         )}
 
@@ -892,6 +912,11 @@ export default function App() {
             {activeTab === "parcel" && (
               <ErrorBoundary minimal>
                 <ParcelConnectTab currentUser={currentUser} />
+              </ErrorBoundary>
+            )}
+            {activeTab === "map" && (
+              <ErrorBoundary minimal>
+                <LadakhMapTab currentUser={currentUser} />
               </ErrorBoundary>
             )}
             {activeTab === "events" && (
