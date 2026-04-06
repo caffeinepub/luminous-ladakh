@@ -139,6 +139,7 @@ export function AuthScreen({
   const [communityCode, setCommunityCode] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [termsModalOpen, setTermsModalOpen] = useState(false);
+  const [ladakhConfirmed, setLadakhConfirmed] = useState(false);
 
   // Username availability (debounced)
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(
@@ -199,6 +200,7 @@ export function AuthScreen({
     setSuccessMsg("");
     setLoginUsername("");
     setLoginPassword("");
+    setLadakhConfirmed(false);
   }
 
   function resetRecovery() {
@@ -232,6 +234,12 @@ export function AuthScreen({
     setError("");
     if (signupPassword !== signupConfirm) {
       setError(t("passwordsNoMatch", "Passwords do not match"));
+      return;
+    }
+    if (selectedRole === "member" && !ladakhConfirmed) {
+      setError(
+        "Please confirm your business is located in Ladakh to register as a Member.",
+      );
       return;
     }
     if (!termsAccepted) {
@@ -1333,6 +1341,29 @@ export function AuthScreen({
                     </div>
                   </div>
                 </div>
+
+                {/* Ladakh business confirmation — members only */}
+                {selectedRole === "member" && (
+                  <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
+                    <label className="flex items-start gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={ladakhConfirmed}
+                        onChange={(e) => setLadakhConfirmed(e.target.checked)}
+                        className="mt-0.5 accent-amber-500"
+                        data-ocid="signup.ladakh_confirm_checkbox"
+                      />
+                      <span className="text-xs text-zinc-300">
+                        I confirm that my business is located in{" "}
+                        <strong className="text-amber-400">
+                          Ladakh, India
+                        </strong>
+                        . Only Ladakh-based businesses can register as Members
+                        on this platform.
+                      </span>
+                    </label>
+                  </div>
+                )}
 
                 {/* Terms & Conditions */}
                 <div className="space-y-2">
