@@ -8,6 +8,7 @@ import { ExploreTab } from "./components/ExploreTab";
 import { HotelsTab } from "./components/HotelsTab";
 import { LanguageSelectScreen } from "./components/LanguageSelectScreen";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
+import { ParcelConnectTab } from "./components/ParcelConnectTab";
 import { RentalsTab } from "./components/RentalsTab";
 import { RestaurantsTab } from "./components/RestaurantsTab";
 import { RoomRentalsTab } from "./components/RoomRentalsTab";
@@ -47,12 +48,14 @@ export default function App() {
     switchAccount,
     updateCurrentUser,
     recoverPassword,
+    recoverPasswordByEmail,
   } = useAuth();
   const data = useData();
   const { t, languageSelected } = useLanguage();
   const [activeTab, setActiveTab] = useState<string>("");
   const [showPostModal, setShowPostModal] = useState(false);
   const [renderTick, setRenderTick] = useState(0);
+  const [showAddAccountOverlay, setShowAddAccountOverlay] = useState(false);
   const [themeMode, setThemeMode] = useState<"dark" | "light">(() => {
     try {
       return (
@@ -118,6 +121,7 @@ export default function App() {
           onSignup={signup}
           onSocialLogin={socialLogin}
           onRecoverPassword={recoverPassword}
+          onRecoverPasswordByEmail={recoverPasswordByEmail}
         />
         <Toaster position="top-center" richColors />
       </>
@@ -148,6 +152,7 @@ export default function App() {
     { id: "shop", icon: "storefront", label: t("shop") },
     { id: "hotels", icon: "hotel", label: t("hotels") },
     { id: "rooms", icon: "meeting_room", label: t("rooms") },
+    { id: "parcel", icon: "local_shipping", label: "Parcel" },
   ];
 
   const MEMBER_NAV = [
@@ -162,6 +167,7 @@ export default function App() {
     { id: "shop", icon: "storefront", label: t("shop") },
     { id: "hotels", icon: "hotel", label: t("hotels") },
     { id: "rooms", icon: "meeting_room", label: t("rooms") },
+    { id: "parcel", icon: "local_shipping", label: "Parcel" },
   ];
 
   const COMMUNITY_NAV = [
@@ -176,6 +182,7 @@ export default function App() {
     { id: "shop", icon: "storefront", label: t("shop") },
     { id: "hotels", icon: "hotel", label: t("hotels") },
     { id: "rooms", icon: "meeting_room", label: t("rooms") },
+    { id: "parcel", icon: "local_shipping", label: "Parcel" },
   ];
 
   const CREATOR_NAV = [
@@ -187,6 +194,7 @@ export default function App() {
     { id: "shop", icon: "storefront", label: t("shop") },
     { id: "hotels", icon: "hotel", label: t("hotels") },
     { id: "rooms", icon: "meeting_room", label: t("rooms") },
+    { id: "parcel", icon: "local_shipping", label: "Parcel" },
     { id: "events", icon: "event", label: t("events") },
     { id: "vault", icon: "inventory_2", label: t("vault") },
     { id: "wallet", icon: "account_balance_wallet", label: t("wallet") },
@@ -213,10 +221,55 @@ export default function App() {
     user: "bg-zinc-800 text-zinc-400 border-zinc-700",
   };
 
+  // Tab label for header display
+  const activeTabLabel = navItems.find((i) => i.id === activeTab)?.label || "";
+
   return (
     <div
-      className={`min-h-screen bg-background${themeMode === "light" ? " light-mode" : ""}`}
+      className={`min-h-screen bg-background${
+        themeMode === "light" ? " light-mode" : ""
+      }`}
     >
+      {/* Add Account Overlay (Instagram-style) */}
+      {showAddAccountOverlay && (
+        <div className="fixed inset-0 z-[200] bg-black/90 flex flex-col">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
+            <span className="text-sm font-semibold text-white">
+              Add Account
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowAddAccountOverlay(false)}
+              className="text-zinc-400 hover:text-white transition-colors"
+            >
+              <span className="material-symbols-outlined">close</span>
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            <AuthScreen
+              onLogin={(username, password) => {
+                const result = login(username, password);
+                if (result.success) setShowAddAccountOverlay(false);
+                return result;
+              }}
+              onSignup={(sData) => {
+                const result = signup(sData);
+                if (result.success) setShowAddAccountOverlay(false);
+                return result;
+              }}
+              onSocialLogin={(provider, email, name, role) => {
+                const result = socialLogin(provider, email, name, role);
+                if (result.success) setShowAddAccountOverlay(false);
+                return result;
+              }}
+              onRecoverPassword={recoverPassword}
+              onRecoverPasswordByEmail={recoverPasswordByEmail}
+              forceSignup
+            />
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-40 glass border-b border-border">
         <div className="flex items-center justify-between px-4 py-3 max-w-lg mx-auto">
@@ -226,16 +279,29 @@ export default function App() {
               alt="Logo"
               className="w-7 h-7"
             />
-            <span
-              className="text-base amber-text"
-              style={{
-                fontFamily: "PlayfairDisplay, serif",
-                fontStyle: "italic",
-                fontWeight: 700,
-              }}
-            >
-              Ladakh Connect
-            </span>
+            <div>
+              <span
+                className="text-base amber-text block leading-tight"
+                style={{
+                  fontFamily: "PlayfairDisplay, serif",
+                  fontStyle: "italic",
+                  fontWeight: 700,
+                }}
+              >
+                Ladakh Connect
+              </span>
+              {activeTabLabel && (
+                <span className="text-[10px] text-zinc-500 flex items-center gap-1">
+                  <span
+                    className="inline-block w-1.5 h-1.5 rounded-full bg-primary"
+                    style={{
+                      boxShadow: "0 0 6px oklch(75% 0.17 65 / 0.8)",
+                    }}
+                  />
+                  {activeTabLabel}
+                </span>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
@@ -267,7 +333,7 @@ export default function App() {
                 onClick={() => setActiveTab(item.id)}
                 className={`flex-1 min-w-0 flex flex-col items-center gap-0.5 py-2 px-2 text-[10px] font-medium transition-all border-b-2 ${
                   activeTab === item.id
-                    ? "text-primary border-primary"
+                    ? "text-primary border-primary bg-primary/8"
                     : "text-muted-foreground border-transparent hover:text-foreground"
                 }`}
                 type="button"
@@ -284,7 +350,9 @@ export default function App() {
 
       {/* Main content */}
       <main
-        className={`max-w-lg mx-auto px-4 pb-32 ${isCreator ? "pt-28" : "pt-20"}`}
+        className={`max-w-lg mx-auto px-4 pb-32 page-enter ${
+          isCreator ? "pt-28" : "pt-20"
+        }`}
       >
         {isSuspended && (
           <div className="mb-4 bg-yellow-500/15 border border-yellow-500/40 rounded-xl p-3 flex items-center gap-2">
@@ -356,7 +424,7 @@ export default function App() {
                         }
                       : undefined
                   }
-                  onAddAccount={() => logout()}
+                  onAddAccount={() => setShowAddAccountOverlay(true)}
                 />
               </ErrorBoundary>
             )}
@@ -411,6 +479,11 @@ export default function App() {
                     username: currentUser.username,
                   }}
                 />
+              </ErrorBoundary>
+            )}
+            {activeTab === "parcel" && (
+              <ErrorBoundary minimal>
+                <ParcelConnectTab currentUser={currentUser} />
               </ErrorBoundary>
             )}
           </>
@@ -504,7 +577,7 @@ export default function App() {
                         }
                       : undefined
                   }
-                  onAddAccount={() => logout()}
+                  onAddAccount={() => setShowAddAccountOverlay(true)}
                 />
               </ErrorBoundary>
             )}
@@ -559,6 +632,11 @@ export default function App() {
                     username: currentUser.username,
                   }}
                 />
+              </ErrorBoundary>
+            )}
+            {activeTab === "parcel" && (
+              <ErrorBoundary minimal>
+                <ParcelConnectTab currentUser={currentUser} />
               </ErrorBoundary>
             )}
           </>
@@ -648,7 +726,7 @@ export default function App() {
                         }
                       : undefined
                   }
-                  onAddAccount={() => logout()}
+                  onAddAccount={() => setShowAddAccountOverlay(true)}
                 />
               </ErrorBoundary>
             )}
@@ -697,6 +775,11 @@ export default function App() {
                     username: currentUser.username,
                   }}
                 />
+              </ErrorBoundary>
+            )}
+            {activeTab === "parcel" && (
+              <ErrorBoundary minimal>
+                <ParcelConnectTab currentUser={currentUser} />
               </ErrorBoundary>
             )}
           </>
@@ -796,6 +879,11 @@ export default function App() {
                     username: currentUser.username,
                   }}
                 />
+              </ErrorBoundary>
+            )}
+            {activeTab === "parcel" && (
+              <ErrorBoundary minimal>
+                <ParcelConnectTab currentUser={currentUser} />
               </ErrorBoundary>
             )}
             {activeTab === "events" && (
@@ -908,7 +996,7 @@ export default function App() {
                         }
                       : undefined
                   }
-                  onAddAccount={() => logout()}
+                  onAddAccount={() => setShowAddAccountOverlay(true)}
                   onSetCommunityCode={data.setCommunityCode}
                   specialAccounts={data.getSpecialAccountsList()}
                   onAddSpecialAccount={data.addSpecialAccount}

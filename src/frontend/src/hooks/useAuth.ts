@@ -261,6 +261,8 @@ export function useAuth() {
     [],
   );
 
+  // socialLogin: always creates a NEW account (for the Add Account flow)
+  // Does NOT look up existing accounts by email - that prevents account mixing
   const socialLogin = useCallback(
     (
       provider: "google" | "facebook",
@@ -274,39 +276,8 @@ export function useAuth() {
       electronicId?: string;
     } => {
       const accounts = getAccounts();
-      const existing = accounts.find(
-        (a) => a.email.toLowerCase() === email.toLowerCase(),
-      );
-      if (existing) {
-        if (existing.status === "banned") {
-          return {
-            success: false,
-            error: "This account has been permanently banned.",
-          };
-        }
-        // Update lastLoginAt
-        const idx = accounts.findIndex((a) => a.id === existing.id);
-        if (idx >= 0) {
-          accounts[idx] = {
-            ...accounts[idx],
-            lastLoginAt: new Date().toISOString(),
-          };
-          saveAccounts(accounts);
-        }
-        localStorage.setItem(
-          "lc_session",
-          JSON.stringify({ userId: existing.id }),
-        );
-        applyTheme(existing.theme);
-        applyFontColorById(existing.fontColor);
-        setState({
-          currentUser:
-            accounts[accounts.findIndex((a) => a.id === existing.id)],
-          isLoading: false,
-        });
-        return { success: true, isNew: false };
-      }
-      // Create new account
+      // Always create a new account - no looking up by email
+      // This ensures each social login creates a separate account
       const baseUsername = email
         .split("@")[0]
         .replace(/[^a-zA-Z0-9_]/g, "")
@@ -325,7 +296,7 @@ export function useAuth() {
         id: generateId(),
         username,
         email,
-        passwordHash: hashPw(`${provider}_${email}`),
+        passwordHash: hashPw(`${provider}_${email}_${Date.now()}`),
         role,
         electronicId,
         status: "active",
@@ -443,10 +414,12 @@ export function useAuth() {
 
       // Verify same email group
       const groups = getLinkedGroups();
+      const currentSessionRaw = localStorage.getItem("lc_session");
+      const currentUserId = currentSessionRaw
+        ? (JSON.parse(currentSessionRaw).userId as string)
+        : "";
       const currentGroup = groups.find((g) =>
-        g.accountIds.includes(
-          JSON.parse(localStorage.getItem("lc_session") || "{}").userId || "",
-        ),
+        g.accountIds.includes(currentUserId),
       );
       const targetGroup = groups.find((g) => g.accountIds.includes(accountId));
       if (
@@ -540,6 +513,33 @@ export function useAuth() {
     [],
   );
 
+  /** Recover password by email + OTP (new flow) */
+  const recoverPasswordByEmail = useCallback(
+    (
+      email: string,
+      newPassword: string,
+    ): { success: boolean; error?: string } => {
+      const accounts = getAccounts();
+      const account = accounts.find(
+        (a) => a.email.toLowerCase() === email.toLowerCase(),
+      );
+      if (!account)
+        return { success: false, error: "No account found with this email." };
+      const idx = accounts.findIndex((a) => a.id === account.id);
+      if (idx >= 0) {
+        accounts[idx] = {
+          ...accounts[idx],
+          passwordHash: hashPw(newPassword),
+          failedLoginAttempts: 0,
+          lockoutUntil: undefined,
+        };
+        saveAccounts(accounts);
+      }
+      return { success: true };
+    },
+    [],
+  );
+
   const logout = useCallback(() => {
     const sessionRaw = localStorage.getItem("lc_session");
     if (sessionRaw) {
@@ -610,5 +610,6 @@ export function useAuth() {
     updateCurrentUser,
     refreshUser,
     recoverPassword,
+    recoverPasswordByEmail,
   };
 }

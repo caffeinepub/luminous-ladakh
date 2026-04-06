@@ -9,7 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import type { Post, Role, Violation } from "../../types";
 
@@ -67,9 +67,14 @@ export function PostPlaceModal({
     category: "",
     locationName: "",
     description: "",
-    imageUrl: "",
     googleMapsLink: "",
   });
+  const [mediaFile, setMediaFile] = useState<{
+    type: "image" | "video";
+    url: string;
+  } | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -86,17 +91,10 @@ export function PostPlaceModal({
       return;
     }
 
-    // Military content check
-    if (
-      hasMilitaryContent([
-        form.title,
-        form.locationName,
-        form.description,
-        form.imageUrl,
-      ])
-    ) {
+    // Military content check (text fields only)
+    if (hasMilitaryContent([form.title, form.locationName, form.description])) {
       setError(
-        "⚠️ Military/restricted content detected. This upload has been blocked. Posting content related to army camps, military zones, or restricted areas is strictly prohibited. A Level 2 warning has been issued to your account.",
+        "\u26A0\uFE0F Military/restricted content detected. This upload has been blocked. Posting content related to army camps, military zones, or restricted areas is strictly prohibited. A Level 2 warning has been issued to your account.",
       );
       onIssueViolation({
         targetUserId: currentUserId,
@@ -119,7 +117,7 @@ export function PostPlaceModal({
       category: form.category,
       locationName: form.locationName,
       description: form.description,
-      imageUrl: form.imageUrl || undefined,
+      imageUrl: mediaFile?.url || undefined,
       googleMapsLink: form.googleMapsLink || undefined,
       submittedBy: currentUserId,
       submitterUsername: currentUsername,
@@ -223,7 +221,7 @@ export function PostPlaceModal({
                 Description *
               </Label>
               <Textarea
-                placeholder="Describe the place — how to get there, what makes it special..."
+                placeholder="Describe the place \u2014 how to get there, what makes it special..."
                 value={form.description}
                 onChange={(e) =>
                   setForm((p) => ({ ...p, description: e.target.value }))
@@ -233,20 +231,101 @@ export function PostPlaceModal({
                 data-ocid="post.textarea"
               />
             </div>
-            <div className="space-y-1">
+
+            {/* Media upload (replaces URL field) */}
+            <div className="space-y-2">
               <Label className="text-sm text-muted-foreground">
-                Photo URL (optional)
+                Media (optional)
               </Label>
-              <Input
-                placeholder="https://... (direct image link)"
-                value={form.imageUrl}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, imageUrl: e.target.value }))
-                }
-                className="bg-input border-border"
-                data-ocid="post.input"
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => photoInputRef.current?.click()}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border-2 border-dashed border-zinc-700 hover:border-amber-500/50 text-zinc-400 hover:text-amber-400 transition-colors text-sm"
+                  data-ocid="post.upload_button"
+                >
+                  <span className="material-symbols-outlined text-lg">
+                    add_photo_alternate
+                  </span>
+                  Add Photo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => videoInputRef.current?.click()}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border-2 border-dashed border-zinc-700 hover:border-amber-500/50 text-zinc-400 hover:text-amber-400 transition-colors text-sm"
+                  data-ocid="post.upload_button"
+                >
+                  <span className="material-symbols-outlined text-lg">
+                    videocam
+                  </span>
+                  Add Video
+                </button>
+              </div>
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) {
+                    const r = new FileReader();
+                    r.onload = () =>
+                      setMediaFile({
+                        type: "image",
+                        url: r.result as string,
+                      });
+                    r.readAsDataURL(f);
+                  }
+                }}
               />
+              <input
+                ref={videoInputRef}
+                type="file"
+                accept="video/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) {
+                    const r = new FileReader();
+                    r.onload = () =>
+                      setMediaFile({
+                        type: "video",
+                        url: r.result as string,
+                      });
+                    r.readAsDataURL(f);
+                  }
+                }}
+              />
+              {mediaFile && (
+                <div className="relative">
+                  {mediaFile.type === "image" ? (
+                    <img
+                      src={mediaFile.url}
+                      className="w-full h-32 object-cover rounded-lg"
+                      alt="preview"
+                    />
+                  ) : (
+                    // biome-ignore lint/a11y/useMediaCaption: preview only
+                    <video
+                      src={mediaFile.url}
+                      className="w-full h-32 object-cover rounded-lg"
+                    />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setMediaFile(null)}
+                    className="absolute top-1 right-1 bg-black/60 rounded-full p-0.5 text-white"
+                    data-ocid="post.close_button"
+                  >
+                    <span className="material-symbols-outlined text-sm">
+                      close
+                    </span>
+                  </button>
+                </div>
+              )}
             </div>
+
             <div className="space-y-1">
               <Label className="text-sm text-muted-foreground">
                 Google Maps Link (optional)
@@ -270,8 +349,8 @@ export function PostPlaceModal({
               </p>
             )}
             <div className="bg-secondary rounded-lg p-3 text-xs text-muted-foreground">
-              ⚠️ No military or restricted area content. Submitted places go
-              through creator review.
+              \u26A0\uFE0F No military or restricted area content. Submitted
+              places go through creator review.
             </div>
             <Button
               type="submit"

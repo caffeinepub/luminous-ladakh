@@ -23,6 +23,17 @@ function getStoredUsernames(): string[] {
   }
 }
 
+function emailExists(email: string): boolean {
+  try {
+    const accounts = JSON.parse(
+      localStorage.getItem("lc_accounts") || "[]",
+    ) as { email: string }[];
+    return accounts.some((a) => a.email.toLowerCase() === email.toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
 interface Props {
   onLogin: (
     username: string,
@@ -52,17 +63,25 @@ interface Props {
     securityWord: string,
     newPassword: string,
   ) => { success: boolean; error?: string };
+  onRecoverPasswordByEmail?: (
+    email: string,
+    newPassword: string,
+  ) => { success: boolean; error?: string };
+  forceSignup?: boolean;
 }
 
 type AuthMethod = "email" | "google" | "facebook";
 type RoleChoice = "user" | "member" | "community" | "creator";
 type RecoveryStep = "username" | "secword" | "newpassword";
+type OtpStep = "email" | "otp" | "newpass" | "done";
 
 export function AuthScreen({
   onLogin,
   onSignup,
   onSocialLogin,
   onRecoverPassword,
+  onRecoverPasswordByEmail,
+  forceSignup,
 }: Props) {
   const { t } = useLanguage();
 
@@ -75,32 +94,37 @@ export function AuthScreen({
     {
       value: "user",
       label: t("user", "User"),
-      icon: "🧭",
+      icon: "\uD83E\uDDED",
       desc: t("userDesc", "Explore & discover Ladakh"),
     },
     {
       value: "member",
       label: t("member", "Member"),
-      icon: "🏪",
+      icon: "\uD83C\uDFAA",
       desc: t("memberDesc", "Promote your business"),
     },
     {
       value: "community",
       label: t("communityMember", "Community"),
-      icon: "🤝",
+      icon: "\uD83E\uDD1D",
       desc: t("communityDesc", "Community access (code required)"),
     },
     {
       value: "creator",
       label: t("creator", "Creator"),
-      icon: "👑",
+      icon: "\uD83D\uDC51",
       desc: t("creatorDesc", "Admin & platform management"),
     },
   ];
 
   const [selectedRole, setSelectedRole] = useState<RoleChoice | null>(null);
-  const [isLogin, setIsLogin] = useState(true);
+  const [isLogin, setIsLogin] = useState(!forceSignup);
   const [method, setMethod] = useState<AuthMethod>("email");
+
+  // Password visibility toggles
+  const [showLoginPw, setShowLoginPw] = useState(false);
+  const [showSignupPw, setShowSignupPw] = useState(false);
+  const [showSignupConfirmPw, setShowSignupConfirmPw] = useState(false);
 
   // Email login
   const [loginUsername, setLoginUsername] = useState("");
@@ -146,13 +170,25 @@ export function AuthScreen({
   const [socialName, setSocialName] = useState("");
   const [socialCommunityCode, setSocialCommunityCode] = useState("");
 
-  // Forgot password
+  // Forgot password - legacy flow
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [recoveryStep, setRecoveryStep] = useState<RecoveryStep>("username");
   const [recoveryUsername, setRecoveryUsername] = useState("");
   const [recoverySecWord, setRecoverySecWord] = useState("");
   const [recoveryNewPw, setRecoveryNewPw] = useState("");
   const [recoveryConfirmPw, setRecoveryConfirmPw] = useState("");
+
+  // OTP flow for email-based recovery
+  const [otpStep, setOtpStep] = useState<OtpStep>("email");
+  const [otpEmail, setOtpEmail] = useState("");
+  const [otpCode, setOtpCode] = useState(""); // generated 6-digit code stored in memory
+  const [otpInput, setOtpInput] = useState("");
+  const [otpVisible, setOtpVisible] = useState(false);
+  const [otpCountdown, setOtpCountdown] = useState(0);
+  const [newPwOtp, setNewPwOtp] = useState("");
+  const [newPwOtpConfirm, setNewPwOtpConfirm] = useState("");
+  const [showOtpNewPw, setShowOtpNewPw] = useState(false);
+  const [otpError, setOtpError] = useState("");
 
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
@@ -172,6 +208,14 @@ export function AuthScreen({
     setRecoverySecWord("");
     setRecoveryNewPw("");
     setRecoveryConfirmPw("");
+    setOtpStep("email");
+    setOtpEmail("");
+    setOtpCode("");
+    setOtpInput("");
+    setOtpVisible(false);
+    setNewPwOtp("");
+    setNewPwOtpConfirm("");
+    setOtpError("");
     setError("");
   }
 
@@ -289,6 +333,68 @@ export function AuthScreen({
     }
   }
 
+  // OTP flow handlers
+  function handleOtpEmailSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setOtpError("");
+    if (!otpEmail.trim()) {
+      setOtpError("Please enter your registered email.");
+      return;
+    }
+    if (!emailExists(otpEmail)) {
+      setOtpError("No account found with this email.");
+      return;
+    }
+    // Generate 6-digit OTP
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    setOtpCode(code);
+    setOtpVisible(true);
+    setOtpCountdown(8);
+    // Hide OTP after 8 seconds
+    const interval = setInterval(() => {
+      setOtpCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setOtpVisible(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    setOtpStep("otp");
+  }
+
+  function handleOtpVerify(e: React.FormEvent) {
+    e.preventDefault();
+    setOtpError("");
+    if (otpInput.trim() !== otpCode) {
+      setOtpError("Incorrect OTP. Please check and try again.");
+      return;
+    }
+    setOtpStep("newpass");
+  }
+
+  function handleOtpNewPass(e: React.FormEvent) {
+    e.preventDefault();
+    setOtpError("");
+    if (newPwOtp.length < 6) {
+      setOtpError("Password must be at least 6 characters.");
+      return;
+    }
+    if (newPwOtp !== newPwOtpConfirm) {
+      setOtpError("Passwords do not match.");
+      return;
+    }
+    if (onRecoverPasswordByEmail) {
+      const result = onRecoverPasswordByEmail(otpEmail, newPwOtp);
+      if (!result.success) {
+        setOtpError(result.error || "Password update failed.");
+        return;
+      }
+    }
+    setOtpStep("done");
+  }
+
   const providerName = method === "google" ? "Google" : "Facebook";
 
   // Terms modal open
@@ -304,7 +410,220 @@ export function AuthScreen({
     );
   }
 
-  // Forgot password flow
+  // OTP-based forgot password flow (non-creator)
+  if (showForgotPassword && selectedRole !== "creator") {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center px-4">
+        <div className="w-full max-w-sm">
+          <button
+            type="button"
+            onClick={resetRecovery}
+            className="text-zinc-400 hover:text-white text-sm flex items-center gap-1 mb-6 transition-colors"
+          >
+            \u2190 Back to Login
+          </button>
+
+          <div className="text-center mb-6">
+            <div className="w-14 h-14 mx-auto bg-amber-500/15 rounded-full flex items-center justify-center mb-3">
+              <span className="material-symbols-outlined text-amber-400 text-2xl">
+                lock_reset
+              </span>
+            </div>
+            <h2 className="text-xl font-bold text-white">Reset Password</h2>
+            <p className="text-zinc-500 text-sm mt-1">
+              {otpStep === "email" && "Enter your registered email"}
+              {otpStep === "otp" && "Enter the OTP sent to your email"}
+              {otpStep === "newpass" && "Set your new password"}
+              {otpStep === "done" && "Password updated!"}
+            </p>
+          </div>
+
+          {/* Step indicator */}
+          <div className="flex gap-2 mb-6">
+            {(["email", "otp", "newpass", "done"] as OtpStep[]).map(
+              (step, i) => (
+                <div
+                  key={step}
+                  className={`flex-1 h-1.5 rounded-full transition-all duration-300 ${
+                    ["email", "otp", "newpass", "done"].indexOf(otpStep) >= i
+                      ? "bg-amber-500"
+                      : "bg-zinc-700"
+                  }`}
+                />
+              ),
+            )}
+          </div>
+
+          {otpError && (
+            <div className="mb-4 p-3 rounded-lg bg-red-500/15 border border-red-500/30 text-red-400 text-sm">
+              {otpError}
+            </div>
+          )}
+
+          {otpStep === "email" && (
+            <form onSubmit={handleOtpEmailSubmit} className="space-y-4">
+              <div>
+                <label htmlFor="otp-email" className={labelCls}>
+                  Registered Email
+                </label>
+                <input
+                  id="otp-email"
+                  type="email"
+                  className={inputCls}
+                  placeholder="your@email.com"
+                  value={otpEmail}
+                  onChange={(e) => setOtpEmail(e.target.value)}
+                  required
+                  data-ocid="auth.input"
+                />
+              </div>
+              <button
+                type="submit"
+                className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold transition-colors"
+              >
+                Send OTP
+              </button>
+            </form>
+          )}
+
+          {otpStep === "otp" && (
+            <form onSubmit={handleOtpVerify} className="space-y-4">
+              {/* Show OTP briefly */}
+              {otpVisible ? (
+                <div className="p-4 rounded-xl border-2 border-amber-500/50 bg-amber-500/10 text-center">
+                  <p className="text-xs text-amber-400 mb-1">
+                    Your OTP (hides in {otpCountdown}s):
+                  </p>
+                  <p className="text-3xl font-mono font-bold text-amber-400 tracking-widest">
+                    {otpCode}
+                  </p>
+                  <p className="text-xs text-zinc-500 mt-1">
+                    In a real app, this would be sent to your email.
+                  </p>
+                </div>
+              ) : (
+                <div className="p-3 rounded-lg bg-zinc-900 border border-zinc-700 text-center">
+                  <p className="text-xs text-zinc-400">
+                    OTP sent to{" "}
+                    <span className="text-amber-400">{otpEmail}</span>
+                  </p>
+                  <p className="text-xs text-zinc-600 mt-0.5">
+                    Check your email inbox.
+                  </p>
+                </div>
+              )}
+              <div>
+                <label htmlFor="otp-code" className={labelCls}>
+                  Enter 6-digit OTP
+                </label>
+                <input
+                  id="otp-code"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  className={`${inputCls} text-center text-xl tracking-widest font-mono`}
+                  placeholder="------"
+                  value={otpInput}
+                  onChange={(e) =>
+                    setOtpInput(e.target.value.replace(/\D/g, ""))
+                  }
+                  required
+                  data-ocid="auth.input"
+                />
+              </div>
+              <button
+                type="submit"
+                className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold transition-colors"
+              >
+                Verify OTP
+              </button>
+            </form>
+          )}
+
+          {otpStep === "newpass" && (
+            <form onSubmit={handleOtpNewPass} className="space-y-4">
+              <div className="p-3 rounded-lg bg-zinc-900 border border-zinc-700 text-xs text-zinc-400">
+                \uD83D\uDD12 For security, passwords are encrypted. Set a new
+                password below.
+              </div>
+              <div>
+                <label htmlFor="otp-newpw" className={labelCls}>
+                  New Password
+                </label>
+                <div className="relative">
+                  <input
+                    id="otp-newpw"
+                    type={showOtpNewPw ? "text" : "password"}
+                    className={inputCls}
+                    placeholder="Create a new password"
+                    value={newPwOtp}
+                    onChange={(e) => setNewPwOtp(e.target.value)}
+                    required
+                    data-ocid="auth.input"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
+                    onClick={() => setShowOtpNewPw((v) => !v)}
+                  >
+                    <span className="material-symbols-outlined text-lg">
+                      {showOtpNewPw ? "visibility_off" : "visibility"}
+                    </span>
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label htmlFor="otp-confirmpw" className={labelCls}>
+                  Confirm New Password
+                </label>
+                <input
+                  id="otp-confirmpw"
+                  type="password"
+                  className={inputCls}
+                  placeholder="Confirm your new password"
+                  value={newPwOtpConfirm}
+                  onChange={(e) => setNewPwOtpConfirm(e.target.value)}
+                  required
+                  data-ocid="auth.input"
+                />
+              </div>
+              <button
+                type="submit"
+                className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold transition-colors"
+              >
+                Update Password
+              </button>
+            </form>
+          )}
+
+          {otpStep === "done" && (
+            <div className="space-y-4">
+              <div className="p-5 rounded-2xl bg-green-500/10 border border-green-500/30 text-center">
+                <span className="material-symbols-outlined text-4xl text-green-400 mb-2 block">
+                  check_circle
+                </span>
+                <p className="text-green-400 font-semibold">
+                  Password updated!
+                </p>
+                <p className="text-zinc-400 text-sm mt-1">
+                  You can now log in with your new password.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={resetRecovery}
+                className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold transition-colors"
+              >
+                Back to Login
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Legacy forgot password flow for creator
   if (showForgotPassword) {
     const isCreatorRole = selectedRole === "creator";
     return (
@@ -616,17 +935,28 @@ export function AuthScreen({
                 <label htmlFor="creator-password" className={labelCls}>
                   {t("password", "Password")}
                 </label>
-                <input
-                  id="creator-password"
-                  type="password"
-                  className={inputCls}
-                  placeholder={t("enterYourPassword", "Enter your password")}
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  autoComplete="current-password"
-                  required
-                  data-ocid="auth.input"
-                />
+                <div className="relative">
+                  <input
+                    id="creator-password"
+                    type={showLoginPw ? "text" : "password"}
+                    className={inputCls}
+                    placeholder={t("enterYourPassword", "Enter your password")}
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    autoComplete="current-password"
+                    required
+                    data-ocid="auth.input"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
+                    onClick={() => setShowLoginPw((v) => !v)}
+                  >
+                    <span className="material-symbols-outlined text-lg">
+                      {showLoginPw ? "visibility_off" : "visibility"}
+                    </span>
+                  </button>
+                </div>
               </div>
               <button
                 type="submit"
@@ -703,10 +1033,10 @@ export function AuthScreen({
                   data-ocid="auth.tab"
                 >
                   {m === "email"
-                    ? `📧 ${t("email", "Email")}`
+                    ? `\uD83D\uDCE7 ${t("email", "Email")}`
                     : m === "google"
-                      ? "🔵 Google"
-                      : "🔷 Facebook"}
+                      ? "\uD83D\uDD35 Google"
+                      : "\uD83D\uDD37 Facebook"}
                 </button>
               ))}
             </div>
@@ -743,17 +1073,31 @@ export function AuthScreen({
                   <label htmlFor="login-password" className={labelCls}>
                     {t("password", "Password")}
                   </label>
-                  <input
-                    id="login-password"
-                    type="password"
-                    className={inputCls}
-                    placeholder={t("enterYourPassword", "Enter your password")}
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    autoComplete="current-password"
-                    required
-                    data-ocid="auth.input"
-                  />
+                  <div className="relative">
+                    <input
+                      id="login-password"
+                      type={showLoginPw ? "text" : "password"}
+                      className={`${inputCls} pr-12`}
+                      placeholder={t(
+                        "enterYourPassword",
+                        "Enter your password",
+                      )}
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      autoComplete="current-password"
+                      required
+                      data-ocid="auth.input"
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+                      onClick={() => setShowLoginPw((v) => !v)}
+                    >
+                      <span className="material-symbols-outlined text-lg">
+                        {showLoginPw ? "visibility_off" : "visibility"}
+                      </span>
+                    </button>
+                  </div>
                 </div>
                 <button
                   type="submit"
@@ -826,37 +1170,82 @@ export function AuthScreen({
                   <label htmlFor="signup-password" className={labelCls}>
                     {t("password", "Password")}
                   </label>
-                  <input
-                    id="signup-password"
-                    type="password"
-                    className={inputCls}
-                    placeholder={t("createPassword", "Create a password")}
-                    value={signupPassword}
-                    onChange={(e) => setSignupPassword(e.target.value)}
-                    autoComplete="new-password"
-                    required
-                    data-ocid="auth.input"
-                  />
+                  <div className="relative">
+                    <input
+                      id="signup-password"
+                      type={showSignupPw ? "text" : "password"}
+                      className={`${inputCls} pr-12`}
+                      placeholder={t("createPassword", "Create a password")}
+                      value={signupPassword}
+                      onChange={(e) => setSignupPassword(e.target.value)}
+                      autoComplete="new-password"
+                      required
+                      data-ocid="auth.input"
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+                      onClick={() => setShowSignupPw((v) => !v)}
+                    >
+                      <span className="material-symbols-outlined text-lg">
+                        {showSignupPw ? "visibility_off" : "visibility"}
+                      </span>
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label htmlFor="signup-confirm" className={labelCls}>
                     {t("confirmPassword", "Confirm Password")}
                   </label>
-                  <input
-                    id="signup-confirm"
-                    type="password"
-                    className={inputCls}
-                    placeholder={t(
-                      "confirmYourPassword",
-                      "Confirm your password",
-                    )}
-                    value={signupConfirm}
-                    onChange={(e) => setSignupConfirm(e.target.value)}
-                    autoComplete="new-password"
-                    required
-                    data-ocid="auth.input"
-                  />
+                  <div className="relative">
+                    <input
+                      id="signup-confirm"
+                      type={showSignupConfirmPw ? "text" : "password"}
+                      className={`${inputCls} pr-12`}
+                      placeholder={t(
+                        "confirmYourPassword",
+                        "Confirm your password",
+                      )}
+                      value={signupConfirm}
+                      onChange={(e) => setSignupConfirm(e.target.value)}
+                      autoComplete="new-password"
+                      required
+                      data-ocid="auth.input"
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+                      onClick={() => setShowSignupConfirmPw((v) => !v)}
+                    >
+                      <span className="material-symbols-outlined text-lg">
+                        {showSignupConfirmPw ? "visibility_off" : "visibility"}
+                      </span>
+                    </button>
+                  </div>
                 </div>
+
+                {/* Security tips */}
+                <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 space-y-1.5">
+                  <p className="text-xs font-semibold text-amber-400 flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-sm">
+                      tips_and_updates
+                    </span>
+                    Security Tips
+                  </p>
+                  <p className="text-[11px] text-zinc-400">
+                    \uD83D\uDCA1 Save your password somewhere safe \u2014
+                    you&apos;ll need it or your security word to recover access.
+                  </p>
+                  <p className="text-[11px] text-zinc-400">
+                    \uD83D\uDD12 Use a mix of letters, numbers and symbols for a
+                    stronger password.
+                  </p>
+                  <p className="text-[11px] text-zinc-400">
+                    \uD83D\uDCF1 Keep your email accessible \u2014 it&apos;s
+                    used for account recovery.
+                  </p>
+                </div>
+
                 <div>
                   <label htmlFor="signup-secword" className={labelCls}>
                     {t("securityWord", "Security Word")}
@@ -907,7 +1296,7 @@ export function AuthScreen({
                     <span className="material-symbols-outlined text-sm">
                       policy
                     </span>
-                    📋 Platform Rules
+                    \uD83D\uDCCB Platform Rules
                   </p>
                   <div className="space-y-3">
                     <div className="flex gap-2">
@@ -953,12 +1342,10 @@ export function AuthScreen({
                     className="text-sm text-amber-400 hover:text-amber-300 underline underline-offset-2 transition-colors"
                     data-ocid="terms.open_modal_button"
                   >
-                    📜 Read Terms &amp; Conditions
+                    \uD83D\uDCDC Read Terms &amp; Conditions
                   </button>
                   <label
-                    className={`flex items-start gap-3 ${
-                      termsAccepted ? "cursor-pointer" : "cursor-pointer"
-                    }`}
+                    className="flex items-start gap-3 cursor-pointer"
                     data-ocid="terms.checkbox"
                   >
                     <input
@@ -1002,7 +1389,7 @@ export function AuthScreen({
                   }`}
                 >
                   <span className="text-2xl">
-                    {method === "google" ? "🔵" : "🔷"}
+                    {method === "google" ? "\uD83D\uDD35" : "\uD83D\uDD37"}
                   </span>
                   <div>
                     <p className="font-bold text-sm">
