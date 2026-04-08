@@ -1,0 +1,72 @@
+// Version: 3.0.0
+type CommunityLink__492462428 =
+  {iconType : Text; id : Nat; title : Text; url : Text};
+type Data__791452850<K, V> =
+  {var count : Nat__490723111; kvs : [var ?(K, V)]};
+type Internal__8484328<K, V> =
+  {children : [var ?Node__46230540<K, V>]; data : Data__791452850<K, V>};
+type Leaf__809889148<K, V> = {data : Data__791452850<K, V>};
+type Map__158565046<K, V> = Map__297112838<K, V>;
+type Map__297112838<K, V> =
+  {var root : Node__46230540<K, V>; var size : Nat__490723111};
+type Map__605269027<K, V> = Map__158565046<K, V>;
+type Nat__490723111 = Nat__920180692;
+type Nat__920180692 = Nat;
+type Node__46230540<K, V> =
+  {#internal : Internal__8484328<K, V>; #leaf : Leaf__809889148<K, V>};
+type OldAccessControlState__841599830 =
+  {
+    var adminAssigned : Bool;
+    userRoles : Map__605269027<Principal, UserRole__717262347>
+  };
+type OldCommunityLink__532222676 =
+  {iconType : Text; id : Nat; title : Text; url : Text};
+type OldModerationCounts__602285254 =
+  {flaggedComments : Nat; pendingReviews : Nat};
+type OldPaymentInfo__191714750 =
+  {bankName : Text; lastFour : Text; status : Text};
+type OldStats__838605981 =
+  {
+    applicationsTrend : Text;
+    newApplications : Nat;
+    payoutNote : Text;
+    reportsCount : Nat;
+    totalRevenue : Text
+  };
+type OldUserProfile__416069324 = {name : Text};
+type UserProfile__491224006 = {name : Text};
+type UserRole__717262347 = {#admin; #guest; #user};
+actor ({
+  in accessControlState : OldAccessControlState__841599830;
+  in communityLinks : Map__605269027<Nat, OldCommunityLink__532222676>;
+  in var dashboardStats : OldStats__838605981;
+  in initialModerationCounts : OldModerationCounts__602285254;
+  in initialPaymentInfo : OldPaymentInfo__191714750;
+  in initialStats : OldStats__838605981;
+  in var moderationCounts : OldModerationCounts__602285254;
+  in var nextLinkId : Nat;
+  in var paymentInfo : OldPaymentInfo__191714750;
+  in userProfiles : Map__605269027<Principal, OldUserProfile__416069324>
+}, {
+  stable communityLinks :
+    {
+      var root : Node__46230540<Nat, CommunityLink__492462428>;
+      var size : Nat__490723111
+    };
+  stable var dashboardStats :
+    {
+      applicationsTrend : Text;
+      newApplications : Nat;
+      payoutNote : Text;
+      reportsCount : Nat;
+      totalRevenue : Text
+    };
+  stable var moderationCounts : {flaggedComments : Nat; pendingReviews : Nat};
+  stable var nextLinkId : Nat;
+  stable var paymentInfo : {bankName : Text; lastFour : Text; status : Text};
+  stable userProfiles :
+    {
+      var root : Node__46230540<Principal, UserProfile__491224006>;
+      var size : Nat__490723111
+    }
+}) ;

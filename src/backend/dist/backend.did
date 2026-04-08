@@ -1,0 +1,42 @@
+type UserProfile = record {name: text;};
+type PaymentInfo = 
+ record {
+   bankName: text;
+   lastFour: text;
+   status: text;
+ };
+type ModerationCounts = 
+ record {
+   flaggedComments: nat;
+   pendingReviews: nat;
+ };
+type DashboardStats = 
+ record {
+   applicationsTrend: text;
+   newApplications: nat;
+   payoutNote: text;
+   reportsCount: nat;
+   totalRevenue: text;
+ };
+type CommunityLink = 
+ record {
+   iconType: text;
+   id: nat;
+   title: text;
+   url: text;
+ };
+service : {
+  addCommunityLink: (title: text, url: text, iconType: text) -> ();
+  deleteCommunityLink: (id: nat) -> ();
+  editCommunityLink: (id: nat, title: text, url: text, iconType: text) -> ();
+  getAllCommunityLinks: () -> (vec CommunityLink) query;
+  getCallerUserProfile: () -> (opt UserProfile) query;
+  getDashboardStats: () -> (DashboardStats) query;
+  getModerationCounts: () -> (ModerationCounts) query;
+  getPaymentInfo: () -> (PaymentInfo) query;
+  getUserProfile: (user: principal) -> (opt UserProfile) query;
+  saveCallerUserProfile: (profile: UserProfile) -> ();
+  updateDashboardStats: (newStats: DashboardStats) -> ();
+  updateModerationCounts: (newCounts: ModerationCounts) -> ();
+  updatePaymentInfo: (newInfo: PaymentInfo) -> ();
+}

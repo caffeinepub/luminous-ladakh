@@ -8,11 +8,6 @@
 
 import { IDL } from '@icp-sdk/core/candid';
 
-export const UserRole = IDL.Variant({
-  'admin' : IDL.Null,
-  'user' : IDL.Null,
-  'guest' : IDL.Null,
-});
 export const CommunityLink = IDL.Record({
   'id' : IDL.Nat,
   'url' : IDL.Text,
@@ -38,9 +33,7 @@ export const PaymentInfo = IDL.Record({
 });
 
 export const idlService = IDL.Service({
-  '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'addCommunityLink' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [], []),
-  'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'deleteCommunityLink' : IDL.Func([IDL.Nat], [], []),
   'editCommunityLink' : IDL.Func(
       [IDL.Nat, IDL.Text, IDL.Text, IDL.Text],
@@ -49,7 +42,6 @@ export const idlService = IDL.Service({
     ),
   'getAllCommunityLinks' : IDL.Func([], [IDL.Vec(CommunityLink)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
-  'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getDashboardStats' : IDL.Func([], [DashboardStats], ['query']),
   'getModerationCounts' : IDL.Func([], [ModerationCounts], ['query']),
   'getPaymentInfo' : IDL.Func([], [PaymentInfo], ['query']),
@@ -58,7 +50,6 @@ export const idlService = IDL.Service({
       [IDL.Opt(UserProfile)],
       ['query'],
     ),
-  'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'updateDashboardStats' : IDL.Func([DashboardStats], [], []),
   'updateModerationCounts' : IDL.Func([ModerationCounts], [], []),
@@ -68,11 +59,6 @@ export const idlService = IDL.Service({
 export const idlInitArgs = [];
 
 export const idlFactory = ({ IDL }) => {
-  const UserRole = IDL.Variant({
-    'admin' : IDL.Null,
-    'user' : IDL.Null,
-    'guest' : IDL.Null,
-  });
   const CommunityLink = IDL.Record({
     'id' : IDL.Nat,
     'url' : IDL.Text,
@@ -98,9 +84,7 @@ export const idlFactory = ({ IDL }) => {
   });
   
   return IDL.Service({
-    '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'addCommunityLink' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [], []),
-    'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'deleteCommunityLink' : IDL.Func([IDL.Nat], [], []),
     'editCommunityLink' : IDL.Func(
         [IDL.Nat, IDL.Text, IDL.Text, IDL.Text],
@@ -109,7 +93,6 @@ export const idlFactory = ({ IDL }) => {
       ),
     'getAllCommunityLinks' : IDL.Func([], [IDL.Vec(CommunityLink)], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
-    'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getDashboardStats' : IDL.Func([], [DashboardStats], ['query']),
     'getModerationCounts' : IDL.Func([], [ModerationCounts], ['query']),
     'getPaymentInfo' : IDL.Func([], [PaymentInfo], ['query']),
@@ -118,7 +101,6 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Opt(UserProfile)],
         ['query'],
       ),
-    'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'updateDashboardStats' : IDL.Func([DashboardStats], [], []),
     'updateModerationCounts' : IDL.Func([ModerationCounts], [], []),

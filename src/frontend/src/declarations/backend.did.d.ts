@@ -33,13 +33,8 @@ export interface PaymentInfo {
   'lastFour' : string,
 }
 export interface UserProfile { 'name' : string }
-export type UserRole = { 'admin' : null } |
-  { 'user' : null } |
-  { 'guest' : null };
 export interface _SERVICE {
-  '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'addCommunityLink' : ActorMethod<[string, string, string], undefined>,
-  'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'deleteCommunityLink' : ActorMethod<[bigint], undefined>,
   'editCommunityLink' : ActorMethod<
     [bigint, string, string, string],
@@ -47,12 +42,10 @@ export interface _SERVICE {
   >,
   'getAllCommunityLinks' : ActorMethod<[], Array<CommunityLink>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
-  'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getDashboardStats' : ActorMethod<[], DashboardStats>,
   'getModerationCounts' : ActorMethod<[], ModerationCounts>,
   'getPaymentInfo' : ActorMethod<[], PaymentInfo>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
-  'isCallerAdmin' : ActorMethod<[], boolean>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'updateDashboardStats' : ActorMethod<[DashboardStats], undefined>,
   'updateModerationCounts' : ActorMethod<[ModerationCounts], undefined>,

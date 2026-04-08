@@ -501,7 +501,10 @@ export default function App() {
             )}
             {activeTab === "map" && (
               <ErrorBoundary minimal>
-                <LadakhMapTab currentUser={currentUser} />
+                <LadakhMapTab
+                  currentUser={currentUser}
+                  onTabChange={handleTabSelect}
+                />
               </ErrorBoundary>
             )}
           </>
@@ -659,7 +662,10 @@ export default function App() {
             )}
             {activeTab === "map" && (
               <ErrorBoundary minimal>
-                <LadakhMapTab currentUser={currentUser} />
+                <LadakhMapTab
+                  currentUser={currentUser}
+                  onTabChange={handleTabSelect}
+                />
               </ErrorBoundary>
             )}
           </>
@@ -807,7 +813,10 @@ export default function App() {
             )}
             {activeTab === "map" && (
               <ErrorBoundary minimal>
-                <LadakhMapTab currentUser={currentUser} />
+                <LadakhMapTab
+                  currentUser={currentUser}
+                  onTabChange={handleTabSelect}
+                />
               </ErrorBoundary>
             )}
           </>
@@ -916,7 +925,10 @@ export default function App() {
             )}
             {activeTab === "map" && (
               <ErrorBoundary minimal>
-                <LadakhMapTab currentUser={currentUser} />
+                <LadakhMapTab
+                  currentUser={currentUser}
+                  onTabChange={handleTabSelect}
+                />
               </ErrorBoundary>
             )}
             {activeTab === "events" && (

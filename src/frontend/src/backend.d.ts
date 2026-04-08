@@ -32,24 +32,16 @@ export interface ModerationCounts {
     flaggedComments: bigint;
     pendingReviews: bigint;
 }
-export enum UserRole {
-    admin = "admin",
-    user = "user",
-    guest = "guest"
-}
 export interface backendInterface {
     addCommunityLink(title: string, url: string, iconType: string): Promise<void>;
-    assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     deleteCommunityLink(id: bigint): Promise<void>;
     editCommunityLink(id: bigint, title: string, url: string, iconType: string): Promise<void>;
     getAllCommunityLinks(): Promise<Array<CommunityLink>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
-    getCallerUserRole(): Promise<UserRole>;
     getDashboardStats(): Promise<DashboardStats>;
     getModerationCounts(): Promise<ModerationCounts>;
     getPaymentInfo(): Promise<PaymentInfo>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
-    isCallerAdmin(): Promise<boolean>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     updateDashboardStats(newStats: DashboardStats): Promise<void>;
     updateModerationCounts(newCounts: ModerationCounts): Promise<void>;
