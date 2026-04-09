@@ -7,8 +7,10 @@ import { MapContainer, Marker, TileLayer, useMapEvents } from "react-leaflet";
 import iconRetinaUrl from "leaflet/dist/images/marker-icon-2x.png";
 import iconUrl from "leaflet/dist/images/marker-icon.png";
 import shadowUrl from "leaflet/dist/images/marker-shadow.png";
+import { loadDiscoveries } from "../data/discoveryData";
 
-(L.Icon.Default.prototype as any)._getIconUrl = undefined;
+(L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl =
+  undefined;
 L.Icon.Default.mergeOptions({ iconRetinaUrl, iconUrl, shadowUrl });
 
 // ─── Icon factory ──────────────────────────────────────────────────────────
@@ -30,9 +32,11 @@ function createColoredIcon(color: string, opacity = 1, size = 14) {
   });
 }
 
-const blueIcon = createColoredIcon("#3b82f6");
-const blueFadedIcon = createColoredIcon("#3b82f6", 0.55, 12);
-const greyIcon = createColoredIcon("#6b7280", 0.6);
+// Pin icons — four distinct types
+const blueIcon = createColoredIcon("#3b82f6"); // Locations & Businesses
+const greenIcon = createColoredIcon("#22c55e"); // Community / Today's Posts
+const yellowIcon = createColoredIcon("#eab308"); // Undiscovered Places (24h)
+const greyIcon = createColoredIcon("#6b7280", 0.6); // Restricted / military zones
 
 // ─── Static data ───────────────────────────────────────────────────────────
 interface LadakhLocation {
@@ -186,7 +190,22 @@ interface TodaysPostPin {
   lng: number;
 }
 
-type PinKind = "location" | "business" | "todays_post" | "restricted";
+interface UndiscoveredPin {
+  title: string;
+  area: string;
+  description: string;
+  username: string;
+  timestamp: number;
+  lat: number;
+  lng: number;
+}
+
+type PinKind =
+  | "location"
+  | "business"
+  | "todays_post"
+  | "undiscovered"
+  | "restricted";
 
 interface ActivePin {
   kind: PinKind;
@@ -205,6 +224,12 @@ interface ActivePin {
   postContent?: string;
   postUsername?: string;
   postCreatedAt?: number;
+  // undiscovered place
+  undiscTitle?: string;
+  undiscArea?: string;
+  undiscDescription?: string;
+  undiscUsername?: string;
+  undiscTimestamp?: number;
 }
 
 interface Props {
@@ -215,11 +240,7 @@ interface Props {
 // ─── Helper components ─────────────────────────────────────────────────────
 
 /** Closes the active popup when user clicks on the map background */
-function MapClickClear({
-  onClear,
-}: {
-  onClear: () => void;
-}) {
+function MapClickClear({ onClear }: { onClear: () => void }) {
   useMapEvents({
     click() {
       onClear();
@@ -296,30 +317,35 @@ export function LadakhMapTab({
     setLastRefresh(ts);
   }
 
-  // Read business pins from localStorage
+  // Read business pins from localStorage (BLUE)
   const businessPins: BusinessPin[] = useMemo(() => {
     try {
       const raw = localStorage.getItem("lc_accounts");
       if (!raw) return [];
-      const accounts: any[] = JSON.parse(raw);
+      const accounts: unknown[] = JSON.parse(raw);
       const pins: BusinessPin[] = [];
       for (const acc of accounts) {
-        if (acc.role !== "member") continue;
-        const bizList: any[] = Array.isArray(acc.businesses)
-          ? acc.businesses
+        const a = acc as Record<string, unknown>;
+        if (a.role !== "member") continue;
+        const bizList: unknown[] = Array.isArray(a.businesses)
+          ? (a.businesses as unknown[])
           : [];
         for (const biz of bizList) {
+          const b = biz as Record<string, unknown>;
           if (
-            typeof biz.lat === "number" &&
-            typeof biz.lng === "number" &&
-            biz.locationStatus !== "pending_review"
+            typeof b.lat === "number" &&
+            typeof b.lng === "number" &&
+            b.locationStatus !== "pending_review"
           ) {
             pins.push({
-              name: biz.name || "Business",
-              type: biz.businessType || biz.category || "Business",
-              username: acc.username || "?",
-              lat: biz.lat,
-              lng: biz.lng,
+              name: (b.name as string) || "Business",
+              type:
+                (b.businessType as string) ||
+                (b.category as string) ||
+                "Business",
+              username: (a.username as string) || "?",
+              lat: b.lat,
+              lng: b.lng,
             });
           }
         }
@@ -330,29 +356,55 @@ export function LadakhMapTab({
     }
   }, []);
 
-  // Read Today's Post pins from localStorage — only posts within 24h
+  // Read Today's Post pins from localStorage — GREEN, only posts within 24h
   const todaysPostPins: TodaysPostPin[] = useMemo(() => {
     try {
       const raw = localStorage.getItem("lc_posts");
       if (!raw) return [];
-      const posts: any[] = JSON.parse(raw);
+      const posts: unknown[] = JSON.parse(raw);
       const cutoff = Date.now() - ONE_DAY_MS;
-      return posts
+      return (posts as Record<string, unknown>[])
         .filter(
           (p) =>
             typeof p.lat === "number" &&
             typeof p.lng === "number" &&
             p.status === "approved" &&
             typeof p.createdAt === "number" &&
-            p.createdAt > cutoff,
+            (p.createdAt as number) > cutoff,
         )
         .map((p) => ({
-          title: p.title || p.locationName || "Today's Post",
-          content: p.content || p.description || "",
-          username: p.username || "user",
-          createdAt: p.createdAt,
-          lat: p.lat,
-          lng: p.lng,
+          title:
+            (p.title as string) || (p.locationName as string) || "Today's Post",
+          content: (p.content as string) || (p.description as string) || "",
+          username: (p.username as string) || "user",
+          createdAt: p.createdAt as number,
+          lat: p.lat as number,
+          lng: p.lng as number,
+        }));
+    } catch {
+      return [];
+    }
+  }, []);
+
+  // Read Undiscovered Place pins — YELLOW, only within 24h of posting
+  const undiscoveredPins: UndiscoveredPin[] = useMemo(() => {
+    try {
+      const discoveries = loadDiscoveries();
+      const cutoff = Date.now() - ONE_DAY_MS;
+      return discoveries
+        .filter((d) => {
+          const ts = Date.parse(d.timestamp);
+          return !Number.isNaN(ts) && ts > cutoff;
+        })
+        .map((d) => ({
+          title: d.title,
+          area: d.area,
+          description: d.description,
+          username: d.postedByUsername || d.postedBy,
+          timestamp: Date.parse(d.timestamp),
+          // DiscoveryPost may have lat/lng if extended; fall back to Leh center
+          lat: (d as unknown as Record<string, number>).lat ?? LEH_CENTER[0],
+          lng: (d as unknown as Record<string, number>).lng ?? LEH_CENTER[1],
         }));
     } catch {
       return [];
@@ -433,7 +485,7 @@ export function LadakhMapTab({
           {/* Clear active pin when clicking map background */}
           <MapClickClear onClear={() => setActivePin(null)} />
 
-          {/* ── Explore location pins (blue) ─────────────────────── */}
+          {/* ── Explore location pins (BLUE) ──────────────────────── */}
           {LADAKH_LOCATIONS.map((loc) => (
             <Marker
               key={`loc-${loc.name}`}
@@ -455,7 +507,7 @@ export function LadakhMapTab({
             />
           ))}
 
-          {/* ── Military / restricted zones (grey, unnamed) ────────── */}
+          {/* ── Military / restricted zones (GREY, unnamed) ─────────── */}
           {RESTRICTED_ZONES.map((zone) => (
             <Marker
               key={`restricted-${zone.lat}-${zone.lng}`}
@@ -474,7 +526,7 @@ export function LadakhMapTab({
             />
           ))}
 
-          {/* ── Business pins (blue — same as locations) ─────────── */}
+          {/* ── Business pins (BLUE — same as locations) ──────────── */}
           {businessPins.map((biz, i) => (
             <Marker
               key={`biz-${biz.lat}-${biz.lng}-${i}`}
@@ -496,12 +548,12 @@ export function LadakhMapTab({
             />
           ))}
 
-          {/* ── Today's Post pins (blue faded — 24h only) ───────── */}
+          {/* ── Today's Post pins (GREEN — 24h only) ─────────────── */}
           {todaysPostPins.map((post, i) => (
             <Marker
               key={`post-${post.lat}-${post.lng}-${i}`}
               position={[post.lat, post.lng]}
-              icon={blueFadedIcon}
+              icon={greenIcon}
               eventHandlers={{
                 click(e) {
                   L.DomEvent.stopPropagation(e);
@@ -513,6 +565,30 @@ export function LadakhMapTab({
                     postContent: post.content,
                     postUsername: post.username,
                     postCreatedAt: post.createdAt,
+                  });
+                },
+              }}
+            />
+          ))}
+
+          {/* ── Undiscovered Place pins (YELLOW — 24h only) ──────── */}
+          {undiscoveredPins.map((place, i) => (
+            <Marker
+              key={`undisc-${place.lat}-${place.lng}-${i}`}
+              position={[place.lat, place.lng]}
+              icon={yellowIcon}
+              eventHandlers={{
+                click(e) {
+                  L.DomEvent.stopPropagation(e);
+                  setActivePin({
+                    kind: "undiscovered",
+                    lat: place.lat,
+                    lng: place.lng,
+                    undiscTitle: place.title,
+                    undiscArea: place.area,
+                    undiscDescription: place.description,
+                    undiscUsername: place.username,
+                    undiscTimestamp: place.timestamp,
                   });
                 },
               }}
@@ -551,7 +627,7 @@ export function LadakhMapTab({
                 </span>
               </button>
 
-              {/* ── Location popup ──────────────────────────── */}
+              {/* ── Location popup (BLUE) ────────────────────── */}
               {activePin.kind === "location" && (
                 <>
                   <div className="pr-8 mb-3">
@@ -603,7 +679,7 @@ export function LadakhMapTab({
                 </>
               )}
 
-              {/* ── Business popup ──────────────────────────── */}
+              {/* ── Business popup (BLUE) ────────────────────── */}
               {activePin.kind === "business" && (
                 <>
                   <div className="pr-8 mb-3">
@@ -653,14 +729,14 @@ export function LadakhMapTab({
                 </>
               )}
 
-              {/* ── Today's Post popup ──────────────────────── */}
+              {/* ── Today's Post popup (GREEN) ──────────────── */}
               {activePin.kind === "todays_post" && (
                 <>
                   <div className="pr-8 mb-3">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="w-2.5 h-2.5 rounded-full bg-blue-400 opacity-60 flex-shrink-0" />
-                      <span className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">
-                        Today's Post
+                      <span className="w-2.5 h-2.5 rounded-full bg-green-500 flex-shrink-0" />
+                      <span className="text-[10px] uppercase tracking-wider text-green-400 font-semibold">
+                        Community Post
                       </span>
                       {activePin.postCreatedAt && (
                         <span className="text-[10px] text-zinc-500 ml-auto">
@@ -685,7 +761,7 @@ export function LadakhMapTab({
                       href={`https://www.google.com/maps/dir/?api=1&destination=${activePin.lat},${activePin.lng}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-colors"
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-green-700 hover:bg-green-600 text-white text-xs font-semibold transition-colors"
                       data-ocid="map.post_directions"
                     >
                       <span className="material-symbols-outlined text-sm">
@@ -697,7 +773,72 @@ export function LadakhMapTab({
                 </>
               )}
 
-              {/* ── Restricted / unnamed popup ───────────────── */}
+              {/* ── Undiscovered Place popup (YELLOW) ─────────── */}
+              {activePin.kind === "undiscovered" && (
+                <>
+                  <div className="pr-8 mb-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="w-2.5 h-2.5 rounded-full bg-yellow-400 flex-shrink-0" />
+                      <span className="text-[10px] uppercase tracking-wider text-yellow-400 font-semibold">
+                        Undiscovered Place
+                      </span>
+                      {activePin.undiscTimestamp && (
+                        <span className="text-[10px] text-zinc-500 ml-auto">
+                          {timeAgo(activePin.undiscTimestamp)}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-base font-bold text-white leading-tight">
+                      {activePin.undiscTitle}
+                    </h3>
+                    {activePin.undiscArea && (
+                      <p className="text-xs text-yellow-500/80 mt-0.5 font-medium">
+                        {activePin.undiscArea}
+                      </p>
+                    )}
+                    {activePin.undiscDescription && (
+                      <p className="text-xs text-zinc-400 mt-1 leading-relaxed line-clamp-2">
+                        {activePin.undiscDescription}
+                      </p>
+                    )}
+                    <p className="text-xs text-zinc-500 mt-1">
+                      Shared by @{activePin.undiscUsername}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <a
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${activePin.lat},${activePin.lng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-yellow-600 hover:bg-yellow-500 text-white text-xs font-semibold transition-colors"
+                      data-ocid="map.undisc_directions"
+                    >
+                      <span className="material-symbols-outlined text-sm">
+                        directions
+                      </span>
+                      Get Directions
+                    </a>
+                    {onTabChange && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onTabChange("discover");
+                          setActivePin(null);
+                        }}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold transition-colors border border-zinc-700"
+                        data-ocid="map.view_undiscovered"
+                      >
+                        <span className="material-symbols-outlined text-sm">
+                          travel_explore
+                        </span>
+                        Discover
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* ── Restricted / unnamed popup (GREY) ───────────── */}
               {activePin.kind === "restricted" && (
                 <div className="pr-8">
                   <div className="flex items-center gap-2 mb-1">
@@ -718,15 +859,25 @@ export function LadakhMapTab({
       </div>
 
       {/* Legend + refresh status */}
-      <div className="mt-3 flex items-center justify-between">
+      <div className="mt-3 flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded-full bg-blue-500 flex-shrink-0" />
-            <span className="text-xs text-zinc-400">Location / Business</span>
+            <span className="text-xs text-zinc-400">
+              Locations &amp; Businesses
+            </span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-full bg-blue-500 opacity-50 flex-shrink-0" />
-            <span className="text-xs text-zinc-400">Today's Post (24h)</span>
+            <span className="w-3 h-3 rounded-full bg-green-500 flex-shrink-0" />
+            <span className="text-xs text-zinc-400">
+              Community Posts (today)
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded-full bg-yellow-400 flex-shrink-0" />
+            <span className="text-xs text-zinc-400">
+              Undiscovered Places (24h)
+            </span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded-full bg-zinc-500 flex-shrink-0" />
@@ -737,7 +888,7 @@ export function LadakhMapTab({
       </div>
 
       {/* Stats row */}
-      <div className="mt-3 grid grid-cols-3 gap-2">
+      <div className="mt-3 grid grid-cols-4 gap-2">
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-center">
           <p className="text-base font-bold text-blue-400">
             {LADAKH_LOCATIONS.length}
@@ -751,10 +902,16 @@ export function LadakhMapTab({
           <p className="text-[10px] text-zinc-500">Businesses</p>
         </div>
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-center">
-          <p className="text-base font-bold text-blue-400">
+          <p className="text-base font-bold text-green-400">
             {todaysPostPins.length}
           </p>
-          <p className="text-[10px] text-zinc-500">Today's Posts</p>
+          <p className="text-[10px] text-zinc-500">Posts Today</p>
+        </div>
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-center">
+          <p className="text-base font-bold text-yellow-400">
+            {undiscoveredPins.length}
+          </p>
+          <p className="text-[10px] text-zinc-500">Undiscovered</p>
         </div>
       </div>
     </div>

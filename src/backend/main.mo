@@ -1,9 +1,9 @@
 import Order "mo:core/Order";
 import Map "mo:core/Map";
 import Principal "mo:core/Principal";
-import Migration "migration";
 
-(with migration = Migration.run)
+
+
 actor {
   module CommunityLink {
     public func compare(link1 : CommunityLink, link2 : CommunityLink) : Order.Order {
